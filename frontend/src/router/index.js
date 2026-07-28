@@ -9,7 +9,10 @@ import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 import ResetPasswordView from '../views/ResetPasswordView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import AcademyView from '../views/AcademyView.vue'
+import AcademyWriteView from '../views/AcademyWriteView.vue'
 import CourseDetailView from '../views/CourseDetailView.vue'
+import MyCoursesView from '../views/MyCoursesView.vue'
+import SearchView from '../views/SearchView.vue'
 import CompetitionsView from '../views/CompetitionsView.vue'
 import OpportunitiesView from '../views/OpportunitiesView.vue'
 import ProfileView from '../views/ProfileView.vue'
@@ -40,9 +43,27 @@ const routes = [
     meta: { requiresAuth: true } 
   },
   { 
-    path: '/academy/course/:id', 
+    path: '/academy/write', 
+    name: 'academy-write', 
+    component: AcademyWriteView, 
+    meta: { requiresAuth: true, roles: ['teacher', 'admin', 'root_admin'] } 
+  },
+  { 
+    path: '/academy/course/:slug', 
     name: 'course-detail', 
     component: CourseDetailView, 
+    meta: { requiresAuth: true } 
+  },
+  { 
+    path: '/academy/my-courses', 
+    name: 'my-courses', 
+    component: MyCoursesView, 
+    meta: { requiresAuth: true } 
+  },
+  { 
+    path: '/search', 
+    name: 'search', 
+    component: SearchView, 
     meta: { requiresAuth: true } 
   },
   { 

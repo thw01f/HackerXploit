@@ -5,7 +5,8 @@ db = SQLAlchemy()
 from .user import User, PasswordResetRequest, PasswordResetCode, ProfileFieldDefinition, UserProfileValue
 from .session import DeviceSession, LoginAttempt, LoginActivity
 from .audit import AuditLog
-from .academy import Course, Module, Lesson, CourseEnrollment
+from .academy import Course, CourseChapter, Enrollment, CourseEnrollment, CourseComment
+from .certificate import Certificate
 from .competition import Competition, CompetitionApplication
 from .opportunity import Opportunity, OpportunityApplication
 from .chat import ChatMessage, Notification
@@ -23,9 +24,11 @@ __all__ = [
     'LoginActivity',
     'AuditLog',
     'Course',
-    'Module',
-    'Lesson',
+    'CourseChapter',
+    'Enrollment',
     'CourseEnrollment',
+    'CourseComment',
+    'Certificate',
     'Competition',
     'CompetitionApplication',
     'Opportunity',

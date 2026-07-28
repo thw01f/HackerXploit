@@ -1,100 +1,112 @@
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
-
-db = SQLAlchemy()
+from app.models import db
 
 class Course(db.Model):
     __tablename__ = 'courses'
 
     id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(128), unique=True, nullable=False, index=True)
     title = db.Column(db.String(128), nullable=False)
-    slug = db.Column(db.String(128), unique=True, nullable=False)
     description = db.Column(db.Text, nullable=False)
-    category = db.Column(db.String(64), default='General')
-    difficulty = db.Column(db.String(32), default='Beginner')  # Beginner, Intermediate, Advanced
-    thumbnail_url = db.Column(db.String(255), nullable=True)
+    cover_image = db.Column(db.String(255), nullable=True)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
-    is_published = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(20), default='published')  # 'draft' or 'published'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    modules = db.relationship('Module', backref='course', cascade='all, delete-orphan', order_by='Module.order')
+    # Relationships
+    chapters = db.relationship('CourseChapter', backref='course', cascade='all, delete-orphan', order_by='CourseChapter.order_index')
+    enrollments = db.relationship('Enrollment', backref='course', cascade='all, delete-orphan')
+    comments = db.relationship('CourseComment', backref='course', cascade='all, delete-orphan')
+    author = db.relationship('User', foreign_keys=[author_id])
 
     def to_dict(self):
         return {
             'id': self.id,
-            'title': self.title,
             'slug': self.slug,
+            'title': self.title,
             'description': self.description,
-            'category': self.category,
-            'difficulty': self.difficulty,
-            'thumbnail_url': self.thumbnail_url,
+            'cover_image': self.cover_image,
             'author_id': self.author_id,
-            'is_published': self.is_published,
+            'author_name': self.author.full_name if self.author else 'HackerXploit Team',
+            'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'modules_count': len(self.modules)
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'chapters_count': len(self.chapters)
         }
 
-class Module(db.Model):
-    __tablename__ = 'course_modules'
+class CourseChapter(db.Model):
+    __tablename__ = 'course_chapters'
 
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id', ondelete='CASCADE'), nullable=False)
+    order_index = db.Column(db.Integer, default=1)
     title = db.Column(db.String(128), nullable=False)
-    order = db.Column(db.Integer, default=1)
+    content_markdown = db.Column(db.Text, nullable=False)
+    attachments = db.Column(db.JSON, default=list)  # List of dicts: [{"name": "lab.zip", "path": "/var/uploads/protected/lab.zip"}]
 
-    lessons = db.relationship('Lesson', backref='module', cascade='all, delete-orphan', order_by='Lesson.order')
+    comments = db.relationship('CourseComment', backref='chapter', cascade='all, delete-orphan')
 
     def to_dict(self):
         return {
             'id': self.id,
             'course_id': self.course_id,
-            'title': self.title,
-            'order': self.order,
-            'lessons': [l.to_dict() for l in self.lessons]
-        }
-
-class Lesson(db.Model):
-    __tablename__ = 'course_lessons'
-
-    id = db.Column(db.Integer, primary_key=True)
-    module_id = db.Column(db.Integer, db.ForeignKey('course_modules.id', ondelete='CASCADE'), nullable=False)
-    title = db.Column(db.String(128), nullable=False)
-    content_markdown = db.Column(db.Text, nullable=False)
-    video_url = db.Column(db.String(255), nullable=True)
-    attachment_url = db.Column(db.String(255), nullable=True)
-    order = db.Column(db.Integer, default=1)
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'module_id': self.module_id,
+            'order_index': self.order_index,
             'title': self.title,
             'content_markdown': self.content_markdown,
-            'video_url': self.video_url,
-            'attachment_url': self.attachment_url,
-            'order': self.order
+            'attachments': self.attachments or []
         }
 
-class CourseEnrollment(db.Model):
-    __tablename__ = 'course_enrollments'
+class Enrollment(db.Model):
+    __tablename__ = 'enrollments'
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id', ondelete='CASCADE'), nullable=False)
-    completed_lessons = db.Column(db.JSON, default=list)  # List of lesson IDs
-    is_completed = db.Column(db.Boolean, default=False)
-    certificate_url = db.Column(db.String(255), nullable=True)
-    enrolled_at = db.Column(db.DateTime, default=datetime.utcnow)
+    progress_percent = db.Column(db.Float, default=0.0)
+    completed_chapters = db.Column(db.JSON, default=list)  # List of chapter IDs
     completed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', backref=db.backref('enrollments', cascade='all, delete-orphan'))
 
     def to_dict(self):
         return {
             'id': self.id,
             'user_id': self.user_id,
             'course_id': self.course_id,
-            'completed_lessons': self.completed_lessons or [],
-            'is_completed': self.is_completed,
-            'certificate_url': self.certificate_url,
-            'enrolled_at': self.enrolled_at.isoformat() if self.enrolled_at else None,
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None
+            'progress_percent': round(self.progress_percent, 1),
+            'completed_chapters': self.completed_chapters or [],
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+# Alias for backward compatibility across existing blueprints
+CourseEnrollment = Enrollment
+
+class CourseComment(db.Model):
+    __tablename__ = 'course_comments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('courses.id', ondelete='CASCADE'), nullable=False)
+    chapter_id = db.Column(db.Integer, db.ForeignKey('course_chapters.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_reported = db.Column(db.Boolean, default=False)
+
+    user = db.relationship('User')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'course_id': self.course_id,
+            'chapter_id': self.chapter_id,
+            'user_id': self.user_id,
+            'username': self.user.username if self.user else 'Anonymous',
+            'avatar_url': self.user.avatar_url if self.user else '/uploads/avatars/default.png',
+            'body': self.body,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'is_reported': self.is_reported
         }

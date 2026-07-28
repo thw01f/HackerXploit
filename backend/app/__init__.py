@@ -62,6 +62,7 @@ def create_app(config_class=Config):
     from app.routes.academy import academy_bp
     from app.routes.competition import competition_bp
     from app.routes.opportunity import opportunity_bp
+    from app.routes.search import search_bp
 
     flask_app.register_blueprint(auth_bp)
     flask_app.register_blueprint(oauth_bp)
@@ -72,6 +73,7 @@ def create_app(config_class=Config):
     flask_app.register_blueprint(academy_bp)
     flask_app.register_blueprint(competition_bp)
     flask_app.register_blueprint(opportunity_bp)
+    flask_app.register_blueprint(search_bp)
 
     import app.services.socket_events
 
