@@ -5,12 +5,36 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../backend')))
 
 from app import create_app
-from app.models import db, OAuth2Client
+from app.models import db, User, OAuth2Client
 
-def seed_oauth_clients():
+def seed_database():
     app = create_app()
     with app.app_context():
         db.create_all()
+        
+        # 1. Seed Root Admin User
+        root_user = User.query.filter_by(is_root_admin=True).first()
+        if not root_user:
+            root_user = User.query.filter_by(username='admin').first()
+        
+        if not root_user:
+            root_user = User(
+                username='admin',
+                email='admin@hackerxploit.org',
+                full_name='Root Administrator',
+                role='admin',
+                is_root_admin=True,
+                status='approved',
+                is_first_login=True
+            )
+            root_user.set_password('HackerXploit')
+            db.session.add(root_user)
+            db.session.commit()
+            print("Successfully bootstrapped initial Root Admin (username: admin, password: HackerXploit, is_first_login: True)")
+        else:
+            print("Root Admin user already exists.")
+
+        # 2. Seed CTFd OAuth2 Client
         client = OAuth2Client.query.filter_by(client_id='ctfd-client-id-hx99').first()
         if not client:
             client = OAuth2Client(
@@ -29,4 +53,4 @@ def seed_oauth_clients():
             print("CTFd OAuth2 SSO Client already configured.")
 
 if __name__ == '__main__':
-    seed_oauth_clients()
+    seed_database()

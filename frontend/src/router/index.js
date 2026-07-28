@@ -4,6 +4,9 @@ import { useAuthStore } from '../stores/auth'
 import LandingView from '../views/LandingView.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
+import SetupAdminView from '../views/SetupAdminView.vue'
+import ForgotPasswordView from '../views/ForgotPasswordView.vue'
+import ResetPasswordView from '../views/ResetPasswordView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import AcademyView from '../views/AcademyView.vue'
 import CourseDetailView from '../views/CourseDetailView.vue'
@@ -13,11 +16,17 @@ import ProfileView from '../views/ProfileView.vue'
 import AdminView from '../views/AdminView.vue'
 import AdminSecurityView from '../views/AdminSecurityView.vue'
 import AdminAdminsView from '../views/AdminAdminsView.vue'
+import AdminAuditLogView from '../views/AdminAuditLogView.vue'
+import AdminPasswordRequestsView from '../views/AdminPasswordRequestsView.vue'
+import AdminProfileFieldsView from '../views/AdminProfileFieldsView.vue'
 
 const routes = [
   { path: '/', name: 'landing', component: LandingView },
   { path: '/login', name: 'login', component: LoginView },
   { path: '/register', name: 'register', component: RegisterView },
+  { path: '/setup-admin', name: 'setup-admin', component: SetupAdminView, meta: { requiresAuth: true } },
+  { path: '/forgot-password', name: 'forgot-password', component: ForgotPasswordView },
+  { path: '/reset-password', name: 'reset-password', component: ResetPasswordView },
   { 
     path: '/dashboard', 
     name: 'dashboard', 
@@ -67,6 +76,24 @@ const routes = [
     meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
   },
   { 
+    path: '/admin/audit-log', 
+    name: 'admin-audit-log', 
+    component: AdminAuditLogView, 
+    meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
+  },
+  { 
+    path: '/admin/password-requests', 
+    name: 'admin-password-requests', 
+    component: AdminPasswordRequestsView, 
+    meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
+  },
+  { 
+    path: '/admin/profile-fields', 
+    name: 'admin-profile-fields', 
+    component: AdminProfileFieldsView, 
+    meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
+  },
+  { 
     path: '/admin/manage-admins', 
     name: 'admin-manage', 
     component: AdminAdminsView, 
@@ -87,6 +114,11 @@ router.beforeEach(async (to, from, next) => {
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return next({ name: 'login', query: { redirect: to.fullPath } })
+  }
+
+  // Force first-login setup redirect
+  if (authStore.user && authStore.user.is_first_login && to.name !== 'setup-admin' && to.name !== 'login') {
+    return next({ name: 'setup-admin' })
   }
 
   if (to.meta.rootOnly && !authStore.isRootAdmin) {

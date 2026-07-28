@@ -49,21 +49,24 @@
 
         <!-- Right: Active Device Sessions (Kill Switch) -->
         <div class="glass-panel p-6 space-y-4">
-          <h3 class="text-sm font-mono font-bold text-white uppercase border-b border-slate-800 pb-3 flex items-center justify-between">
-            <span>Active Device Sessions</span>
-            <span class="text-xs text-cyan-400">KILL-SWITCH ACTIVE</span>
-          </h3>
+          <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <h3 class="text-sm font-mono font-bold text-white uppercase">Active Device Sessions</h3>
+            <button @click="logoutAllOthers" class="text-[10px] btn-neon-violet px-2.5 py-1">Log Out All Others</button>
+          </div>
 
           <div class="space-y-3">
-            <div v-for="s in authStore.sessions" :key="s.id" class="p-3 bg-slate-900/80 rounded-lg border border-slate-800 space-y-1">
+            <div v-for="s in devices" :key="s.id" :class="s.is_current_device ? 'border-cyan-500/60 bg-cyan-950/20' : 'border-slate-800 bg-slate-900/80'" class="p-3 rounded-lg border space-y-1">
               <div class="flex justify-between items-start">
-                <span class="text-xs font-bold text-white truncate max-w-[160px]">{{ s.device_name }}</span>
-                <button @click="revokeSession(s.id)" class="text-[10px] text-red-400 hover:underline font-mono font-bold">
+                <span class="text-xs font-bold text-white truncate max-w-[160px]">
+                  {{ s.device_label || s.device_name }}
+                  <span v-if="s.is_current_device" class="ml-1 text-[9px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 font-mono border border-cyan-500/30">THIS DEVICE</span>
+                </span>
+                <button v-if="!s.is_current_device" @click="revokeDevice(s.id)" class="text-[10px] text-red-400 hover:underline font-mono font-bold">
                   REVOKE
                 </button>
               </div>
               <p class="text-[11px] font-mono text-cyan-400">IP: {{ s.ip_address }}</p>
-              <p class="text-[10px] text-slate-500 font-mono">Last active: {{ new Date(s.last_active).toLocaleTimeString() }}</p>
+              <p class="text-[10px] text-slate-500 font-mono">Last active: {{ new Date(s.last_active_at || s.created_at).toLocaleString() }}</p>
             </div>
           </div>
         </div>
@@ -89,8 +92,19 @@ const form = ref({
   bio: authStore.user?.bio || ''
 })
 
+const devices = ref([])
+
+const fetchDevices = async () => {
+  try {
+    const res = await axios.get('/api/club/profile/devices')
+    devices.value = res.data.devices
+  } catch (err) {
+    console.error(err)
+  }
+}
+
 onMounted(() => {
-  authStore.fetchSessions()
+  fetchDevices()
 })
 
 const uploadAvatar = async (e) => {
@@ -120,12 +134,24 @@ const updateProfile = async () => {
   }
 }
 
-const revokeSession = async (id) => {
+const revokeDevice = async (id) => {
   if (confirm('Revoke this device session server-side immediately?')) {
     try {
-      await authStore.revokeSession(id)
+      await axios.delete(`/api/club/profile/devices/${id}`)
+      await fetchDevices()
     } catch (err) {
-      alert(err.message)
+      alert(err.response?.data?.error || 'Failed to revoke device')
+    }
+  }
+}
+
+const logoutAllOthers = async () => {
+  if (confirm('Log out all other active devices except this one?')) {
+    try {
+      await axios.delete('/api/club/profile/devices/others')
+      await fetchDevices()
+    } catch (err) {
+      alert('Failed to revoke other devices')
     }
   }
 }

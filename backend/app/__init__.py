@@ -16,11 +16,11 @@ limiter = Limiter(
 socketio = SocketIO(cors_allowed_origins="*")
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
-    app.config.from_object(config_class)
+    flask_app = Flask(__name__)
+    flask_app.config.from_object(config_class)
 
     # Enable CORS with credentials for subdomains (.hackerxploit.org)
-    CORS(app, supports_credentials=True, origins=[
+    CORS(flask_app, supports_credentials=True, origins=[
         "http://hackerxploit.org",
         "http://club.hackerxploit.org",
         "http://ctf.hackerxploit.org",
@@ -28,12 +28,12 @@ def create_app(config_class=Config):
         "http://127.0.0.1"
     ])
 
-    db.init_app(app)
-    limiter.init_app(app)
+    db.init_app(flask_app)
+    limiter.init_app(flask_app)
     
     # Initialize SocketIO with redis message queue if available
-    redis_url = app.config.get('REDIS_URL')
-    socketio.init_app(app, message_queue=redis_url)
+    redis_url = flask_app.config.get('REDIS_URL')
+    socketio.init_app(flask_app, message_queue=redis_url)
 
     # Register blueprints
     from app.routes.auth import auth_bp
@@ -41,24 +41,32 @@ def create_app(config_class=Config):
     from app.routes.uploads import uploads_bp
     from app.routes.chat import chat_bp
     from app.routes.admin import admin_bp
+    from app.routes.club import club_bp
+    from app.routes.academy import academy_bp
+    from app.routes.competition import competition_bp
+    from app.routes.opportunity import opportunity_bp
 
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(oauth_bp)
-    app.register_blueprint(uploads_bp)
-    app.register_blueprint(chat_bp)
-    app.register_blueprint(admin_bp)
+    flask_app.register_blueprint(auth_bp)
+    flask_app.register_blueprint(oauth_bp)
+    flask_app.register_blueprint(uploads_bp)
+    flask_app.register_blueprint(chat_bp)
+    flask_app.register_blueprint(admin_bp)
+    flask_app.register_blueprint(club_bp)
+    flask_app.register_blueprint(academy_bp)
+    flask_app.register_blueprint(competition_bp)
+    flask_app.register_blueprint(opportunity_bp)
 
     import app.services.socket_events
 
     # Rate limiting on auth endpoints
     limiter.limit("5 per minute")(auth_bp)
 
-    @app.route('/api/health')
+    @flask_app.route('/api/health')
     def health_check():
         return {'status': 'healthy', 'service': 'HackerXploit Auth & Core API'}, 200
 
-    with app.app_context():
+    with flask_app.app_context():
         # Ensure database tables exist
         db.create_all()
 
-    return app
+    return flask_app

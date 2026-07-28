@@ -34,15 +34,22 @@
             <input v-model="form.email" type="email" required placeholder="alex@college.edu" class="w-full bg-slate-900/90 border border-slate-700 rounded-lg px-3.5 py-2 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500" />
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Student ID</label>
-              <input v-model="form.student_id" type="text" placeholder="CS-2026-88" class="w-full bg-slate-900/90 border border-slate-700 rounded-lg px-3.5 py-2 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500" />
-            </div>
-            <div>
-              <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Graduation Year</label>
-              <input v-model.number="form.graduation_year" type="number" placeholder="2027" class="w-full bg-slate-900/90 border border-slate-700 rounded-lg px-3.5 py-2 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500" />
-            </div>
+          <!-- Dynamic Custom Profile Fields -->
+          <div v-for="field in customFields" :key="field.id">
+            <label class="block text-xs font-mono text-slate-300 uppercase mb-1">
+              {{ field.label }} <span v-if="field.required" class="text-amber-400">*</span>
+            </label>
+
+            <select v-if="field.field_type === 'select'" v-model="form.custom_fields[field.field_key]" :required="field.required" class="w-full bg-slate-900/90 border border-slate-700 rounded-lg px-3.5 py-2 text-white text-sm focus:outline-none focus:border-cyan-500">
+              <option value="">Select option...</option>
+              <option v-for="opt in field.options" :key="opt" :value="opt">{{ opt }}</option>
+            </select>
+
+            <input v-else-if="field.field_type === 'number'" v-model="form.custom_fields[field.field_key]" type="number" :required="field.required" class="w-full bg-slate-900/90 border border-slate-700 rounded-lg px-3.5 py-2 text-white text-sm focus:outline-none focus:border-cyan-500" />
+
+            <input v-else-if="field.field_type === 'date'" v-model="form.custom_fields[field.field_key]" type="date" :required="field.required" class="w-full bg-slate-900/90 border border-slate-700 rounded-lg px-3.5 py-2 text-white text-sm focus:outline-none focus:border-cyan-500" />
+
+            <input v-else v-model="form.custom_fields[field.field_key]" type="text" :required="field.required" :placeholder="field.label" class="w-full bg-slate-900/90 border border-slate-700 rounded-lg px-3.5 py-2 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500" />
           </div>
 
           <div>
@@ -77,7 +84,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
 import Navbar from '../components/Navbar.vue'
 import Footer from '../components/Footer.vue'
 import { useAuthStore } from '../stores/auth'
@@ -88,15 +96,24 @@ const form = ref({
   full_name: '',
   username: '',
   email: '',
-  student_id: '',
-  graduation_year: 2027,
-  password: ''
+  password: '',
+  custom_fields: {}
 })
 
+const customFields = ref([])
 const captchaVerified = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('/api/auth/custom-fields')
+    customFields.value = res.data.fields
+  } catch (err) {
+    console.error('Failed to load custom fields', err)
+  }
+})
 
 const handleRegister = async () => {
   if (!captchaVerified.value) {
