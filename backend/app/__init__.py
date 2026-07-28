@@ -39,10 +39,14 @@ def create_app(config_class=Config):
     from app.routes.auth import auth_bp
     from app.routes.oauth import oauth_bp
     from app.routes.uploads import uploads_bp
+    from app.routes.chat import chat_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(oauth_bp)
     app.register_blueprint(uploads_bp)
+    app.register_blueprint(chat_bp)
+
+    import app.services.socket_events
 
     # Rate limiting on auth endpoints
     limiter.limit("5 per minute")(auth_bp)
