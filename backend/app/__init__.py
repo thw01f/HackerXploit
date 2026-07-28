@@ -40,11 +40,13 @@ def create_app(config_class=Config):
     from app.routes.oauth import oauth_bp
     from app.routes.uploads import uploads_bp
     from app.routes.chat import chat_bp
+    from app.routes.admin import admin_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(oauth_bp)
     app.register_blueprint(uploads_bp)
     app.register_blueprint(chat_bp)
+    app.register_blueprint(admin_bp)
 
     import app.services.socket_events
 
