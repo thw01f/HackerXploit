@@ -63,6 +63,94 @@ def clean_expired_competitions(app=None):
             return _run()
 
 @celery.task
+def rollup_activity_heartbeats(app=None):
+    """Nightly Celery job rolls raw heartbeats into activity_sessions duration, then prunes raw rows"""
+    from app import create_app
+    from app.models import db, ActivityHeartbeat, ActivitySession
+
+    def _run():
+        heartbeats = ActivityHeartbeat.query.order_by(ActivityHeartbeat.ts.asc()).all()
+        if not heartbeats:
+            return "No raw heartbeats to rollup"
+
+        processed_ids = []
+        user_date_map = {}
+
+        for hb in heartbeats:
+            processed_ids.append(hb.id)
+            d_str = hb.ts.strftime('%Y-%m-%d')
+            key = (hb.user_id, d_str, hb.subdomain)
+
+            if key not in user_date_map:
+                user_date_map[key] = {
+                    'count': 0,
+                    'first_ts': hb.ts,
+                    'last_ts': hb.ts
+                }
+
+            user_date_map[key]['count'] += 1
+            user_date_map[key]['last_ts'] = hb.ts
+
+        # Upsert into ActivitySession (each heartbeat ping ~ 60s active duration)
+        for (u_id, d_str, sub), info in user_date_map.items():
+            sess = ActivitySession.query.filter_by(user_id=u_id, date=d_str, subdomain=sub).first()
+            duration = info['count'] * 60
+
+            if not sess:
+                sess = ActivitySession(
+                    user_id=u_id,
+                    date=d_str,
+                    subdomain=sub,
+                    login_at=info['first_ts'],
+                    logout_at=info['last_ts'],
+                    duration_seconds=duration
+                )
+                db.session.add(sess)
+            else:
+                sess.duration_seconds += duration
+                sess.logout_at = info['last_ts']
+
+        # Prune processed raw heartbeat rows
+        ActivityHeartbeat.query.filter(ActivityHeartbeat.id.in_(processed_ids)).delete(synchronize_session=False)
+        db.session.commit()
+        return f"Rolled up {len(processed_ids)} heartbeats into {len(user_date_map)} activity sessions"
+
+    if has_app_context():
+        return _run()
+    else:
+        app_inst = app if app else create_app()
+        with app_inst.app_context():
+            return _run()
+
+@celery.task
+def recalculate_leaderboard(app=None):
+    """Nightly Celery job recalculating weighted leaderboard scores"""
+    from app import create_app
+    from app.models import db, User, CompetitionParticipation, Enrollment
+
+    def _run():
+        users = User.query.filter_by(status='approved').all()
+        for u in users:
+            # Weighted formula: Wins=100, RunnerUp=50, Participated=15, CourseCompleted=30
+            wins = CompetitionParticipation.query.filter_by(user_id=u.id, result='winner').count()
+            runners = CompetitionParticipation.query.filter_by(user_id=u.id, result='runner_up').count()
+            parts = CompetitionParticipation.query.filter_by(user_id=u.id, result='participated').count()
+            completed_courses = Enrollment.query.filter_by(user_id=u.id, progress_percent=100.0).count()
+
+            score = (wins * 100.0) + (runners * 50.0) + (parts * 15.0) + (completed_courses * 30.0)
+            u.leaderboard_score = score
+
+        db.session.commit()
+        return f"Recalculated leaderboard scores for {len(users)} users"
+
+    if has_app_context():
+        return _run()
+    else:
+        app_inst = app if app else create_app()
+        with app_inst.app_context():
+            return _run()
+
+@celery.task
 def perform_database_backup():
     from app import create_app
     from app.models import db, AuditLog
@@ -85,5 +173,9 @@ def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(300.0, cleanup_expired_lockouts.s(), name='cleanup-lockouts-5m')
     # Run competition retention daily at midnight
     sender.add_periodic_task(crontab(hour=0, minute=0), clean_expired_competitions.s(), name='daily-competition-retention')
+    # Run activity rollup daily at 00:15
+    sender.add_periodic_task(crontab(hour=0, minute=15), rollup_activity_heartbeats.s(), name='daily-activity-rollup')
+    # Run leaderboard recalculation daily at 00:30
+    sender.add_periodic_task(crontab(hour=0, minute=30), recalculate_leaderboard.s(), name='daily-leaderboard-recalc')
     # Daily database backup at midnight
     sender.add_periodic_task(crontab(hour=0, minute=5), perform_database_backup.s(), name='daily-db-backup')

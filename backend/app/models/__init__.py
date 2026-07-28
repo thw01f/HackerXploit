@@ -13,6 +13,8 @@ from .opportunity import Opportunity, OpportunityApplication, Skill, member_skil
 from .chat import ChatMessage, Notification
 from .oauth import OAuth2Client, OAuth2AuthorizationCode, OAuth2Token
 
+from .activity import ActivitySession, ActivityHeartbeat
+
 __all__ = [
     'db',
     'User',
@@ -43,5 +45,8 @@ __all__ = [
     'Notification',
     'OAuth2Client',
     'OAuth2AuthorizationCode',
-    'OAuth2Token'
+    'OAuth2Token',
+    'ActivitySession',
+    'ActivityHeartbeat'
 ]
+

@@ -18,12 +18,15 @@
         <router-link to="/academy" class="text-sm font-medium text-slate-300 hover:text-cyan-400 transition-colors" active-class="text-cyan-400 font-semibold">Academy</router-link>
         <router-link to="/competitions" class="text-sm font-medium text-slate-300 hover:text-cyan-400 transition-colors" active-class="text-cyan-400 font-semibold">Competitions</router-link>
         <router-link to="/opportunities" class="text-sm font-medium text-slate-300 hover:text-cyan-400 transition-colors" active-class="text-cyan-400 font-semibold">Opportunities</router-link>
+        <router-link to="/leaderboard" class="text-sm font-medium text-amber-400 hover:text-amber-300 transition-colors" active-class="text-amber-300 font-semibold">🏆 Ranks</router-link>
+        <router-link v-if="authStore.isTeacher" to="/teacher/students" class="text-sm font-medium text-slate-300 hover:text-cyan-400 transition-colors" active-class="text-cyan-400 font-semibold">Roster</router-link>
         <a href="http://ctf.hackerxploit.org" target="_blank" class="text-sm font-medium text-purple-400 hover:text-purple-300 flex items-center space-x-1">
-          <span>CTF Platform</span>
+          <span>CTF</span>
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
         </a>
         <router-link v-if="authStore.isTeacher" to="/admin" class="text-sm font-medium text-amber-400 hover:text-amber-300" active-class="text-amber-300 font-semibold">Control Center</router-link>
       </nav>
+
 
       <!-- Auth Actions -->
       <div class="flex items-center space-x-4">

@@ -21,7 +21,10 @@ import AdminSecurityView from '../views/AdminSecurityView.vue'
 import AdminAdminsView from '../views/AdminAdminsView.vue'
 import AdminAuditLogView from '../views/AdminAuditLogView.vue'
 import AdminPasswordRequestsView from '../views/AdminPasswordRequestsView.vue'
-import AdminProfileFieldsView from '../views/AdminProfileFieldsView.vue'
+import TeacherStudentsView from '../views/TeacherStudentsView.vue'
+import StudentProfileView from '../views/StudentProfileView.vue'
+import LeaderboardView from '../views/LeaderboardView.vue'
+import AdminAnalyticsView from '../views/AdminAnalyticsView.vue'
 
 const routes = [
   { path: '/', name: 'landing', component: LandingView },
@@ -85,6 +88,30 @@ const routes = [
     meta: { requiresAuth: true } 
   },
   { 
+    path: '/teacher/students', 
+    name: 'teacher-students', 
+    component: TeacherStudentsView, 
+    meta: { requiresAuth: true, roles: ['teacher', 'admin', 'root_admin'] } 
+  },
+  { 
+    path: '/teacher/students/:id', 
+    name: 'teacher-student-profile', 
+    component: StudentProfileView, 
+    meta: { requiresAuth: true, roles: ['teacher', 'admin', 'root_admin'] } 
+  },
+  { 
+    path: '/leaderboard', 
+    name: 'leaderboard', 
+    component: LeaderboardView, 
+    meta: { requiresAuth: true } 
+  },
+  { 
+    path: '/admin/analytics', 
+    name: 'admin-analytics', 
+    component: AdminAnalyticsView, 
+    meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
+  },
+  { 
     path: '/admin', 
     name: 'admin', 
     component: AdminView, 
@@ -121,6 +148,7 @@ const routes = [
     meta: { requiresAuth: true, rootOnly: true } 
   }
 ]
+
 
 const router = createRouter({
   history: createWebHistory(),

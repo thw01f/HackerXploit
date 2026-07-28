@@ -6,15 +6,24 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useAuthStore } from './stores/auth'
 import ChatWindow from './components/ChatWindow.vue'
+import { initHeartbeat } from './services/heartbeat'
 
 const authStore = useAuthStore()
 
 onMounted(() => {
   if (authStore.token) {
     authStore.fetchMe()
+    initHeartbeat(authStore)
+  }
+})
+
+watch(() => authStore.token, (newToken) => {
+  if (newToken) {
+    initHeartbeat(authStore)
   }
 })
 </script>
+

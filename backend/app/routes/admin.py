@@ -429,3 +429,90 @@ def delete_single_competition(comp_id):
     log_audit('COMPETITION_DELETED', target_type='Competition', target_id=comp_id, notes=f"Mode: {mode}")
     return jsonify({'message': msg}), 200
 
+# -------------------------------------------------------------------
+# 9. System & Member Analytics (/admin/analytics) - Admin Only
+# -------------------------------------------------------------------
+@admin_bp.route('/analytics', methods=['GET'])
+@require_role('admin')
+def get_admin_analytics():
+    from app.models import Course, Enrollment, Competition, CompetitionParticipation, ActivitySession
+
+    now = datetime.utcnow()
+
+    # 1. Registration Trend (Totals & 30-Day)
+    total_approved = User.query.filter_by(status='approved').count()
+    total_pending = User.query.filter_by(status='pending').count()
+    total_rejected = User.query.filter_by(status='rejected').count()
+    total_suspended = User.query.filter_by(status='suspended').count()
+
+    thirty_days_ago = now - timedelta(days=30)
+    recent_signups = User.query.filter(User.created_at >= thirty_days_ago).count()
+
+    # 2. Weekly Active Members (Last 8 Weeks)
+    weekly_active = []
+    for i in range(8):
+        week_end = now - timedelta(days=i * 7)
+        week_start = week_end - timedelta(days=7)
+        active_count = db.session.query(ActivitySession.user_id).filter(
+            ActivitySession.created_at >= week_start,
+            ActivitySession.created_at < week_end
+        ).distinct().count()
+
+        # Fallback to User.last_login_at if activity sessions haven't rolled up yet
+        if active_count == 0:
+            active_count = User.query.filter(
+                User.last_login_at >= week_start,
+                User.last_login_at < week_end
+            ).count()
+
+        weekly_active.append({
+            'week': f"W-{7-i}",
+            'label': week_start.strftime('%b %d'),
+            'active_members': active_count
+        })
+    weekly_active.reverse()
+
+    # 3. Top 5 Courses by Enrollment
+    top_courses_query = db.session.query(
+        Course.id, Course.title, Course.slug, db.func.count(Enrollment.id).label('enrollment_count')
+    ).join(Enrollment, Course.id == Enrollment.course_id, isouter=True)\
+     .group_by(Course.id)\
+     .order_by(db.desc('enrollment_count'))\
+     .limit(5).all()
+
+    top_courses = [{
+        'id': c.id,
+        'title': c.title,
+        'slug': c.slug,
+        'enrollment_count': c.enrollment_count
+    } for c in top_courses_query]
+
+    # 4. Top 5 Competitions by Participation
+    top_comps_query = db.session.query(
+        Competition.id, Competition.title, Competition.category, db.func.count(CompetitionParticipation.id).label('participant_count')
+    ).join(CompetitionParticipation, Competition.id == CompetitionParticipation.competition_id, isouter=True)\
+     .group_by(Competition.id)\
+     .order_by(db.desc('participant_count'))\
+     .limit(5).all()
+
+    top_competitions = [{
+        'id': comp.id,
+        'title': comp.title,
+        'category': comp.category,
+        'participant_count': comp.participant_count
+    } for comp in top_comps_query]
+
+    return jsonify({
+        'registration_trend': {
+            'total_approved': total_approved,
+            'total_pending': total_pending,
+            'total_rejected': total_rejected,
+            'total_suspended': total_suspended,
+            'recent_30_day_signups': recent_signups
+        },
+        'weekly_active_members': weekly_active,
+        'top_courses': top_courses,
+        'top_competitions': top_competitions
+    }), 200
+
+

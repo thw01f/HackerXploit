@@ -34,10 +34,12 @@ class User(db.Model):
     failed_login_count = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime, nullable=True)
     oauth_ctfd_synced = db.Column(db.Boolean, default=False)
+    leaderboard_score = db.Column(db.Float, default=0.0)
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login_at = db.Column(db.DateTime, nullable=True)
     last_seen_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 
     def set_password(self, password):
         self.password_hash = ph.hash(password)
@@ -85,7 +87,9 @@ class User(db.Model):
             'locked_until': self.locked_until.isoformat() if self.locked_until else None,
             'is_locked': self.is_locked(),
             'oauth_ctfd_synced': self.oauth_ctfd_synced,
+            'leaderboard_score': round(self.leaderboard_score or 0.0, 1),
             'created_at': self.created_at.isoformat() if self.created_at else None,
+
             'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
             'last_seen_at': self.last_seen_at.isoformat() if self.last_seen_at else None
         }
