@@ -21,10 +21,17 @@ import AdminSecurityView from '../views/AdminSecurityView.vue'
 import AdminAdminsView from '../views/AdminAdminsView.vue'
 import AdminAuditLogView from '../views/AdminAuditLogView.vue'
 import AdminPasswordRequestsView from '../views/AdminPasswordRequestsView.vue'
+import AdminProfileFieldsView from '../views/AdminProfileFieldsView.vue'
 import TeacherStudentsView from '../views/TeacherStudentsView.vue'
 import StudentProfileView from '../views/StudentProfileView.vue'
 import LeaderboardView from '../views/LeaderboardView.vue'
 import AdminAnalyticsView from '../views/AdminAnalyticsView.vue'
+import ChatView from '../views/ChatView.vue'
+import InboxView from '../views/InboxView.vue'
+import InboxComposeView from '../views/InboxComposeView.vue'
+import AdminInboxLogView from '../views/AdminInboxLogView.vue'
+import AdminReportsView from '../views/AdminReportsView.vue'
+import AdminSettingsView from '../views/AdminSettingsView.vue'
 
 const routes = [
   { path: '/', name: 'landing', component: LandingView },
@@ -88,6 +95,24 @@ const routes = [
     meta: { requiresAuth: true } 
   },
   { 
+    path: '/chat', 
+    name: 'chat', 
+    component: ChatView, 
+    meta: { requiresAuth: true } 
+  },
+  { 
+    path: '/inbox', 
+    name: 'inbox', 
+    component: InboxView, 
+    meta: { requiresAuth: true } 
+  },
+  { 
+    path: '/inbox/compose', 
+    name: 'inbox-compose', 
+    component: InboxComposeView, 
+    meta: { requiresAuth: true, roles: ['teacher', 'admin', 'root_admin'] } 
+  },
+  { 
     path: '/teacher/students', 
     name: 'teacher-students', 
     component: TeacherStudentsView, 
@@ -109,6 +134,24 @@ const routes = [
     path: '/admin/analytics', 
     name: 'admin-analytics', 
     component: AdminAnalyticsView, 
+    meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
+  },
+  { 
+    path: '/admin/inbox-log', 
+    name: 'admin-inbox-log', 
+    component: AdminInboxLogView, 
+    meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
+  },
+  { 
+    path: '/admin/reports', 
+    name: 'admin-reports', 
+    component: AdminReportsView, 
+    meta: { requiresAuth: true, roles: ['teacher', 'admin', 'root_admin'] } 
+  },
+  { 
+    path: '/admin/settings', 
+    name: 'admin-settings', 
+    component: AdminSettingsView, 
     meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
   },
   { 
@@ -149,7 +192,6 @@ const routes = [
   }
 ]
 
-
 const router = createRouter({
   history: createWebHistory(),
   routes
@@ -165,7 +207,6 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: 'login', query: { redirect: to.fullPath } })
   }
 
-  // Force first-login setup redirect
   if (authStore.user && authStore.user.is_first_login && to.name !== 'setup-admin' && to.name !== 'login') {
     return next({ name: 'setup-admin' })
   }

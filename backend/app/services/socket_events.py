@@ -1,7 +1,7 @@
 from flask import request
 from flask_socketio import emit, join_room, leave_room
 from app import socketio, db
-from app.models import ChatMessage, User, DeviceSession
+from app.models import ChatMessage, User, DeviceSession, SiteFeatureToggle
 
 online_users = set()
 
@@ -12,11 +12,11 @@ def handle_connect():
         sess = DeviceSession.query.filter_by(session_token=token, is_active=True).first()
         if sess:
             online_users.add(sess.user_id)
+            join_room(f"user_{sess.user_id}")
             emit('presence_update', {'online_count': len(online_users)}, broadcast=True)
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    # Presence update broadcast
     emit('presence_update', {'online_count': len(online_users)}, broadcast=True)
 
 @socketio.on('join_channel')
@@ -34,6 +34,13 @@ def handle_send_message(data):
     if not content or not token:
         return
 
+    # Check site feature toggle for general chat
+    if channel == 'general':
+        toggle = SiteFeatureToggle.query.first()
+        if toggle and not toggle.general_chat_enabled:
+            emit('error', {'message': 'General chat is currently disabled by admin'}, room=request.sid)
+            return
+
     sess = DeviceSession.query.filter_by(session_token=token, is_active=True).first()
     if not sess:
         return
@@ -42,7 +49,7 @@ def handle_send_message(data):
     if not user or user.status != 'approved':
         return
 
-    # Create message
+    # Create text message
     msg = ChatMessage(
         channel=channel,
         user_id=user.id,
@@ -57,3 +64,7 @@ def handle_send_message(data):
     payload['sender_role'] = user.role
 
     emit('new_message', payload, room=channel)
+
+def emit_user_notification(user_id, notification_dict):
+    """Utility function to broadcast real-time notification to specific user room"""
+    socketio.emit('new_notification', notification_dict, room=f"user_{user_id}")

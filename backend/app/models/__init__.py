@@ -12,8 +12,9 @@ from .retention import RetentionSettings
 from .opportunity import Opportunity, OpportunityApplication, Skill, member_skills, opportunity_skills
 from .chat import ChatMessage, Notification
 from .oauth import OAuth2Client, OAuth2AuthorizationCode, OAuth2Token
-
 from .activity import ActivitySession, ActivityHeartbeat
+from .moderation import SiteFeatureToggle, Report, EmailLog
+from .inbox import Message, MessageRecipient
 
 __all__ = [
     'db',
@@ -47,6 +48,12 @@ __all__ = [
     'OAuth2AuthorizationCode',
     'OAuth2Token',
     'ActivitySession',
-    'ActivityHeartbeat'
+    'ActivityHeartbeat',
+    'SiteFeatureToggle',
+    'Report',
+    'EmailLog',
+    'Message',
+    'MessageRecipient'
 ]
+
 

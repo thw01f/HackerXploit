@@ -515,4 +515,35 @@ def get_admin_analytics():
         'top_competitions': top_competitions
     }), 200
 
+@admin_bp.route('/settings', methods=['GET'])
+@require_role('admin')
+def get_site_settings():
+    from app.models import SiteFeatureToggle
+    toggle = SiteFeatureToggle.query.first()
+    if not toggle:
+        toggle = SiteFeatureToggle(general_chat_enabled=True)
+        db.session.add(toggle)
+        db.session.commit()
+    return jsonify(toggle.to_dict()), 200
+
+@admin_bp.route('/settings', methods=['POST'])
+@require_role('admin')
+def update_site_settings():
+    from app.models import SiteFeatureToggle
+    data = request.get_json() or {}
+    toggle = SiteFeatureToggle.query.first()
+    if not toggle:
+        toggle = SiteFeatureToggle()
+        db.session.add(toggle)
+
+    if 'general_chat_enabled' in data:
+        toggle.general_chat_enabled = bool(data['general_chat_enabled'])
+
+    toggle.updated_by_id = g.current_user.id
+    db.session.commit()
+
+    log_audit('SITE_SETTINGS_UPDATED', notes=f"General Chat Enabled: {toggle.general_chat_enabled}")
+    return jsonify(toggle.to_dict()), 200
+
+
 

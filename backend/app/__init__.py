@@ -66,6 +66,9 @@ def create_app(config_class=Config):
     from app.routes.activity import activity_bp
     from app.routes.students import students_bp
     from app.routes.leaderboard import leaderboard_bp
+    from app.routes.notifications import notifications_bp
+    from app.routes.inbox import inbox_bp
+    from app.routes.reports import reports_bp
 
     flask_app.register_blueprint(auth_bp)
     flask_app.register_blueprint(oauth_bp)
@@ -80,6 +83,10 @@ def create_app(config_class=Config):
     flask_app.register_blueprint(activity_bp)
     flask_app.register_blueprint(students_bp)
     flask_app.register_blueprint(leaderboard_bp)
+    flask_app.register_blueprint(notifications_bp)
+    flask_app.register_blueprint(inbox_bp)
+    flask_app.register_blueprint(reports_bp)
+
 
 
     import app.services.socket_events
