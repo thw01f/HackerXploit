@@ -20,7 +20,9 @@ Deployed as a unified single-node Docker Compose stack on DigitalOcean, it seaml
 - **Frontend**: Vue 3, Vue Router, Pinia, Custom Cyberpunk Neon Dark CSS Design System.
 - **Database**: PostgreSQL 16 (optimized for concurrent activity tracking).
 - **Cache & Real-time**: Redis 7, Flask-SocketIO message queue, Celery worker & beat scheduler.
+- **Messaging & Moderation**: Scope-targeted broadcast inbox, text-only chat channel with soft-delete & admin reset, real-time notification drawer, SMTP transactional email relay, and unified content moderation queue.
 - **Security**: Argon2id password hashing, ClamAV virus scanning, real-content MIME sniffing, Pillow image compression, Cloudflare Turnstile CAPTCHA.
+
 
 ---
 
