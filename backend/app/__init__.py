@@ -69,6 +69,10 @@ def create_app(config_class=Config):
     from app.routes.notifications import notifications_bp
     from app.routes.inbox import inbox_bp
     from app.routes.reports import reports_bp
+    from app.routes.portfolio import portfolio_bp
+    from app.routes.privacy import privacy_bp
+    from app.routes.backups import backups_bp
+    from app.routes.id_card import id_card_bp
 
     flask_app.register_blueprint(auth_bp)
     flask_app.register_blueprint(oauth_bp)
@@ -86,6 +90,10 @@ def create_app(config_class=Config):
     flask_app.register_blueprint(notifications_bp)
     flask_app.register_blueprint(inbox_bp)
     flask_app.register_blueprint(reports_bp)
+    flask_app.register_blueprint(portfolio_bp)
+    flask_app.register_blueprint(privacy_bp)
+    flask_app.register_blueprint(backups_bp)
+    flask_app.register_blueprint(id_card_bp)
 
 
 

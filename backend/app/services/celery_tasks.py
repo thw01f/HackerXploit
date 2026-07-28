@@ -151,21 +151,40 @@ def recalculate_leaderboard(app=None):
             return _run()
 
 @celery.task
-def perform_database_backup():
+def perform_database_backup(app=None):
     from app import create_app
-    from app.models import db, AuditLog
-    app = create_app()
-    with app.app_context():
+    from app.models import db, BackupRecord, AuditLog
+    from app.routes.backups import create_backup_archive
+
+    def _run():
+        record, checksum = create_backup_archive(created_by_id=None, backup_type='scheduled')
+
+        # Keep last 14 backups, prune older
+        backups = BackupRecord.query.order_by(BackupRecord.created_at.desc()).all()
+        if len(backups) > 14:
+            old_backups = backups[14:]
+            for b in old_backups:
+                db.session.delete(b)
+            db.session.commit()
+
         log = AuditLog(
             actor_id=None,
             actor_name='Celery Beat',
             actor_role='system',
             action='AUTOMATED_BACKUP_SNAPSHOT',
-            details={'status': 'completed', 'timestamp': datetime.utcnow().isoformat()}
+            notes=f"Created backup {record.filename}. Total records kept: {min(len(backups), 14)}"
         )
         db.session.add(log)
         db.session.commit()
-        return "Automated DB Backup Completed"
+        return f"Automated Scheduled Backup Completed: {record.filename}"
+
+    if has_app_context():
+        return _run()
+    else:
+        app_inst = app if app else create_app()
+        with app_inst.app_context():
+            return _run()
+
 
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):

@@ -32,6 +32,12 @@ import InboxComposeView from '../views/InboxComposeView.vue'
 import AdminInboxLogView from '../views/AdminInboxLogView.vue'
 import AdminReportsView from '../views/AdminReportsView.vue'
 import AdminSettingsView from '../views/AdminSettingsView.vue'
+import PublicProfileView from '../views/PublicProfileView.vue'
+import PrivacySettingsView from '../views/PrivacySettingsView.vue'
+import AdminBackupsView from '../views/AdminBackupsView.vue'
+import IDCardView from '../views/IDCardView.vue'
+import VerifyIDCardView from '../views/VerifyIDCardView.vue'
+
 
 const routes = [
   { path: '/', name: 'landing', component: LandingView },
@@ -189,8 +195,37 @@ const routes = [
     name: 'admin-manage', 
     component: AdminAdminsView, 
     meta: { requiresAuth: true, rootOnly: true } 
+  },
+  {
+    path: '/u/:username',
+    name: 'public-profile',
+    component: PublicProfileView
+  },
+  {
+    path: '/profile/privacy',
+    name: 'privacy-settings',
+    component: PrivacySettingsView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/backups',
+    name: 'admin-backups',
+    component: AdminBackupsView,
+    meta: { requiresAuth: true, roles: ['admin', 'root_admin'] }
+  },
+  {
+    path: '/id-card',
+    name: 'id-card',
+    component: IDCardView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/verify/:token',
+    name: 'verify-id-card',
+    component: VerifyIDCardView
   }
 ]
+
 
 const router = createRouter({
   history: createWebHistory(),

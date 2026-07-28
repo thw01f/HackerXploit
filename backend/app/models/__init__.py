@@ -15,6 +15,7 @@ from .oauth import OAuth2Client, OAuth2AuthorizationCode, OAuth2Token
 from .activity import ActivitySession, ActivityHeartbeat
 from .moderation import SiteFeatureToggle, Report, EmailLog
 from .inbox import Message, MessageRecipient
+from .portfolio_privacy_backup import PublicProfileSetting, BackupRecord, IDCardToken
 
 __all__ = [
     'db',
@@ -53,7 +54,11 @@ __all__ = [
     'Report',
     'EmailLog',
     'Message',
-    'MessageRecipient'
+    'MessageRecipient',
+    'PublicProfileSetting',
+    'BackupRecord',
+    'IDCardToken'
 ]
+
 
 

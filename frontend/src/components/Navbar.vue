@@ -21,8 +21,12 @@
         <router-link to="/leaderboard" class="text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors" active-class="text-amber-300 font-semibold">🏆 Ranks</router-link>
         <router-link to="/inbox" class="text-xs font-medium text-slate-300 hover:text-cyan-400 transition-colors" active-class="text-cyan-400 font-semibold">Inbox</router-link>
         <router-link to="/chat" class="text-xs font-medium text-slate-300 hover:text-cyan-400 transition-colors" active-class="text-cyan-400 font-semibold">Chat</router-link>
+        <router-link to="/id-card" class="text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors" active-class="text-cyan-300 font-semibold">🪪 ID Card</router-link>
+        <router-link to="/profile/privacy" class="text-xs font-medium text-slate-300 hover:text-cyan-400 transition-colors" active-class="text-cyan-400 font-semibold">Privacy</router-link>
         <router-link v-if="authStore.isTeacher" to="/teacher/students" class="text-xs font-medium text-slate-300 hover:text-cyan-400 transition-colors" active-class="text-cyan-400 font-semibold">Roster</router-link>
+        <router-link v-if="authStore.isAdmin" to="/admin/backups" class="text-xs font-medium text-slate-300 hover:text-cyan-400 transition-colors" active-class="text-cyan-400 font-semibold">Backups</router-link>
         <router-link v-if="authStore.isTeacher" to="/admin" class="text-xs font-medium text-amber-400 hover:text-amber-300" active-class="text-amber-300 font-semibold">Control Center</router-link>
+
       </nav>
 
       <!-- Auth & Notification Actions -->
