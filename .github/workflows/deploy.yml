@@ -1,0 +1,97 @@
+name: HackerXploit CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Run Pytest Security Suite
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: hackerxploit_test
+          POSTGRES_USER: hx_user
+          POSTGRES_PASSWORD: hx_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest
+
+      - name: Run test suite
+        env:
+          DATABASE_URL: postgresql://hx_user:hx_test_password@localhost:5432/hackerxploit_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test-ci-secret-key
+        run: |
+          pytest tests/test_identity_system.py -v
+
+  build-and-deploy:
+    name: Build, Push & SSH Deploy
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install DigitalOcean doctl CLI
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Log in to DigitalOcean Container Registry
+        run: doctl registry login --expiry-seconds 600
+
+      - name: Build and push Backend Docker Image
+        run: |
+          docker build -t registry.digitalocean.com/hackerxploit/backend:latest -t registry.digitalocean.com/hackerxploit/backend:${{ github.sha }} ./backend
+          docker push registry.digitalocean.com/hackerxploit/backend:latest
+          docker push registry.digitalocean.com/hackerxploit/backend:${{ github.sha }}
+
+      - name: Build and push Frontend Docker Image
+        run: |
+          docker build -t registry.digitalocean.com/hackerxploit/frontend:latest -t registry.digitalocean.com/hackerxploit/frontend:${{ github.sha }} ./frontend
+          docker push registry.digitalocean.com/hackerxploit/frontend:latest
+          docker push registry.digitalocean.com/hackerxploit/frontend:${{ github.sha }}
+
+      - name: Deploy via SSH to DigitalOcean Droplet
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.DROPLET_USER || 'root' }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          script: |
+            cd /opt/hackerxploit || cd ~/HackerXploit
+            doctl registry login --expiry-seconds 600
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker compose exec -T web python scripts/init_db.py
+            docker image prune -af

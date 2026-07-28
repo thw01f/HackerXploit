@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../b
 
 from app import create_app
 from app.models import db, User, OAuth2Client
+from init_ctfd import init_ctfd_oauth
 
 def seed_database():
     app = create_app()
@@ -41,7 +42,7 @@ def seed_database():
                 client_id='ctfd-client-id-hx99',
                 client_secret='ctfd-client-secret-sec88',
                 client_name='CTFd Official Platform',
-                redirect_uris='http://ctf.hackerxploit.org/redirect http://localhost/redirect',
+                redirect_uris='http://ctf.hackerxploit.org/redirect http://localhost/redirect http://ctf.hackerxploit.org/oauth/redirect',
                 grant_types='authorization_code',
                 response_types='code',
                 scope='profile email'
@@ -51,6 +52,9 @@ def seed_database():
             print("Successfully registered CTFd OAuth2 SSO Client!")
         else:
             print("CTFd OAuth2 SSO Client already configured.")
+
+        # 3. Seed CTFd Database OAuth Configuration
+        init_ctfd_oauth()
 
 if __name__ == '__main__':
     seed_database()

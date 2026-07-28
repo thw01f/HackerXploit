@@ -8,6 +8,23 @@ from flask_socketio import SocketIO
 from app.config import Config
 from app.models import db
 
+# Initialize Sentry Error Tracking if DSN configured
+sentry_dsn = os.getenv('SENTRY_DSN')
+if sentry_dsn:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        from sentry_sdk.integrations.celery import CeleryIntegration
+
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            integrations=[FlaskIntegration(), CeleryIntegration()],
+            traces_sample_rate=0.2,
+            environment=os.getenv('FLASK_ENV', 'production')
+        )
+    except Exception as e:
+        print(f"Sentry SDK initialization warning: {e}")
+
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["500 per day", "100 per hour"]

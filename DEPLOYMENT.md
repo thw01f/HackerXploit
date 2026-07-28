@@ -1,6 +1,6 @@
-# Deployment Guide: Single DigitalOcean Droplet
+# Deployment Guide: Single DigitalOcean Droplet & Multi-Subdomain Infrastructure
 
-This guide covers deploying the HackerXploit Club Platform on a single DigitalOcean Droplet using Docker Compose and Certbot wildcard SSL certificates.
+This guide covers deploying the HackerXploit Club Platform on a single DigitalOcean Droplet using Docker Compose, Certbot wildcard SSL certificates, CTFd SSO, and error monitoring.
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ git clone https://github.com/thw01f/HackerXploit.git
 cd HackerXploit
 
 cp .env.example .env
-nano .env  # Update SECRET_KEY and DB passwords
+nano .env  # Update SECRET_KEY, DB passwords, and SENTRY_DSN
 ```
 
 ---
@@ -50,16 +50,48 @@ Mount certificates into Nginx container volume in `docker-compose.yml`:
 ## Step 4: Launch Stack & Initialize Database
 
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 
-# Run database initialization & seed CTFd OAuth client
-docker-compose exec web python /app/../scripts/init_db.py
+# Run database initialization & seed root admin & CTFd OAuth client
+docker compose exec web python scripts/init_db.py
 ```
 
 ---
 
-## Step 5: Verify Subdomain Health
+## Step 5: Verify Subdomain Health & SSO
 
-- `http://hackerxploit.org` (Auth & Marketing)
-- `http://club.hackerxploit.org` (Club App)
-- `http://ctf.hackerxploit.org` (CTFd Platform)
+- `https://hackerxploit.org` (Auth & Marketing)
+- `https://club.hackerxploit.org` (Club Main App)
+- `https://ctf.hackerxploit.org` (CTFd Platform)
+
+Logging in at `hackerxploit.org` persists the `.hackerxploit.org` session cookie, providing seamless access to `club.hackerxploit.org` and single-click SSO into `ctf.hackerxploit.org`.
+
+---
+
+## Step 6: External Uptime Monitoring Setup (UptimeRobot)
+
+Configure an external uptime monitor (e.g., UptimeRobot) with HTTP(S) 5-minute interval checks for all three subdomains:
+
+1. **Auth & Public Service**: `https://hackerxploit.org/api/health` (Expects HTTP 200 `{"status": "healthy"}`)
+2. **Club Application**: `https://club.hackerxploit.org/api/health` (Expects HTTP 200 `{"status": "healthy"}`)
+3. **CTFd Competition Platform**: `https://ctf.hackerxploit.org/healthcheck` (Expects HTTP 200 OK)
+
+Configure alerting notifications via Discord Webhook or Email for downtime detection.
+
+---
+
+## Step 7: Staging Droplet Setup (Pre-Production Migration Testing)
+
+To test database migrations, dynamic profile schema changes, or breaking updates prior to production:
+
+1. Spin up a cheap $6/mo DigitalOcean staging droplet (`staging.hackerxploit.org`).
+2. Clone repository & configure `.env` pointing to staging URLs:
+   ```bash
+   SESSION_COOKIE_DOMAIN=.staging.hackerxploit.org
+   DOMAIN=staging.hackerxploit.org
+   ```
+3. Dump production PostgreSQL database schema:
+   ```bash
+   docker compose exec db pg_dump -U hx_user -d hackerxploit --schema-only > staging_schema.sql
+   ```
+4. Restore schema on staging droplet and run `flask db upgrade` or verification scripts to confirm zero-downtime migration behavior.
