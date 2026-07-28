@@ -7,8 +7,9 @@ from .session import DeviceSession, LoginAttempt, LoginActivity
 from .audit import AuditLog
 from .academy import Course, CourseChapter, Enrollment, CourseEnrollment, CourseComment
 from .certificate import Certificate
-from .competition import Competition, CompetitionApplication
-from .opportunity import Opportunity, OpportunityApplication
+from .competition import Competition, CompetitionParticipation, CompetitionApplication
+from .retention import RetentionSettings
+from .opportunity import Opportunity, OpportunityApplication, Skill, member_skills, opportunity_skills
 from .chat import ChatMessage, Notification
 from .oauth import OAuth2Client, OAuth2AuthorizationCode, OAuth2Token
 
@@ -30,9 +31,14 @@ __all__ = [
     'CourseComment',
     'Certificate',
     'Competition',
+    'CompetitionParticipation',
     'CompetitionApplication',
+    'RetentionSettings',
     'Opportunity',
     'OpportunityApplication',
+    'Skill',
+    'member_skills',
+    'opportunity_skills',
     'ChatMessage',
     'Notification',
     'OAuth2Client',

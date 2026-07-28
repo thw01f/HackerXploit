@@ -1,35 +1,49 @@
 <template>
-  <div class="min-h-screen flex flex-col justify-between">
+  <div class="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100">
     <Navbar />
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full space-y-8">
       <div>
-        <span class="px-2.5 py-1 rounded bg-purple-950 text-purple-400 font-mono text-xs font-bold uppercase">SECURITY AUDIT CENTER</span>
-        <h1 class="text-3xl font-extrabold text-white mt-2">Security, Login Activity & Sessions</h1>
-        <p class="text-slate-400 text-sm mt-1">Admin-only visibility into authentication attempts, manual account unlocks, and remote device force-kick controls.</p>
+        <span class="px-2.5 py-1 rounded bg-purple-950 text-purple-400 font-mono text-xs font-bold uppercase border border-purple-500/30">SECURITY & RETENTION CENTER</span>
+        <h1 class="text-3xl font-extrabold text-white mt-2">Security, Audit & Retention Management</h1>
+        <p class="text-slate-400 text-sm mt-1">Admin visibility into authentication attempts, device force-kicks, and competition retention timers.</p>
       </div>
 
       <!-- Navigation Tabs -->
-      <div class="flex space-x-4 border-b border-slate-800 pb-3">
-        <button @click="activeTab = 'activity'" :class="activeTab === 'activity' ? 'btn-neon-cyan' : 'bg-slate-900 text-slate-400'" class="text-xs py-2 px-4">
+      <div class="flex flex-wrap gap-3 border-b border-slate-800 pb-3">
+        <button 
+          @click="activeTab = 'activity'" 
+          :class="activeTab === 'activity' ? 'btn-neon-cyan' : 'bg-slate-900 text-slate-400 hover:text-white'" 
+          class="text-xs py-2 px-4 rounded-lg font-mono font-bold uppercase transition"
+        >
           Login Activity Feed
         </button>
-        <button @click="activeTab = 'sessions'" :class="activeTab === 'sessions' ? 'btn-neon-cyan' : 'bg-slate-900 text-slate-400'" class="text-xs py-2 px-4">
+        <button 
+          @click="activeTab = 'sessions'" 
+          :class="activeTab === 'sessions' ? 'btn-neon-cyan' : 'bg-slate-900 text-slate-400 hover:text-white'" 
+          class="text-xs py-2 px-4 rounded-lg font-mono font-bold uppercase transition"
+        >
           Active Sessions & Force-Kick
+        </button>
+        <button 
+          @click="activeTab = 'retention'" 
+          :class="activeTab === 'retention' ? 'btn-neon-violet' : 'bg-slate-900 text-slate-400 hover:text-white'" 
+          class="text-xs py-2 px-4 rounded-lg font-mono font-bold uppercase transition"
+        >
+          ⚙️ Competition Retention Settings
         </button>
       </div>
 
       <!-- Tab 1: Login Activity Feed -->
       <div v-if="activeTab === 'activity'" class="space-y-6">
-        <!-- Filters -->
         <div class="glass-panel p-4 flex flex-wrap gap-4 items-center">
-          <input v-model="filterUsername" placeholder="Filter by username..." type="text" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-xs" />
-          <select v-model="filterSuccess" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-xs">
+          <input v-model="filterUsername" placeholder="Filter by username..." type="text" class="input-field text-xs w-64" />
+          <select v-model="filterSuccess" class="input-field text-xs w-48">
             <option value="">All Statuses</option>
             <option value="true">Success Only</option>
             <option value="false">Failed Only</option>
           </select>
-          <button @click="fetchActivities" class="btn-neon-cyan text-xs py-1.5 px-4">Apply Filters</button>
+          <button @click="fetchActivities" class="btn-neon-cyan text-xs py-2 px-4">Apply Filters</button>
         </div>
 
         <div class="glass-panel p-6 space-y-4">
@@ -42,7 +56,6 @@
                   <th class="p-3">Username Attempted</th>
                   <th class="p-3">IP Address</th>
                   <th class="p-3">Result</th>
-                  <th class="p-3">Reason / Details</th>
                   <th class="p-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -56,7 +69,6 @@
                       {{ act.success ? 'SUCCESS' : 'FAILED' }}
                     </span>
                   </td>
-                  <td class="p-3 text-slate-400">{{ act.failure_reason || 'N/A' }}</td>
                   <td class="p-3 text-right">
                     <button v-if="act.user_id && !act.success" @click="unlockUser(act.user_id)" class="text-amber-400 hover:underline font-bold text-[11px]">
                       Manual Unlock
@@ -72,8 +84,8 @@
       <!-- Tab 2: Admin Session Search & Force Kick -->
       <div v-if="activeTab === 'sessions'" class="space-y-6">
         <div class="glass-panel p-4 flex gap-4 items-center">
-          <input v-model="searchUsername" placeholder="Search member username..." type="text" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-xs w-64" />
-          <button @click="fetchSessions" class="btn-neon-cyan text-xs py-1.5 px-4">Search Devices</button>
+          <input v-model="searchUsername" placeholder="Search member username..." type="text" class="input-field text-xs w-64" />
+          <button @click="fetchSessions" class="btn-neon-cyan text-xs py-2 px-4">Search Devices</button>
         </div>
 
         <div class="glass-panel p-6 space-y-4">
@@ -105,6 +117,45 @@
           </div>
         </div>
       </div>
+
+      <!-- Tab 3: Competition Retention & Auto-Delete Settings -->
+      <div v-if="activeTab === 'retention'" class="space-y-6">
+        <div class="glass-panel p-6 space-y-6 max-w-2xl">
+          <h3 class="text-lg font-bold text-white border-b border-slate-800 pb-3 flex items-center gap-2">
+            <span>Retention & Cleanup Policy</span>
+          </h3>
+
+          <div class="space-y-4 text-xs">
+            <div>
+              <label class="block font-mono text-slate-300 uppercase mb-1">Competitions Auto-Delete Schedule (Daily Celery Job)</label>
+              <select v-model="retentionSettings.competitions_auto_delete" class="input-field text-xs py-2">
+                <option value="never">Never Auto-Delete</option>
+                <option value="1_month">1 Month After Event End Date</option>
+                <option value="3_month">3 Months After Event End Date</option>
+                <option value="6_month">6 Months After Event End Date</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-mono text-slate-300 uppercase mb-1">Delete Mode Strategy</label>
+              <select v-model="retentionSettings.competitions_delete_mode" class="input-field text-xs py-2">
+                <option value="archive">Archive (Keeps participation rows & student certificates permanently)</option>
+                <option value="hard_delete">Hard Delete (Permanently remove competition and all records)</option>
+              </select>
+            </div>
+
+            <div class="pt-2 flex justify-between items-center">
+              <button @click="saveRetention" class="btn-neon-cyan text-xs py-2 px-5">
+                Save Policy
+              </button>
+
+              <button @click="clearHistoryNow" class="bg-red-950 hover:bg-red-900 text-red-300 border border-red-600/40 text-xs py-2 px-4 rounded font-mono font-bold">
+                Clear Ended Competitions History Now
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
 
     <Footer />
@@ -125,6 +176,11 @@ const filterSuccess = ref('')
 
 const sessions = ref([])
 const searchUsername = ref('')
+
+const retentionSettings = ref({
+  competitions_auto_delete: 'never',
+  competitions_delete_mode: 'archive'
+})
 
 const fetchActivities = async () => {
   try {
@@ -148,9 +204,19 @@ const fetchSessions = async () => {
   }
 }
 
+const fetchRetention = async () => {
+  try {
+    const res = await axios.get('/api/admin/retention')
+    retentionSettings.value = res.data
+  } catch (err) {
+    console.error(err)
+  }
+}
+
 onMounted(() => {
   fetchActivities()
   fetchSessions()
+  fetchRetention()
 })
 
 const unlockUser = async (userId) => {
@@ -180,6 +246,25 @@ const forceKickAllUser = async (userId, username) => {
     await fetchSessions()
   } catch (err) {
     alert('Failed to kick user sessions')
+  }
+}
+
+const saveRetention = async () => {
+  try {
+    await axios.post('/api/admin/retention', retentionSettings.value)
+    alert('Retention settings saved successfully')
+  } catch (err) {
+    alert('Failed to save retention settings')
+  }
+}
+
+const clearHistoryNow = async () => {
+  if (!confirm('Execute bulk cleanup of ended competitions now?')) return
+  try {
+    const res = await axios.post('/api/admin/competitions/clear-history')
+    alert(res.data.message)
+  } catch (err) {
+    alert('Clear history operation failed')
   }
 }
 </script>

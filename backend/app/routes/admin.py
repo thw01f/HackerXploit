@@ -344,3 +344,88 @@ def force_kick_single_session(session_id):
 
     log_audit('FORCE_KICK_SESSION', target_type='DeviceSession', target_id=session_id, target_user_id=sess.user_id, notes=f"Kicked session #{session_id}")
     return jsonify({'message': 'Session invalidated successfully'}), 200
+
+# -------------------------------------------------------------------
+# 8. Retention Settings & Competition Management - Admin Only
+# -------------------------------------------------------------------
+@admin_bp.route('/retention', methods=['GET'])
+@require_role('admin')
+def get_retention_settings():
+    from app.models import RetentionSettings
+    settings = RetentionSettings.query.first()
+    if not settings:
+        settings = RetentionSettings(competitions_auto_delete='never', competitions_delete_mode='archive')
+        db.session.add(settings)
+        db.session.commit()
+    return jsonify(settings.to_dict()), 200
+
+@admin_bp.route('/retention', methods=['POST'])
+@require_role('admin')
+def update_retention_settings():
+    from app.models import RetentionSettings
+    data = request.get_json() or {}
+    auto_delete = data.get('competitions_auto_delete', 'never')
+    delete_mode = data.get('competitions_delete_mode', 'archive')
+
+    valid_auto = {'never', '1_month', '3_month', '6_month'}
+    valid_mode = {'hard_delete', 'archive'}
+
+    if auto_delete not in valid_auto or delete_mode not in valid_mode:
+        return jsonify({'error': 'Invalid retention setting parameters'}), 400
+
+    settings = RetentionSettings.query.first()
+    if not settings:
+        settings = RetentionSettings()
+        db.session.add(settings)
+
+    settings.competitions_auto_delete = auto_delete
+    settings.competitions_delete_mode = delete_mode
+    settings.updated_by_id = g.current_user.id
+    db.session.commit()
+
+    log_audit('RETENTION_SETTINGS_UPDATED', notes=f"Auto-delete: {auto_delete}, Delete mode: {delete_mode}")
+    return jsonify(settings.to_dict()), 200
+
+@admin_bp.route('/competitions/clear-history', methods=['POST'])
+@require_role('admin')
+def clear_competition_history():
+    from app.models import Competition, RetentionSettings
+    settings = RetentionSettings.query.first()
+    mode = settings.competitions_delete_mode if settings else 'archive'
+
+    ended_comps = Competition.query.filter_by(status='ended', is_archived=False).all()
+    count = len(ended_comps)
+
+    for c in ended_comps:
+        if mode == 'hard_delete':
+            db.session.delete(c)
+        else:
+            c.is_archived = True
+
+    db.session.commit()
+
+    log_audit('COMPETITION_HISTORY_CLEARED', notes=f"Cleared {count} competitions with mode '{mode}'")
+    return jsonify({'message': f'Processed {count} ended competitions using mode: {mode}', 'count': count}), 200
+
+@admin_bp.route('/competitions/<int:comp_id>', methods=['DELETE'])
+@require_role('admin')
+def delete_single_competition(comp_id):
+    from app.models import Competition, RetentionSettings
+    comp = Competition.query.get_or_404(comp_id)
+
+    mode = request.args.get('mode')
+    if not mode:
+        settings = RetentionSettings.query.first()
+        mode = settings.competitions_delete_mode if settings else 'archive'
+
+    if mode == 'hard_delete':
+        db.session.delete(comp)
+        msg = "Competition deleted permanently"
+    else:
+        comp.is_archived = True
+        msg = "Competition archived"
+
+    db.session.commit()
+    log_audit('COMPETITION_DELETED', target_type='Competition', target_id=comp_id, notes=f"Mode: {mode}")
+    return jsonify({'message': msg}), 200
+
