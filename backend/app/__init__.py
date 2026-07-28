@@ -38,9 +38,11 @@ def create_app(config_class=Config):
     # Register blueprints
     from app.routes.auth import auth_bp
     from app.routes.oauth import oauth_bp
+    from app.routes.uploads import uploads_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(oauth_bp)
+    app.register_blueprint(uploads_bp)
 
     # Rate limiting on auth endpoints
     limiter.limit("5 per minute")(auth_bp)
