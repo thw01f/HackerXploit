@@ -78,14 +78,18 @@
         
         <!-- Search & Filter Controls -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 font-mono">
-          <div class="md:col-span-2 relative">
+          <div class="md:col-span-2 relative flex items-center">
+            <div class="absolute left-3.5 pointer-events-none text-slate-400 flex items-center justify-center">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </div>
             <input 
               v-model="pathSearch" 
               type="text" 
-              placeholder="Search learning paths..." 
-              class="input-field w-full text-xs pl-10 py-3 bg-[#0d1420]" 
+              placeholder="Search learning paths & modules..." 
+              class="input-field w-full text-xs !pl-11 py-3 bg-[#0d1420]" 
             />
-            <span class="absolute left-3 top-3.5 text-slate-500 text-sm">🔍</span>
           </div>
 
           <div>

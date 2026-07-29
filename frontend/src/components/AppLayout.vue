@@ -74,22 +74,7 @@
           </div>
         </div>
 
-        <!-- Center: OffSec Style Global Search Input Pill (No Overlap) -->
-        <div class="flex-1 max-w-xl mx-4 hidden md:block">
-          <form @submit.prevent="handleSearch" class="relative flex items-center">
-            <div class="absolute left-3.5 pointer-events-none text-slate-400 flex items-center justify-center">
-              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
-            </div>
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search courses, modules, or security topics..."
-              class="w-full !pl-11 pr-4 py-2.5 rounded-full bg-[#151f30] border border-[#1a2332] text-white text-sm font-mono placeholder-slate-500 focus:outline-none focus:border-[#9fef00]/70 transition-colors shadow-inner"
-            />
-          </form>
-        </div>
+
 
         <!-- Right: Notifications & Profile Trigger Button -->
         <div class="flex items-center gap-4">
