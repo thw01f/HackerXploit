@@ -56,17 +56,22 @@
             <!-- Private Contact Info (Confidential) -->
             <div class="pt-4 border-t border-slate-800 space-y-4">
               <div class="flex items-center justify-between">
-                <h4 class="text-xs font-mono font-bold uppercase text-cyan-400 tracking-wider">🔒 Private Contact Information</h4>
+                <h4 class="text-xs font-mono font-bold uppercase text-cyan-400 tracking-wider flex items-center gap-1.5">
+                  <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  </svg>
+                  <span>Private Contact Information</span>
+                </h4>
                 <span class="text-[10px] text-slate-400 font-mono">Visible ONLY to Teachers & Platform Admins</span>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">📧 Personal Gmail Address</label>
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Personal Gmail Address</label>
                   <input v-model="form.gmail" type="email" placeholder="yourname@gmail.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
                 </div>
                 <div>
-                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">📱 Phone Number / WhatsApp</label>
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Phone Number / WhatsApp</label>
                   <input v-model="form.phone_number" type="tel" placeholder="e.g. 6379855124" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
                 </div>
               </div>
@@ -78,29 +83,34 @@
               
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">🌐 Portfolio Website URL</label>
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Portfolio Website URL</label>
                   <input v-model="form.website_url" type="url" placeholder="https://yourname.dev" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
                 </div>
                 <div>
-                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">🐙 GitHub Profile URL</label>
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">GitHub Profile URL</label>
                   <input v-model="form.github_url" type="url" placeholder="https://github.com/username" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
                 </div>
                 <div>
-                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">💼 LinkedIn Profile URL</label>
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">LinkedIn Profile URL</label>
                   <input v-model="form.linkedin_url" type="url" placeholder="https://linkedin.com/in/username" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
                 </div>
                 <div>
-                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">🎯 TryHackMe Profile URL</label>
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">TryHackMe Profile URL</label>
                   <input v-model="form.tryhackme_url" type="url" placeholder="https://tryhackme.com/p/username" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
                 </div>
                 <div class="sm:col-span-2">
-                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">📦 HackTheBox Profile URL</label>
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">HackTheBox Profile URL</label>
                   <input v-model="form.htb_url" type="url" placeholder="https://app.hackthebox.com/profile/12345" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
                 </div>
               </div>
             </div>
 
-            <button type="submit" class="btn-neon-cyan text-xs py-2.5 px-6">Save & Sync to CTFd 🚀</button>
+            <button type="submit" class="btn-neon-cyan text-xs py-2.5 px-6 font-bold uppercase tracking-wider flex items-center gap-2">
+              <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span>Save & Sync Settings</span>
+            </button>
           </form>
         </div>
 

@@ -125,8 +125,11 @@
               <header class="space-y-4 border-b border-[#1f293d] pb-6">
                 <div class="flex items-center justify-between font-mono text-xs text-[#00f0ff]">
                   <span>CHAPTER {{ activeChapterIndex + 1 }} OF {{ course.chapters?.length }}</span>
-                  <span class="bg-[#151f30] px-3 py-1 rounded-full border border-[#1f293d] text-slate-300">
-                    ⏱️ {{ activeChapter.read_time_minutes }} min read
+                  <span class="bg-[#151f30] px-3 py-1 rounded-full border border-[#1f293d] text-slate-300 flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-[#00f0ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>{{ activeChapter.read_time_minutes }} min read</span>
                   </span>
                 </div>
 
@@ -143,7 +146,12 @@
 
               <!-- Gated Attachments -->
               <div v-if="activeChapter.attachments?.length" class="space-y-3 font-mono">
-                <h4 class="text-xs font-bold text-[#00f0ff] uppercase tracking-wider">📦 Lab Attachments & Resources</h4>
+                <div class="flex items-center space-x-2 text-[#00f0ff]">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                  </svg>
+                  <h4 class="text-xs font-bold uppercase tracking-wider">Lab Attachments & Resources</h4>
+                </div>
                 <div class="flex flex-wrap gap-3">
                   <a 
                     v-for="att in activeChapter.attachments" 
@@ -152,7 +160,10 @@
                     target="_blank" 
                     class="bg-[#0b0e14] hover:bg-[#151f30] border border-[#1f293d] hover:border-[#00f0ff] px-4 py-2.5 rounded-xl text-xs font-bold text-[#00f0ff] flex items-center space-x-2 transition-all shadow-md"
                   >
-                    <span>📥 Download</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    <span>Download</span>
                     <span>{{ att.name }}</span>
                     <span class="text-[10px] text-slate-400 font-normal">({{ (att.size / 1024).toFixed(1) }} KB)</span>
                   </a>
@@ -172,9 +183,14 @@
                 <button 
                   @click="markComplete(activeChapter.id)" 
                   :disabled="completing || isChapterCompleted(activeChapter.id)" 
-                  class="btn-htb py-2 px-5 font-bold uppercase tracking-wider"
+                  class="btn-htb py-2 px-5 font-bold uppercase tracking-wider flex items-center gap-1.5"
                 >
-                  <span v-if="isChapterCompleted(activeChapter.id)">✓ Completed</span>
+                  <span v-if="isChapterCompleted(activeChapter.id)" class="flex items-center gap-1">
+                    <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <span>Completed</span>
+                  </span>
                   <span v-else>{{ completing ? 'Updating...' : 'Mark Chapter Complete' }}</span>
                 </button>
 
@@ -192,7 +208,10 @@
             <!-- Comments & Discussion Area -->
             <section class="glass-panel p-6 rounded-3xl border border-[#1f293d] bg-[#0d1420] space-y-6">
               <h3 class="text-sm font-extrabold text-white font-mono uppercase tracking-wider flex items-center space-x-2">
-                <span>💬 Discussion & Help</span>
+                <svg class="w-4 h-4 text-[#9fef00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+                <span>Discussion & Help</span>
                 <span class="text-xs text-slate-500">({{ comments.length }})</span>
               </h3>
 
@@ -228,7 +247,12 @@
                       <span class="text-slate-600">•</span>
                       <span>{{ formatDate(c.created_at) }}</span>
                     </div>
-                    <button @click="reportComment(c.id)" class="text-slate-500 hover:text-rose-400 text-[10px]">🚩 Report</button>
+                    <button @click="reportComment(c.id)" class="text-slate-500 hover:text-rose-400 text-[10px] flex items-center gap-1">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/>
+                      </svg>
+                      <span>Report</span>
+                    </button>
                   </div>
                   <p class="text-slate-200 leading-relaxed font-sans text-sm">{{ c.body }}</p>
                 </div>

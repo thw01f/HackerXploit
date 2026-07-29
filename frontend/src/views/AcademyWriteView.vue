@@ -8,8 +8,11 @@
           <span>&larr; Academy</span>
         </router-link>
         <span class="text-slate-600">/</span>
+        <span class="text-slate-600">/</span>
         <span class="font-bold text-[#00f0ff] flex items-center space-x-1.5">
-          <span>📁</span>
+          <svg class="w-4 h-4 text-[#00f0ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+          </svg>
           <span>Modules</span>
         </span>
         <span class="text-slate-600">/</span>
@@ -19,24 +22,33 @@
       <div class="flex items-center space-x-2">
         <!-- New Module Folder Button -->
         <button @click="promptNewFolder" class="px-2.5 py-1 text-[11px] font-bold bg-[#21262d] hover:bg-[#30363d] text-slate-300 rounded border border-[#30363d] transition-all flex items-center space-x-1">
-          <span>📁 + New Module</span>
+          <svg class="w-3.5 h-3.5 text-[#9fef00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          <span>+ New Module</span>
         </button>
 
         <!-- Mode Switcher -->
         <button 
           @click="mode = mode === 'editor' ? 'upload' : 'editor'" 
-          class="px-3 py-1 text-[11px] font-bold bg-[#00f0ff]/15 text-[#00f0ff] border border-[#00f0ff]/30 rounded transition-all hover:bg-[#00f0ff]/25"
+          class="px-3 py-1 text-[11px] font-bold bg-[#00f0ff]/15 text-[#00f0ff] border border-[#00f0ff]/30 rounded transition-all hover:bg-[#00f0ff]/25 flex items-center gap-1.5"
         >
-          {{ mode === 'editor' ? '📂 Import .md File' : '✍️ Back to Editor' }}
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+          <span>{{ mode === 'editor' ? 'Import .md File' : 'Back to Editor' }}</span>
         </button>
 
         <!-- Publish Button -->
         <button 
           @click="publishCurrentNote" 
           :disabled="loading || !currentNote.title.trim() || !currentNote.content_markdown.trim()" 
-          class="btn-htb text-xs py-1 px-4 font-bold uppercase tracking-wider shadow-lg"
+          class="btn-htb text-xs py-1 px-4 font-bold uppercase tracking-wider shadow-lg flex items-center gap-1.5"
         >
-          {{ loading ? 'Publishing...' : '🚀 Publish Note' }}
+          <svg class="w-3.5 h-3.5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          <span>{{ loading ? 'Publishing...' : 'Publish Note' }}</span>
         </button>
       </div>
     </div>
@@ -68,15 +80,25 @@
               class="px-2 py-1.5 rounded hover:bg-[#21262d] text-xs font-bold text-slate-300 flex items-center justify-between cursor-pointer group transition-colors"
             >
               <div @click="toggleFolder(folder.name)" class="flex items-center space-x-2 truncate flex-1">
-                <span class="text-amber-400 text-xs">{{ openFolders[folder.name] ? '📂' : '📁' }}</span>
+                <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
                 <span class="truncate uppercase text-[11px] tracking-wider text-[#00f0ff]">{{ folder.name }}</span>
                 <span class="text-[10px] text-slate-500 font-mono">({{ folder.notes.length }})</span>
               </div>
 
               <!-- Module Action Menu -->
               <div class="opacity-0 group-hover:opacity-100 flex items-center space-x-1 transition-opacity">
-                <button @click.stop="renameFolder(folder.name)" title="Rename Module" class="text-[10px] hover:text-[#00f0ff] px-1">✏️</button>
-                <button @click.stop="deleteFolder(folder.name)" title="Delete Module" class="text-[10px] hover:text-rose-400 px-1">🗑️</button>
+                <button @click.stop="renameFolder(folder.name)" title="Rename Module" class="text-[10px] hover:text-[#00f0ff] p-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 210.382H3v-3.572L16.732 3.732z"/>
+                  </svg>
+                </button>
+                <button @click.stop="deleteFolder(folder.name)" title="Delete Module" class="text-[10px] hover:text-rose-400 p-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
               </div>
             </div>
 

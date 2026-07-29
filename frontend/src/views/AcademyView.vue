@@ -34,14 +34,20 @@
               @click="openCreatePathModal" 
               class="btn-htb text-xs py-3 px-5 font-bold uppercase tracking-wider shadow-lg flex items-center justify-center space-x-2"
             >
-              <span>📁 + Create Path / Module</span>
+              <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              <span>Create Path / Module</span>
             </button>
 
             <router-link 
               to="/academy/write" 
               class="bg-[#161b22] hover:bg-[#21262d] text-slate-200 border border-[#30363d] text-xs py-3 px-5 font-bold rounded-xl transition-all flex items-center justify-center space-x-2"
             >
-              <span>✍️ Modules Studio</span>
+              <svg class="w-4 h-4 text-[#9fef00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+              <span>Modules Studio</span>
             </router-link>
 
             <button 
@@ -49,13 +55,16 @@
               @click="showLiveModal = true" 
               class="btn-neon-cyan text-xs py-3 px-5 font-bold uppercase tracking-wider flex items-center justify-center space-x-2"
             >
-              <span>🎥 Live Class</span>
+              <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>
+              <span>Live Class</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- TryHackMe Sub-Navigation Tabs Bar -->
+      <!-- Sub-Navigation Tabs Bar -->
       <div class="flex items-center space-x-2 border-b border-[#1f293d] pb-3 overflow-x-auto font-mono">
         <button 
           v-for="tab in tabs" 
@@ -68,7 +77,6 @@
               : 'text-slate-400 hover:text-white hover:bg-[#151f30]'
           ]"
         >
-          <span>{{ tab.icon }}</span>
           <span>{{ tab.label }}</span>
         </button>
       </div>
@@ -112,7 +120,11 @@
 
         <!-- Empty State -->
         <div v-if="filteredPaths.length === 0" class="glass-panel p-16 text-center text-slate-400 space-y-4 rounded-3xl bg-[#0d1420]">
-          <div class="text-4xl">🛣️</div>
+          <div class="flex justify-center text-[#9fef00]">
+            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+            </svg>
+          </div>
           <h3 class="text-lg font-bold text-white font-serif">No Learning Paths Found</h3>
           <p class="text-xs text-slate-400 max-w-md mx-auto font-mono">
             There are currently no matching learning paths. Teachers and Admins can create new paths or write notes using the studio.
@@ -144,8 +156,17 @@
 
               <!-- Top Right Management Actions for Admins & Teachers -->
               <div v-if="authStore.isTeacher" class="absolute top-3 right-3 flex items-center space-x-1.5 bg-[#0b0e14]/90 p-1 rounded-lg border border-[#1f293d] backdrop-blur-sm">
-                <button @click.stop="openEditPathModal(path)" title="Edit Path" class="text-xs px-2 py-1 bg-[#151f30] hover:bg-[#1f293d] text-[#00f0ff] rounded font-mono font-bold">✏️ Edit</button>
-                <button @click.stop="deletePath(path.id)" title="Delete Path" class="text-xs px-2 py-1 bg-rose-950/80 hover:bg-rose-900 text-rose-300 rounded font-mono font-bold">🗑️</button>
+                <button @click.stop="openEditPathModal(path)" title="Edit Path" class="text-xs px-2 py-1 bg-[#151f30] hover:bg-[#1f293d] text-[#00f0ff] rounded font-mono font-bold flex items-center gap-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 210.382H3v-3.572L16.732 3.732z"/>
+                  </svg>
+                  <span>Edit</span>
+                </button>
+                <button @click.stop="deletePath(path.id)" title="Delete Path" class="text-xs p-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 rounded font-mono font-bold flex items-center">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
               </div>
             </div>
 
@@ -178,7 +199,12 @@
       <!-- TAB: ROADMAP -->
       <div v-if="activeTab === 'roadmap'" class="space-y-6 font-mono">
         <div class="glass-panel p-6 bg-[#0d1420] border border-[#1f293d] rounded-2xl space-y-4">
-          <h3 class="text-lg font-bold text-white mb-2">🗺️ Cybersecurity Learning Roadmap</h3>
+          <div class="flex items-center space-x-2.5">
+            <svg class="w-5 h-5 text-[#9fef00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+            </svg>
+            <h3 class="text-lg font-bold text-white">Cybersecurity Learning Roadmap</h3>
+          </div>
           <p class="text-xs text-slate-400">Structured pathways generated dynamically from published academy courses.</p>
           
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
@@ -258,7 +284,10 @@
                 <button @click="deleteLiveClass(lc.id)" class="text-xs text-rose-400 hover:underline font-bold">Cancel</button>
               </div>
               <a :href="lc.meeting_link" target="_blank" class="btn-neon-cyan text-xs py-2 px-5 font-bold ml-auto flex items-center gap-2">
-                <span>🚀 Join Live Class</span>
+                <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+                <span>Join Live Class</span>
               </a>
             </div>
           </div>
@@ -268,7 +297,12 @@
       <!-- Create / Edit Path Modal for Admins & Teachers -->
       <div v-if="showPathModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm font-mono">
         <div class="w-full max-w-lg glass-panel p-6 rounded-2xl border border-[#1f293d] bg-[#0d1420]">
-          <h3 class="text-xl font-bold text-white mb-4">{{ isEditingPath ? '✏️ Edit Path / Module' : '📁 Create Path / Module' }}</h3>
+          <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-[#9fef00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            <span>{{ isEditingPath ? 'Edit Path / Module' : 'Create Path / Module' }}</span>
+          </h3>
           <form @submit.prevent="handleSavePath" class="space-y-4">
             <div>
               <label class="block text-xs text-slate-400 uppercase mb-1">Path Title <span class="text-rose-400">*</span></label>
@@ -381,10 +415,10 @@ const difficultyFilter = ref('All')
 const statusFilter = ref('All')
 
 const tabs = [
-  { id: 'paths', label: 'Paths', icon: '🛣️' },
-  { id: 'roadmap', label: 'Roadmap', icon: '🗺️' },
-  { id: 'modules', label: 'Modules', icon: '📦' },
-  { id: 'live', label: 'Live Classes', icon: '🎥' }
+  { id: 'paths', label: 'Learning Paths' },
+  { id: 'roadmap', label: 'Roadmap' },
+  { id: 'modules', label: 'Modules & Notes' },
+  { id: 'live', label: 'Live Classes' }
 ]
 
 const liveClasses = ref([])

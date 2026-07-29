@@ -200,23 +200,23 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs text-slate-400 font-mono mb-1">🌐 Portfolio Website URL</label>
+              <label class="block text-xs text-slate-400 font-mono mb-1">Portfolio Website URL</label>
               <input v-model="form.website_url" type="url" placeholder="https://yourname.dev" class="input-field text-xs py-2 w-full" />
             </div>
             <div>
-              <label class="block text-xs text-slate-400 font-mono mb-1">🐙 GitHub Profile URL</label>
+              <label class="block text-xs text-slate-400 font-mono mb-1">GitHub Profile URL</label>
               <input v-model="form.github_url" type="url" placeholder="https://github.com/username" class="input-field text-xs py-2 w-full" />
             </div>
             <div>
-              <label class="block text-xs text-slate-400 font-mono mb-1">💼 LinkedIn Profile URL</label>
+              <label class="block text-xs text-slate-400 font-mono mb-1">LinkedIn Profile URL</label>
               <input v-model="form.linkedin_url" type="url" placeholder="https://linkedin.com/in/username" class="input-field text-xs py-2 w-full" />
             </div>
             <div>
-              <label class="block text-xs text-slate-400 font-mono mb-1">🎯 TryHackMe Profile URL</label>
+              <label class="block text-xs text-slate-400 font-mono mb-1">TryHackMe Profile URL</label>
               <input v-model="form.tryhackme_url" type="url" placeholder="https://tryhackme.com/p/username" class="input-field text-xs py-2 w-full" />
             </div>
             <div class="sm:col-span-2">
-              <label class="block text-xs text-slate-400 font-mono mb-1">📦 HackTheBox Profile URL</label>
+              <label class="block text-xs text-slate-400 font-mono mb-1">HackTheBox Profile URL</label>
               <input v-model="form.htb_url" type="url" placeholder="https://app.hackthebox.com/profile/12345" class="input-field text-xs py-2 w-full" />
             </div>
           </div>
