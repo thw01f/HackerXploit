@@ -1,81 +1,90 @@
 <template>
-  <div class="container py-5">
-    <div class="row justify-content-center">
-      <div class="col-md-6 col-lg-5 text-center">
+  <div class="min-h-screen flex flex-col justify-between bg-[#0b0e14]">
+    <Navbar />
 
-        <div v-if="loading" class="py-5">
-          <div class="spinner-border text-info" role="status"></div>
-          <p class="mt-2 text-muted">Verifying ID Card Credentials...</p>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1 w-full flex flex-col items-center justify-center">
+      <div class="w-full max-w-md">
+
+        <!-- Loading State -->
+        <div v-if="loading" class="py-12 text-center font-mono text-sm text-slate-500">
+          <span class="inline-block animate-spin mr-2">⚡</span> Verifying ID Card Credentials...
         </div>
 
-        <div v-else-if="error" class="card card-custom p-5 border-danger text-center">
-          <div class="text-danger mb-3">
-            <i class="bi bi-x-circle-fill display-1"></i>
-          </div>
-          <h4 class="fw-bold text-white mb-2">Verification Failed</h4>
-          <p class="text-muted small mb-4">{{ error }}</p>
-          <router-link to="/" class="btn btn-sm btn-outline-secondary">Return to Home</router-link>
+        <!-- Verification Error Card -->
+        <div v-else-if="error" class="glass-panel p-8 text-center space-y-4 border border-red-500/50 bg-[#111927]">
+          <div class="text-4xl">🚨</div>
+          <h4 class="font-mono font-bold text-xl text-white">Verification Failed</h4>
+          <p class="text-xs font-mono text-red-400">{{ error }}</p>
+          <router-link to="/" class="btn-ghost text-xs font-mono py-2 px-4 inline-block mt-2">Return to Home</router-link>
         </div>
 
-        <div v-else-if="verification" class="card card-custom p-4 border-success text-start">
-          <!-- Verified Shield Badge Header -->
-          <div class="d-flex align-items-center justify-content-between mb-4 border-bottom border-secondary pb-3">
-            <div class="d-flex align-items-center gap-2">
-              <i class="bi bi-patch-check-fill text-success fs-3"></i>
+        <!-- Verification Success Card -->
+        <div v-else-if="verification" class="glass-panel p-6 border border-[#9fef00]/40 bg-[#111927] space-y-6">
+          
+          <!-- Shield Badge Header -->
+          <div class="flex items-center justify-between border-b border-[#1f293d] pb-4">
+            <div class="flex items-center space-x-3">
+              <span class="text-2xl">🛡️</span>
               <div>
-                <div class="fw-bold text-white fs-6">VERIFIED CLUB MEMBER</div>
-                <div class="extra-small text-muted font-monospace">HACKERXPLOIT OFFICIAL IDENTITY</div>
+                <h3 class="font-mono font-bold text-sm text-white">VERIFIED CLUB MEMBER</h3>
+                <span class="text-[10px] font-mono text-slate-400">HACKERXPLOIT OFFICIAL IDENTITY</span>
               </div>
             </div>
-            <span class="badge bg-success text-dark font-monospace">VALID</span>
+            <span class="text-xs font-mono font-bold bg-[#9fef00] text-black px-2.5 py-0.5 rounded">VALID</span>
           </div>
 
           <!-- Member Details -->
-          <div class="d-flex align-items-center gap-3 mb-4">
-            <div class="avatar-box bg-dark border border-success rounded-circle d-flex align-items-center justify-content-center text-success fw-bold fs-2" style="width: 70px; height: 70px;">
+          <div class="flex items-center space-x-4">
+            <div class="w-16 h-16 rounded-xl bg-[#090d16] border-2 border-[#9fef00]/60 flex items-center justify-center text-[#9fef00] font-mono font-bold text-2xl shadow-lg">
               {{ verification.member.username.charAt(0).toUpperCase() }}
             </div>
             <div>
-              <h3 class="fw-bold text-white mb-0 font-monospace text-uppercase">{{ verification.member.username }}</h3>
-              <span class="badge bg-primary text-uppercase me-2">{{ verification.member.role }}</span>
-              <div class="text-muted extra-small font-monospace mt-1">ID: {{ verification.member.member_id }}</div>
+              <h3 class="font-mono font-bold text-lg text-white uppercase">{{ verification.member.username }}</h3>
+              <span class="text-[10px] font-mono font-bold uppercase bg-[#151f30] text-[#00f0ff] px-2 py-0.5 rounded border border-[#00f0ff]/30">
+                {{ verification.member.role }}
+              </span>
+              <p class="text-[11px] font-mono text-slate-400 mt-1">ID: {{ verification.member.member_id }}</p>
             </div>
           </div>
 
-          <!-- Member Since & Status -->
-          <div class="p-3 bg-dark rounded border border-secondary mb-3">
-            <div class="d-flex justify-content-between text-muted extra-small font-monospace mb-2">
-              <span>MEMBER SINCE:</span>
+          <!-- Status Info -->
+          <div class="p-3 bg-[#090d16] border border-[#1f293d] rounded-lg space-y-2 text-xs font-mono">
+            <div class="flex justify-between">
+              <span class="text-slate-400">MEMBER SINCE:</span>
               <span class="text-white">{{ verification.member.member_since }}</span>
             </div>
-            <div class="d-flex justify-content-between text-muted extra-small font-monospace">
-              <span>LIVE PARTICIPATION:</span>
-              <span :class="verification.live_status.is_actively_participating ? 'text-success fw-bold' : 'text-muted'">
+            <div class="flex justify-between">
+              <span class="text-slate-400">LIVE PARTICIPATION:</span>
+              <span :class="verification.live_status.is_actively_participating ? 'text-[#9fef00] font-bold' : 'text-slate-500'">
                 {{ verification.live_status.is_actively_participating ? 'ACTIVE EVENT' : 'INACTIVE' }}
               </span>
             </div>
           </div>
 
-          <div v-if="verification.live_status.is_actively_participating" class="p-2 mb-3 bg-success bg-opacity-20 border border-success rounded text-center">
-            <span class="extra-small text-success font-monospace">
-              <i class="bi bi-broadcast me-1"></i> Currently in: <strong>{{ verification.live_status.active_event_name }}</strong>
-            </span>
+          <div v-if="verification.live_status.is_actively_participating" class="p-3 bg-[#9fef00]/10 border border-[#9fef00]/40 rounded-lg text-xs font-mono text-[#9fef00]">
+            ⚡ Currently in: <strong>{{ verification.live_status.active_event_name }}</strong>
           </div>
 
-          <div class="text-muted extra-small text-center font-monospace mt-2">
+          <div class="text-[10px] font-mono text-center text-slate-500 border-t border-[#1f293d] pt-3">
             Verified at {{ new Date(verification.verified_at).toLocaleString() }}
           </div>
+
         </div>
 
       </div>
-    </div>
+    </main>
+
+    <Footer />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+
 import axios from 'axios'
+import Navbar from '../components/Navbar.vue'
+import Footer from '../components/Footer.vue'
 
 const route = useRoute()
 const loading = ref(true)
@@ -99,14 +108,3 @@ onMounted(() => {
   verifyToken()
 })
 </script>
-
-<style scoped>
-.card-custom {
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(0, 240, 255, 0.2);
-  backdrop-filter: blur(10px);
-}
-.extra-small {
-  font-size: 0.75rem;
-}
-</style>

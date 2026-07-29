@@ -1,14 +1,11 @@
 <template>
-  <div class="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100">
-    <Navbar />
-
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full space-y-8">
+  <div class="space-y-8">
       <!-- Header & Actions -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1f293d] pb-6">
         <div>
-          <h1 class="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+          <h1 class="text-3xl font-extrabold text-white tracking-tight font-mono flex items-center gap-3">
             <span>CTF & Competitions Board</span>
-            <span class="text-xs font-mono uppercase bg-cyan-950/80 text-cyan-400 border border-cyan-500/30 px-2.5 py-1 rounded-full">
+            <span class="text-xs font-mono uppercase bg-[#151f30] text-[#9fef00] border border-[#9fef00]/30 px-2.5 py-1 rounded-full">
               Lifecycle System
             </span>
           </h1>
@@ -20,14 +17,14 @@
         <button 
           v-if="authStore.isTeacher" 
           @click="showAnnounceModal = true" 
-          class="btn-neon-violet text-sm font-semibold py-2.5 px-5 flex items-center justify-center gap-2"
+          class="btn-htb text-xs py-2.5 px-5 font-mono flex items-center justify-center gap-2"
         >
           <span>+ Announce Competition</span>
         </button>
       </div>
 
       <!-- Category Tabs -->
-      <div class="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+      <div class="flex flex-wrap gap-2 border-b border-[#1f293d] pb-3">
         <button 
           v-for="cat in categories" 
           :key="cat" 
@@ -35,13 +32,14 @@
           :class="[
             'px-4 py-2 text-xs font-mono font-bold uppercase rounded-lg transition-all duration-200',
             activeCategory === cat 
-              ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20' 
-              : 'bg-slate-900/80 text-slate-400 hover:text-white hover:bg-slate-800'
+              ? 'bg-[#9fef00] text-black shadow-lg shadow-[#9fef00]/20' 
+              : 'bg-[#151f30] text-slate-400 hover:text-white hover:bg-slate-800'
           ]"
         >
           {{ cat }}
         </button>
       </div>
+
 
       <!-- Filter Bar -->
       <div class="glass-panel p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -90,25 +88,46 @@
         <div 
           v-for="comp in competitions" 
           :key="comp.id" 
-          :class="[
-            'glass-panel p-6 flex flex-col justify-between transition-all duration-300 hover:border-slate-700',
-            getPriorityBorderClass(comp.priority)
-          ]"
+          class="glass-panel rounded-xl overflow-hidden flex flex-col justify-between transition-all duration-300 hover:border-[#9fef00]/50 hover:shadow-xl group"
         >
-          <div class="space-y-4">
-            <!-- Poster Header Image (if exists) -->
-            <div v-if="comp.poster_image" class="w-full h-40 rounded-lg overflow-hidden bg-slate-900 border border-slate-800">
-              <img :src="comp.poster_image" alt="Poster" class="w-full h-full object-cover" />
+          <div>
+            <!-- Poster Header Image with Badge Overlay -->
+            <div class="relative w-full h-48 bg-[#0c1117] overflow-hidden border-b border-[#1a2332]">
+              <img 
+                :src="comp.poster_image || '/logo.png'" 
+                alt="Poster" 
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              />
+              <div class="absolute top-3 left-3 flex gap-2">
+                <span 
+                  :class="[
+                    'text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-md shadow-md backdrop-blur-md border',
+                    comp.computed_status === 'ended' ? 'bg-slate-900/90 text-slate-400 border-slate-700' :
+                    comp.computed_status === 'ongoing' ? 'bg-emerald-950/90 text-[#9fef00] border-[#9fef00]/50' :
+                    'bg-cyan-950/90 text-[#00f0ff] border-[#00f0ff]/50'
+                  ]"
+                >
+                  {{ comp.computed_status || 'UPCOMING' }}
+                </span>
+              </div>
             </div>
 
-            <!-- Header Info & Badges -->
-            <div class="flex justify-between items-start gap-2">
-              <div>
-                <span class="text-[10px] font-mono uppercase bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">
-                  {{ comp.category }}
+            <!-- Card Content -->
+            <div class="p-5 space-y-3">
+              <h3 class="text-base font-bold text-white font-mono leading-snug group-hover:text-[#9fef00] transition-colors">
+                {{ comp.title }}
+              </h3>
+
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-mono font-bold uppercase text-slate-400 tracking-wider">
+                  {{ comp.category || 'GAUNTLET' }}
                 </span>
-                <h3 class="text-lg font-bold text-white mt-1 leading-snug">{{ comp.title }}</h3>
+                <span class="text-slate-600">•</span>
+                <span :class="getPriorityBadgeClass(comp.priority)" class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border">
+                  {{ comp.priority }}
+                </span>
               </div>
+
 
               <span :class="getPriorityBadgeClass(comp.priority)" class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border">
                 {{ comp.priority }}
@@ -188,7 +207,6 @@
           </div>
         </div>
       </div>
-    </main>
 
     <!-- Modal 1: Student Application Proof -->
     <div v-if="showApplyModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -272,6 +290,11 @@
           <div>
             <label class="block font-mono text-slate-400 mb-1">External Registration Link</label>
             <input v-model="newComp.external_link" type="url" class="input-field" placeholder="https://..." />
+          </div>
+
+          <div>
+            <label class="block font-mono text-slate-400 mb-1">Event Poster / Thumbnail URL (Optional)</label>
+            <input v-model="newComp.poster_image" type="text" class="input-field" placeholder="https://... or /uploads/..." />
           </div>
 
           <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
@@ -373,15 +396,12 @@
       </div>
     </div>
 
-    <Footer />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import Navbar from '../components/Navbar.vue'
-import Footer from '../components/Footer.vue'
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
@@ -418,7 +438,8 @@ const newComp = ref({
   starts_at: '',
   ends_at: '',
   application_deadline: '',
-  external_link: ''
+  external_link: '',
+  poster_image: ''
 })
 
 const fetchCompetitions = async () => {

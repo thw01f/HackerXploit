@@ -9,7 +9,7 @@ club_bp = Blueprint('club', __name__, url_prefix='/api/club')
 def get_stats():
     total_members = User.query.filter_by(status='approved').count()
     active_courses = CourseEnrollment.query.count()
-    completed_courses = CourseEnrollment.query.filter_by(is_completed=True).count()
+    completed_courses = CourseEnrollment.query.filter(CourseEnrollment.progress_percent >= 100.0).count()
     return jsonify({
         'total_members': total_members,
         'active_courses': active_courses,
@@ -22,7 +22,10 @@ def get_stats():
 @require_auth
 def get_members():
     members = User.query.filter_by(status='approved').all()
-    return jsonify({'members': [m.to_dict() for m in members]}), 200
+    is_privileged = (g.current_user.role in ['teacher', 'admin', 'root_admin']) or getattr(g.current_user, 'is_root_admin', False)
+    return jsonify({
+        'members': [m.to_dict(include_private=(is_privileged or m.id == g.current_user.id)) for m in members]
+    }), 200
 
 @club_bp.route('/members/<int:member_id>', methods=['GET'])
 @require_role('teacher', 'admin', 'root_admin')
@@ -34,7 +37,7 @@ def get_student_profile(member_id):
     log_audit('VIEW_STUDENT_PROFILE', target_type='User', target_id=member_id, details={'student_email': student.email})
 
     return jsonify({
-        'student': student.to_dict(),
+        'student': student.to_dict(include_private=True),
         'enrollments': [e.to_dict() for e in enrollments],
         'competitions': [c.to_dict() for c in competition_apps],
         'estimated_learning_hours': len(enrollments) * 8 + len(competition_apps) * 5
@@ -54,14 +57,35 @@ def update_profile():
         user.avatar_url = data['avatar_url']
     if 'student_id' in data:
         user.student_id = data['student_id']
+    if 'academic_year' in data:
+        user.academic_year = data['academic_year']
+    if 'department' in data:
+        user.department = data['department']
     if 'graduation_year' in data:
         user.graduation_year = data['graduation_year']
     if 'skills' in data and isinstance(data['skills'], list):
         user.skills = data['skills']
 
+    if 'gmail' in data: user.gmail = (data['gmail'] or '').strip()
+    if 'phone_number' in data: user.phone_number = (data['phone_number'] or '').strip()
+
+    if 'website_url' in data: user.website_url = (data['website_url'] or '').strip()
+    if 'github_url' in data: user.github_url = (data['github_url'] or '').strip()
+    if 'linkedin_url' in data: user.linkedin_url = (data['linkedin_url'] or '').strip()
+    if 'tryhackme_url' in data: user.tryhackme_url = (data['tryhackme_url'] or '').strip()
+    if 'htb_url' in data: user.htb_url = (data['htb_url'] or '').strip()
+
     db.session.commit()
+
+    # Sync user details to CTFd container
+    try:
+        from app.services.ctfd_sync import sync_user_to_ctfd
+        sync_user_to_ctfd(user)
+    except Exception as e:
+        print(f"CTFd profile sync note: {e}")
+
     log_audit('UPDATE_PROFILE', target_type='User', target_id=user.id, target_user_id=user.id)
-    return jsonify(user.to_dict()), 200
+    return jsonify(user.to_dict(include_private=True)), 200
 
 # -------------------------------------------------------------------
 # Device & Session Management (/profile/devices) - All Roles
@@ -110,10 +134,17 @@ def logout_all_other_devices():
 @club_bp.route('/profile/missing-fields', methods=['GET'])
 @require_auth
 def get_missing_required_fields():
-    user_id = g.current_user.id
-    active_required_fields = ProfileFieldDefinition.query.filter_by(active=True, required=True).all()
+    user = g.current_user
+    user_role = user.role
     
-    user_values = UserProfileValue.query.filter_by(user_id=user_id).all()
+    query = ProfileFieldDefinition.query.filter_by(active=True, required=True)
+    if user_role == 'member':
+        query = query.filter(ProfileFieldDefinition.target_role.in_(['all', 'member']))
+    elif user_role in ['teacher', 'instructor']:
+        query = query.filter(ProfileFieldDefinition.target_role.in_(['all', 'teacher']))
+        
+    active_required_fields = query.all()
+    user_values = UserProfileValue.query.filter_by(user_id=user.id).all()
     filled_field_ids = {v.field_id for v in user_values if v.value and v.value.strip()}
 
     missing = [f.to_dict() for f in active_required_fields if f.id not in filled_field_ids]

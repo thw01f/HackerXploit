@@ -1,8 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100">
-    <Navbar />
-
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full space-y-8">
+  <div class="space-y-8">
       <!-- Header -->
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -146,7 +143,6 @@
           </div>
         </div>
       </div>
-    </main>
 
     <!-- Modal 1: Manage User Skills -->
     <div v-if="showSkillsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -250,15 +246,12 @@
       </div>
     </div>
 
-    <Footer />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
-import Navbar from '../components/Navbar.vue'
-import Footer from '../components/Footer.vue'
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()

@@ -1,13 +1,12 @@
 <template>
-  <div class="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100">
-    <Navbar />
+  <div class="space-y-8">
+    <AdminSubNav />
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full space-y-8">
-      <div>
-        <span class="px-2.5 py-1 rounded bg-purple-950 text-purple-400 font-mono text-xs font-bold uppercase border border-purple-500/30">SECURITY & RETENTION CENTER</span>
-        <h1 class="text-3xl font-extrabold text-white mt-2">Security, Audit & Retention Management</h1>
-        <p class="text-slate-400 text-sm mt-1">Admin visibility into authentication attempts, device force-kicks, and competition retention timers.</p>
-      </div>
+    <div>
+      <span class="px-2.5 py-1 rounded bg-purple-950 text-purple-400 font-mono text-xs font-bold uppercase border border-purple-500/30">SECURITY & RETENTION CENTER</span>
+      <h1 class="text-3xl font-extrabold text-white mt-2">Security, Audit & Retention Management</h1>
+      <p class="text-slate-400 text-sm mt-1">Admin visibility into authentication attempts, device force-kicks, and competition retention timers.</p>
+    </div>
 
       <!-- Navigation Tabs -->
       <div class="flex flex-wrap gap-3 border-b border-slate-800 pb-3">
@@ -156,17 +155,14 @@
           </div>
         </div>
       </div>
-    </main>
 
-    <Footer />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import Navbar from '../components/Navbar.vue'
-import Footer from '../components/Footer.vue'
+import AdminSubNav from '../components/AdminSubNav.vue'
 
 const activeTab = ref('activity')
 

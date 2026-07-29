@@ -42,7 +42,7 @@ def seed_database():
                 client_id='ctfd-client-id-hx99',
                 client_secret='ctfd-client-secret-sec88',
                 client_name='CTFd Official Platform',
-                redirect_uris='http://ctf.hackerxploit.org/redirect http://localhost/redirect http://ctf.hackerxploit.org/oauth/redirect',
+                redirect_uris='http://arena.hackerxploit.org/redirect http://localhost/redirect http://arena.hackerxploit.org/oauth/redirect',
                 grant_types='authorization_code',
                 response_types='code',
                 scope='profile email'

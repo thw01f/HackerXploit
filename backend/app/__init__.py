@@ -36,21 +36,30 @@ def create_app(config_class=Config):
     flask_app = Flask(__name__)
     flask_app.config.from_object(config_class)
 
-    # Enable CORS with credentials for subdomains (.hackerxploit.org)
+    # Enable CORS with credentials for subdomains (.hackerxploit.org) & local ports
     CORS(flask_app, supports_credentials=True, origins=[
         "http://hackerxploit.org",
         "http://club.hackerxploit.org",
-        "http://ctf.hackerxploit.org",
+        "http://arena.hackerxploit.org",
         "http://localhost",
-        "http://127.0.0.1"
+        "http://127.0.0.1",
+        r"http://localhost:.*",
+        r"http://127.0.0.1:.*"
     ])
+
 
     db.init_app(flask_app)
     limiter.init_app(flask_app)
     
-    # Initialize SocketIO with redis message queue if available
+    # Initialize SocketIO — only attach Redis message_queue in production
+    # (Redis SocketIO requires gevent monkey-patching which conflicts with Werkzeug debug reloader)
     redis_url = flask_app.config.get('REDIS_URL')
-    socketio.init_app(flask_app, message_queue=redis_url)
+    flask_env = os.getenv('FLASK_ENV', 'production')
+    if redis_url and flask_env == 'production':
+        socketio.init_app(flask_app, message_queue=redis_url)
+    else:
+        socketio.init_app(flask_app)
+
 
     # Register blueprints
     from app.routes.auth import auth_bp
@@ -109,5 +118,20 @@ def create_app(config_class=Config):
     with flask_app.app_context():
         # Ensure database tables exist
         db.create_all()
+        from sqlalchemy import text
+        for stmt in [
+            "ALTER TABLE profile_field_definitions ADD COLUMN target_role VARCHAR(32) DEFAULT 'all'",
+            "ALTER TABLE site_feature_toggles ADD COLUMN allowed_email_domains VARCHAR(512) DEFAULT 'gmail.com,srm.edu.in,hackerxploit.org'",
+            "ALTER TABLE site_feature_toggles ADD COLUMN password_min_length INTEGER DEFAULT 8",
+            "ALTER TABLE site_feature_toggles ADD COLUMN password_require_uppercase BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE site_feature_toggles ADD COLUMN password_require_lowercase BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE site_feature_toggles ADD COLUMN password_require_number BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE site_feature_toggles ADD COLUMN password_require_special BOOLEAN DEFAULT TRUE"
+        ]:
+            try:
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
     return flask_app

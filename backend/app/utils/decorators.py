@@ -34,13 +34,20 @@ def require_auth(f):
         if not user:
             return jsonify({'error': 'Unauthorized or session invalidated'}), 401
         
-        # 1. First login setup enforcement
-        exempt_paths = ['/api/auth/setup-admin', '/api/auth/logout', '/api/auth/me']
-        if user.is_first_login and request.path not in exempt_paths:
+        # 1. First login setup / onboarding enforcement
+        exempt_paths = ['/api/auth/setup-admin', '/api/auth/logout', '/api/auth/me', '/api/auth/onboarding', '/api/auth/custom-fields']
+        if user.is_root_admin and user.is_first_login and request.path not in ['/api/auth/setup-admin', '/api/auth/logout', '/api/auth/me']:
             return jsonify({
-                'error': 'First login setup required',
+                'error': 'Root admin first login setup required',
                 'require_setup': True,
                 'redirect': '/setup-admin'
+            }), 428
+        
+        if not user.is_root_admin and not bool(user.onboarding_completed) and request.path not in exempt_paths:
+            return jsonify({
+                'error': 'First login onboarding required',
+                'require_onboarding': True,
+                'redirect': '/onboarding'
             }), 428
 
         g.current_user = user
@@ -56,12 +63,19 @@ def require_role(*roles):
             if not user:
                 return jsonify({'error': 'Unauthorized'}), 401
             
-            exempt_paths = ['/api/auth/setup-admin', '/api/auth/logout', '/api/auth/me']
-            if user.is_first_login and request.path not in exempt_paths:
+            exempt_paths = ['/api/auth/setup-admin', '/api/auth/logout', '/api/auth/me', '/api/auth/onboarding', '/api/auth/custom-fields']
+            if user.is_root_admin and user.is_first_login and request.path not in ['/api/auth/setup-admin', '/api/auth/logout', '/api/auth/me']:
                 return jsonify({
-                    'error': 'First login setup required',
+                    'error': 'Root admin first login setup required',
                     'require_setup': True,
                     'redirect': '/setup-admin'
+                }), 428
+
+            if not user.is_root_admin and not bool(user.onboarding_completed) and request.path not in exempt_paths:
+                return jsonify({
+                    'error': 'First login onboarding required',
+                    'require_onboarding': True,
+                    'redirect': '/onboarding'
                 }), 428
 
             user_roles = [user.role]
@@ -88,8 +102,7 @@ def require_root(f):
         if not user or not user.is_root_admin:
             return jsonify({'error': 'Forbidden: Root Admin access required'}), 403
         
-        exempt_paths = ['/api/auth/setup-admin', '/api/auth/logout', '/api/auth/me']
-        if user.is_first_login and request.path not in exempt_paths:
+        if user.is_first_login and request.path not in ['/api/auth/setup-admin', '/api/auth/logout', '/api/auth/me']:
             return jsonify({
                 'error': 'First login setup required',
                 'require_setup': True,

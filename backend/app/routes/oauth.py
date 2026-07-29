@@ -21,7 +21,7 @@ def authorize():
             client_id=client_id or 'ctfd-client-id-hx99',
             client_secret='ctfd-client-secret-sec88',
             client_name='CTFd Platform',
-            redirect_uris=redirect_uri or 'http://ctf.hackerxploit.org/redirect',
+            redirect_uris=redirect_uri or 'http://arena.hackerxploit.org/redirect',
             grant_types='authorization_code',
             response_types='code'
         )

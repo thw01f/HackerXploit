@@ -1,8 +1,24 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import axios from 'axios'
 import App from './App.vue'
 import router from './router'
 import './index.css'
+
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+}
+
+axios.defaults.withCredentials = true
+
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('hx_token')
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`
+  }
+  return config
+}, (error) => Promise.reject(error))
+
 
 const app = createApp(App)
 

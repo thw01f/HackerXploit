@@ -1,8 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col justify-between">
-    <Navbar />
-
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full space-y-8">
+  <div class="space-y-8">
       <div>
         <h1 class="text-3xl font-extrabold text-white">Account Settings & Security</h1>
         <p class="text-slate-400 text-sm mt-1">Manage your identity, digital credentials, and active device sessions.</p>
@@ -30,20 +27,80 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Full Name</label>
-                <input v-model="form.full_name" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" />
+                <input v-model="form.full_name" type="text" placeholder="e.g. GOWTHAMAN GS" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" />
               </div>
               <div>
                 <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Student ID</label>
-                <input v-model="form.student_id" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" />
+                <input v-model="form.student_id" type="text" placeholder="e.g. RA2311030050008" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Academic Year</label>
+                <select v-model="form.academic_year" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm">
+                  <option value="I">1st Year (I)</option>
+                  <option value="II">2nd Year (II)</option>
+                  <option value="III">3rd Year (III)</option>
+                  <option value="IV">4th Year (IV)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Department</label>
+                <input v-model="form.department" type="text" placeholder="Cyber Security" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" />
               </div>
             </div>
 
             <div>
               <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Bio / Research Focus</label>
-              <textarea v-model="form.bio" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"></textarea>
+              <textarea v-model="form.bio" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"></textarea>
             </div>
 
-            <button type="submit" class="btn-neon-cyan text-xs py-2.5 px-6">Save Changes</button>
+            <!-- Private Contact Info (Confidential) -->
+            <div class="pt-4 border-t border-slate-800 space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs font-mono font-bold uppercase text-cyan-400 tracking-wider">🔒 Private Contact Information</h4>
+                <span class="text-[10px] text-slate-400 font-mono">Visible ONLY to Teachers & Platform Admins</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">📧 Personal Gmail Address</label>
+                  <input v-model="form.gmail" type="email" placeholder="yourname@gmail.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
+                </div>
+                <div>
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">📱 Phone Number / WhatsApp</label>
+                  <input v-model="form.phone_number" type="tel" placeholder="e.g. 6379855124" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Social & Portfolio Connections -->
+            <div class="pt-4 border-t border-slate-800 space-y-4">
+              <h4 class="text-xs font-mono font-bold uppercase text-[#9fef00] tracking-wider">Cyber Portfolios & Social Links (Synced to CTFd)</h4>
+              
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">🌐 Portfolio Website URL</label>
+                  <input v-model="form.website_url" type="url" placeholder="https://yourname.dev" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
+                </div>
+                <div>
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">🐙 GitHub Profile URL</label>
+                  <input v-model="form.github_url" type="url" placeholder="https://github.com/username" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
+                </div>
+                <div>
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">💼 LinkedIn Profile URL</label>
+                  <input v-model="form.linkedin_url" type="url" placeholder="https://linkedin.com/in/username" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
+                </div>
+                <div>
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">🎯 TryHackMe Profile URL</label>
+                  <input v-model="form.tryhackme_url" type="url" placeholder="https://tryhackme.com/p/username" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">📦 HackTheBox Profile URL</label>
+                  <input v-model="form.htb_url" type="url" placeholder="https://app.hackthebox.com/profile/12345" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-neon-cyan text-xs py-2.5 px-6">Save & Sync to CTFd 🚀</button>
           </form>
         </div>
 
@@ -51,7 +108,6 @@
         <div class="glass-panel p-6 space-y-4">
           <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
             <h3 class="text-sm font-mono font-bold text-white uppercase">Active Device Sessions</h3>
-            <button @click="logoutAllOthers" class="text-[10px] btn-neon-violet px-2.5 py-1">Log Out All Others</button>
           </div>
 
           <div class="space-y-3">
@@ -71,17 +127,13 @@
           </div>
         </div>
       </div>
-    </main>
 
-    <Footer />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import Navbar from '../components/Navbar.vue'
-import Footer from '../components/Footer.vue'
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
@@ -89,7 +141,16 @@ const authStore = useAuthStore()
 const form = ref({
   full_name: authStore.user?.full_name || '',
   student_id: authStore.user?.student_id || '',
-  bio: authStore.user?.bio || ''
+  academic_year: authStore.user?.academic_year || 'I',
+  department: authStore.user?.department || '',
+  bio: authStore.user?.bio || '',
+  gmail: authStore.user?.gmail || '',
+  phone_number: authStore.user?.phone_number || '',
+  website_url: authStore.user?.website_url || '',
+  github_url: authStore.user?.github_url || '',
+  linkedin_url: authStore.user?.linkedin_url || '',
+  tryhackme_url: authStore.user?.tryhackme_url || '',
+  htb_url: authStore.user?.htb_url || ''
 })
 
 const devices = ref([])

@@ -1,8 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col justify-between">
-    <Navbar />
-
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full space-y-8">
+  <div class="space-y-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 class="text-3xl font-extrabold text-white flex items-center gap-3">
@@ -27,8 +24,8 @@
       <!-- Search Bar -->
       <div class="glass-panel p-4 flex flex-col sm:flex-row gap-4 items-center">
         <div class="relative flex-1 w-full">
-          <input v-model="searchQuery" @input="fetchStudents" type="text" placeholder="Search by name, student ID, email, or username..." class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:border-cyan-500 focus:outline-none pl-10" />
-          <svg class="w-5 h-5 text-slate-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <input v-model="searchQuery" @input="fetchStudents" type="text" placeholder="Search by name, student ID, email, or username..." class="w-full bg-slate-900 border border-slate-700/80 rounded-xl pr-4 !pl-11 py-2.5 text-sm text-white focus:border-cyan-500 focus:outline-none" />
+          <svg class="w-5 h-5 text-slate-500 absolute left-3.5 top-3 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
@@ -47,7 +44,7 @@
         <div v-for="student in students" :key="student.id" class="glass-panel p-6 space-y-4 hover:border-cyan-500/40 transition-all flex flex-col justify-between">
           <div class="space-y-4">
             <div class="flex items-center space-x-4">
-              <img :src="student.avatar_url || '/uploads/avatars/default.png'" class="w-14 h-14 rounded-2xl object-cover border border-cyan-500/30" />
+              <img :src="student.avatar_url || defaultAvatarSvg" @error="(e) => e.target.src = defaultAvatarSvg" class="w-14 h-14 rounded-2xl object-cover border border-cyan-500/30" />
               <div class="min-w-0 flex-1">
                 <h3 class="font-bold text-white text-base truncate">{{ student.full_name || student.username }}</h3>
                 <p class="text-xs font-mono text-cyan-400">@{{ student.username }}</p>
@@ -79,22 +76,20 @@
           </div>
         </div>
       </div>
-    </main>
 
-    <Footer />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import Navbar from '../components/Navbar.vue'
-import Footer from '../components/Footer.vue'
 
 const searchQuery = ref('')
 const activeLevel = ref('all')
 const students = ref([])
 const loading = ref(true)
+
+const defaultAvatarSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230b0e14'/><circle cx='50' cy='38' r='20' fill='%231f293d' stroke='%239fef00' stroke-width='2'/><path d='M20,85 C20,62 35,55 50,55 C65,55 80,62 80,85 Z' fill='%231f293d' stroke='%239fef00' stroke-width='2'/></svg>"
 
 const fetchStudents = async () => {
   loading.value = true

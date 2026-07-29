@@ -25,6 +25,8 @@ def mark_notification_read(note_id):
 @notifications_bp.route('/read-all', methods=['POST'])
 @require_auth
 def mark_all_notifications_read():
-    Notification.query.filter_by(user_id=g.current_user.id, is_read=False).update({'is_read': True})
+    notes = Notification.query.filter_by(user_id=g.current_user.id, is_read=False).all()
+    for n in notes:
+        n.is_read = True
     db.session.commit()
     return jsonify({'message': 'All notifications marked as read'}), 200

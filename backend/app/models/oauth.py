@@ -1,8 +1,7 @@
 import time
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
+from app.models import db
 
-db = SQLAlchemy()
 
 class OAuth2Client(db.Model):
     __tablename__ = 'oauth2_clients'

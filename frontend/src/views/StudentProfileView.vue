@@ -1,8 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col justify-between">
-    <Navbar />
-
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full space-y-8">
+  <div class="space-y-8">
       <div v-if="loading" class="text-center py-16 text-slate-500 font-mono text-sm">
         Loading student structured profile...
       </div>
@@ -68,9 +65,22 @@
           </div>
 
           <div class="glass-panel p-6 space-y-4">
-            <h3 class="text-sm font-mono font-bold uppercase text-white border-b border-slate-800 pb-2">Account Meta</h3>
+            <h3 class="text-sm font-mono font-bold uppercase text-white border-b border-slate-800 pb-2">Academic & Contact Info</h3>
             <div class="space-y-3 text-xs font-mono">
               <div>
+                <span class="text-slate-500 block">Academic Year:</span>
+                <span class="text-cyan-400 font-bold">Year {{ profile.overview.academic_year || 'N/A' }}</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block">Department:</span>
+                <span class="text-white">{{ profile.overview.department || 'Cyber Security' }}</span>
+              </div>
+              <div class="pt-2 border-t border-slate-800/80">
+                <span class="text-amber-400 font-bold block mb-1">🔒 Private Contact Info (Admins/Teachers)</span>
+                <p class="text-slate-300">📧 Gmail: <span class="text-white font-semibold">{{ profile.overview.gmail || profile.overview.email }}</span></p>
+                <p class="text-slate-300 mt-1">📱 Phone: <span class="text-white font-semibold">{{ profile.overview.phone_number || 'Not provided' }}</span></p>
+              </div>
+              <div class="pt-2 border-t border-slate-800/80">
                 <span class="text-slate-500 block">Status:</span>
                 <span class="text-emerald-400 font-bold uppercase">{{ profile.overview.status }}</span>
               </div>
@@ -183,18 +193,15 @@
           </div>
         </div>
       </div>
-    </main>
 
-    <Footer />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue'
+import { useRoute } from 'vue-router'
+
 import axios from 'axios'
-import Navbar from '../components/Navbar.vue'
-import Footer from '../components/Footer.vue'
 
 const route = useRoute()
 const activeTab = ref('overview')

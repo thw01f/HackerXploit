@@ -1,8 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col justify-between">
-    <Navbar />
-
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full space-y-8">
+  <div class="space-y-8">
       <div>
         <span class="px-2.5 py-1 rounded bg-purple-950 text-purple-400 font-mono text-xs font-bold uppercase">ADMIN ONLY</span>
         <h1 class="text-3xl font-extrabold text-white mt-2">Password Reset Requests</h1>
@@ -43,17 +40,13 @@
           <button @click="generatedCode = null" class="btn-neon-cyan text-xs py-2 px-6">Close</button>
         </div>
       </div>
-    </main>
 
-    <Footer />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import Navbar from '../components/Navbar.vue'
-import Footer from '../components/Footer.vue'
 
 const requests = ref([])
 const generatedCode = ref(null)

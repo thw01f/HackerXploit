@@ -13,8 +13,10 @@ def get_messages():
     channel = request.args.get('channel', 'general')
     limit = int(request.args.get('limit', 50))
     messages = ChatMessage.query.filter_by(channel=channel)\
-        .order_by(ChatMessage.timestamp.asc())\
+        .order_by(ChatMessage.timestamp.desc())\
         .limit(limit).all()
+
+    messages.reverse()
 
     # Check if general chat toggle is active
     toggle = SiteFeatureToggle.query.first()
@@ -36,7 +38,7 @@ def get_messages():
 
 @chat_bp.route('/messages', methods=['POST'])
 @require_auth
-@limiter.limit("10 per minute")
+@limiter.limit("30 per minute")
 def post_message():
     channel = request.json.get('channel', 'general')
     content = request.json.get('content', '').strip()
@@ -62,6 +64,12 @@ def post_message():
     payload['sender_username'] = g.current_user.username
     payload['sender_avatar'] = g.current_user.avatar_url
     payload['sender_role'] = g.current_user.role
+
+    try:
+        from app import socketio
+        socketio.emit('new_message', payload, room=channel)
+    except Exception as e:
+        pass
 
     return jsonify(payload), 201
 

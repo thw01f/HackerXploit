@@ -1,102 +1,114 @@
 <template>
-  <div class="container py-4">
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-info" role="status"></div>
-      <p class="mt-2 text-muted">Loading member portfolio...</p>
-    </div>
+  <div class="min-h-screen flex flex-col justify-between bg-[#0b0e14]">
+    <Navbar />
 
-    <div v-else-if="error" class="card card-custom p-5 text-center">
-      <div class="mb-3 text-warning">
-        <i class="bi bi-shield-lock display-1"></i>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full space-y-8">
+      
+      <!-- Loading State -->
+      <div v-if="loading" class="py-16 text-center font-mono text-sm text-slate-500">
+        Loading member portfolio...
       </div>
-      <h3 class="fw-bold text-white">Private Profile</h3>
-      <p class="text-muted fs-5 mb-4">{{ error }}</p>
-      <div>
-        <router-link to="/" class="btn btn-cyber">Return to Home</router-link>
-      </div>
-    </div>
 
-    <div v-else-if="profile" class="row g-4">
-      <!-- Member Header Banner -->
-      <div class="col-12">
-        <div class="card card-custom p-4 border-info">
-          <div class="d-flex align-items-center flex-wrap gap-4">
-            <div class="avatar-box bg-dark border border-info rounded-circle d-flex align-items-center justify-content-center text-info fw-bold fs-2" style="width: 80px; height: 80px;">
+      <!-- Private Profile Error State -->
+      <div v-else-if="error" class="glass-panel p-12 text-center max-w-lg mx-auto space-y-4 border border-amber-500/40 bg-[#111927]">
+        <div class="text-4xl">🔒</div>
+        <h3 class="font-mono font-bold text-xl text-white">Private Profile</h3>
+        <p class="text-xs font-mono text-slate-400">{{ error }}</p>
+        <router-link to="/" class="btn-htb text-xs font-mono py-2 px-5 inline-block">Return to Home</router-link>
+      </div>
+
+      <!-- Public Profile Layout -->
+      <div v-else-if="profile" class="space-y-8">
+        
+        <!-- Header Banner Card -->
+        <div class="glass-panel p-8 bg-[#111927] border border-[#9fef00]/40 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div class="flex items-center space-x-6">
+            <div class="w-20 h-20 rounded-xl bg-[#090d16] border-2 border-[#9fef00]/60 flex items-center justify-center text-[#9fef00] font-mono font-extrabold text-3xl shadow-lg">
               {{ profile.user.username.charAt(0).toUpperCase() }}
             </div>
             <div>
-              <div class="d-flex align-items-center gap-2">
-                <h2 class="fw-bold text-white mb-0">{{ profile.user.username }}</h2>
-                <span class="badge bg-primary text-uppercase">{{ profile.user.role }}</span>
+              <div class="flex items-center space-x-3">
+                <h2 class="font-mono font-extrabold text-2xl text-white">@{{ profile.user.username }}</h2>
+                <span class="text-[10px] font-mono font-bold uppercase bg-[#151f30] text-[#00f0ff] px-2.5 py-0.5 rounded border border-[#00f0ff]/30">
+                  {{ profile.user.role }}
+                </span>
               </div>
-              <p class="text-muted mb-0 mt-1">
-                <i class="bi bi-calendar3 me-1"></i> Member Since {{ profile.user.created_at ? new Date(profile.user.created_at).toLocaleDateString() : 'N/A' }}
+              <p class="text-xs font-mono text-slate-400 mt-1">
+                Member Since {{ profile.user.created_at ? new Date(profile.user.created_at).toLocaleDateString() : 'N/A' }}
               </p>
             </div>
+          </div>
 
-            <div class="ms-auto d-flex gap-3">
-              <div class="text-center px-3 py-2 bg-dark rounded border border-secondary">
-                <div class="fs-4 fw-bold text-info">{{ profile.stats.total_courses_completed }}</div>
-                <div class="text-muted extra-small">COURSES</div>
-              </div>
-              <div v-if="profile.stats.total_certificates !== null" class="text-center px-3 py-2 bg-dark rounded border border-secondary">
-                <div class="fs-4 fw-bold text-warning">{{ profile.stats.total_certificates }}</div>
-                <div class="text-muted extra-small">CERTS</div>
-              </div>
-              <div v-if="profile.stats.total_activity_hours !== null" class="text-center px-3 py-2 bg-dark rounded border border-secondary">
-                <div class="fs-4 fw-bold text-success">{{ profile.stats.total_activity_hours }}h</div>
-                <div class="text-muted extra-small">LAB TIME</div>
-              </div>
+          <div class="flex items-center space-x-4">
+            <div class="bg-[#090d16] px-4 py-2.5 rounded-xl border border-[#1f293d] text-center">
+              <span class="block text-xl font-extrabold font-mono text-[#00f0ff]">{{ profile.stats.total_courses_completed }}</span>
+              <span class="text-[10px] font-mono text-slate-400 uppercase">COURSES</span>
+            </div>
+            <div v-if="profile.stats.total_certificates !== null" class="bg-[#090d16] px-4 py-2.5 rounded-xl border border-[#1f293d] text-center">
+              <span class="block text-xl font-extrabold font-mono text-amber-400">{{ profile.stats.total_certificates }}</span>
+              <span class="text-[10px] font-mono text-slate-400 uppercase">CERTS</span>
+            </div>
+            <div v-if="profile.stats.total_activity_hours !== null" class="bg-[#090d16] px-4 py-2.5 rounded-xl border border-[#1f293d] text-center">
+              <span class="block text-xl font-extrabold font-mono text-[#9fef00]">{{ profile.stats.total_activity_hours }}h</span>
+              <span class="text-[10px] font-mono text-slate-400 uppercase">LAB TIME</span>
             </div>
           </div>
         </div>
+
+        <!-- Content Grid (2 Columns) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          <!-- Left Column: Courses & Certificates -->
+          <div class="lg:col-span-2 space-y-6">
+            <div class="glass-panel p-6 bg-[#111927] border border-[#1f293d] space-y-4">
+              <h3 class="font-mono font-bold text-base text-white uppercase border-b border-[#1f293d] pb-3">📚 Completed Curriculum</h3>
+              <div v-if="profile.completed_courses.length === 0" class="text-xs font-mono text-slate-500 py-4 text-center">
+                No completed courses yet.
+              </div>
+              <div v-else class="space-y-3">
+                <div v-for="course in profile.completed_courses" :key="course.id" class="p-3.5 rounded-lg bg-[#090d16] border border-[#1f293d]">
+                  <h4 class="font-mono font-bold text-sm text-[#00f0ff]">{{ course.title }}</h4>
+                  <p class="text-xs text-slate-400 mt-1 leading-relaxed">{{ course.description }}</p>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="profile.certificates && profile.certificates.length > 0" class="glass-panel p-6 bg-[#111927] border border-[#1f293d] space-y-4">
+              <h3 class="font-mono font-bold text-base text-white uppercase border-b border-[#1f293d] pb-3">🏆 Verified Platform Certificates</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div v-for="cert in profile.certificates" :key="cert.id" class="p-4 rounded-lg bg-[#090d16] border border-[#9fef00]/30 space-y-1">
+                  <span class="block font-mono font-bold text-xs text-[#9fef00]">Certificate #{{ cert.cert_id }}</span>
+                  <span class="block font-mono text-[10px] text-slate-400">Issued: {{ new Date(cert.issued_at).toLocaleDateString() }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Trophy Case -->
+          <div class="glass-panel p-6 bg-[#111927] border border-[#1f293d] space-y-4 self-start">
+            <h3 class="font-mono font-bold text-base text-white uppercase border-b border-[#1f293d] pb-3">🏆 Trophy Case</h3>
+            <div v-if="profile.trophy_case.length === 0" class="text-xs font-mono text-slate-500 py-4 text-center">
+              No competition records found.
+            </div>
+            <div v-else class="space-y-3">
+              <div v-for="(t, idx) in profile.trophy_case" :key="idx" class="p-3 rounded-lg bg-[#090d16] border border-[#1f293d] flex items-center justify-between">
+                <div>
+                  <h4 class="font-mono font-bold text-xs text-white">{{ t.competition_title }}</h4>
+                  <span class="text-[10px] font-mono text-slate-400 uppercase">{{ t.category }}</span>
+                </div>
+                <span class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded" :class="t.result === 'winner' ? 'bg-amber-400 text-black' : 'bg-[#151f30] text-[#00f0ff] border border-[#00f0ff]/30'">
+                  {{ t.result }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
       </div>
+    </main>
 
-      <!-- Left Column: Courses & Certificates -->
-      <div class="col-md-7">
-        <div class="card card-custom p-4 mb-4">
-          <h5 class="fw-bold text-white mb-3"><i class="bi bi-journal-code text-info me-2"></i>Completed Curriculum</h5>
-          <div v-if="profile.completed_courses.length === 0" class="text-muted small italic">No completed courses yet.</div>
-          <div v-else class="list-group list-group-flush bg-transparent">
-            <div v-for="course in profile.completed_courses" :key="course.id" class="list-group-item bg-transparent text-white px-0 py-3 border-secondary">
-              <div class="fw-bold text-info fs-6">{{ course.title }}</div>
-              <p class="text-muted small mb-0 mt-1">{{ course.description }}</p>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="profile.certificates && profile.certificates.length > 0" class="card card-custom p-4">
-          <h5 class="fw-bold text-white mb-3"><i class="bi bi-award text-warning me-2"></i>Verified Platform Certificates</h5>
-          <div class="row g-3">
-            <div v-for="cert in profile.certificates" :key="cert.id" class="col-sm-6">
-              <div class="p-3 bg-dark rounded border border-secondary">
-                <div class="fw-bold text-white small">Certificate #{{ cert.cert_id }}</div>
-                <div class="text-muted extra-small mt-1">Issued: {{ new Date(cert.issued_at).toLocaleDateString() }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Column: Trophy Case -->
-      <div class="col-md-5">
-        <div class="card card-custom p-4">
-          <h5 class="fw-bold text-white mb-3"><i class="bi bi-trophy text-warning me-2"></i>Competition Trophy Case</h5>
-          <div v-if="profile.trophy_case.length === 0" class="text-muted small">No competition participations yet.</div>
-          <div v-else class="d-flex flex-column gap-3">
-            <div v-for="(t, idx) in profile.trophy_case" :key="idx" class="p-3 bg-dark rounded border border-secondary d-flex align-items-center justify-content-between">
-              <div>
-                <div class="fw-bold text-white">{{ t.competition_title }}</div>
-                <div class="text-muted extra-small text-uppercase">{{ t.category }}</div>
-              </div>
-              <span :class="['badge', t.result === 'winner' ? 'bg-warning text-dark' : 'bg-secondary']">
-                {{ t.result }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <Footer />
   </div>
 </template>
 
@@ -104,6 +116,8 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
+import Navbar from '../components/Navbar.vue'
+import Footer from '../components/Footer.vue'
 
 const route = useRoute()
 const loading = ref(true)
@@ -119,6 +133,7 @@ const fetchPublicProfile = async () => {
   } catch (err) {
     error.value = err.response?.data?.error || 'Unable to access public profile.'
   } finally {
+
     loading.value = false
   }
 }
@@ -127,19 +142,3 @@ onMounted(() => {
   fetchPublicProfile()
 })
 </script>
-
-<style scoped>
-.card-custom {
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(0, 240, 255, 0.2);
-  backdrop-filter: blur(10px);
-}
-.extra-small {
-  font-size: 0.75rem;
-}
-.btn-cyber {
-  background: #00F0FF;
-  color: #0F172A;
-  font-weight: 600;
-}
-</style>

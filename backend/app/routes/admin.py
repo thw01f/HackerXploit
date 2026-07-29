@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, g
 from app.models import db, User, DeviceSession, LoginAttempt, AuditLog, PasswordResetRequest, PasswordResetCode, ProfileFieldDefinition
 from app.utils.decorators import require_auth, require_role, require_root, log_audit
+from app.services.ctfd_sync import sync_user_to_ctfd, delete_user_from_ctfd
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -22,13 +23,28 @@ def list_users():
 @admin_bp.route('/users/<int:user_id>/approve', methods=['POST'])
 @require_role('teacher', 'admin')
 def approve_user(user_id):
+    data = request.get_json(silent=True) or {}
     user = User.query.get_or_404(user_id)
+    
+    assigned_role = data.get('assigned_role')
+    if assigned_role in ['member', 'teacher']:
+        user.role = assigned_role
+
     user.status = 'approved'
+    user.is_first_login = True
+    user.onboarding_completed = False
     user.approved_by = g.current_user.id
     user.approved_at = datetime.utcnow()
     db.session.commit()
 
-    log_audit('approved', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Approved by {g.current_user.username}")
+    # Auto-provision user into CTFd database
+    try:
+        from app.services.ctfd_sync import sync_user_to_ctfd
+        sync_user_to_ctfd(user)
+    except Exception as e:
+        print(f"CTFd auto-provision note: {e}")
+
+    log_audit('approved', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Approved as {user.role} by {g.current_user.username}")
     return jsonify(user.to_dict()), 200
 
 @admin_bp.route('/users/<int:user_id>/reject', methods=['POST'])
@@ -69,6 +85,46 @@ def reinstate_user(user_id):
 
     log_audit('reinstated', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Reinstated by {g.current_user.username}")
     return jsonify(user.to_dict()), 200
+
+@admin_bp.route('/users/<int:user_id>', methods=['DELETE'])
+@require_role('admin')
+def delete_user_account(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.is_root_admin:
+        return jsonify({'error': 'Root Admin account cannot be deleted'}), 403
+    if user.id == g.current_user.id:
+        return jsonify({'error': 'You cannot delete your own active admin account'}), 400
+
+    username = user.username
+    email = user.email
+    # Terminate sessions
+    DeviceSession.query.filter_by(user_id=user_id).delete()
+    db.session.delete(user)
+    db.session.commit()
+
+    # Automatically purge user from CTFd
+    delete_user_from_ctfd(username, email)
+
+    log_audit('USER_DELETED', target_type='User', target_id=user_id, notes=f"User @{username} permanently deleted by {g.current_user.username}")
+    return jsonify({'message': f'User @{username} deleted successfully'}), 200
+
+@admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
+@require_role('admin')
+def admin_force_reset_password(user_id):
+    user = User.query.get_or_404(user_id)
+    data = request.get_json() or {}
+    new_password = data.get('new_password', '').strip()
+
+    if not new_password or len(new_password) < 6:
+        return jsonify({'error': 'Password must be at least 6 characters long'}), 400
+
+    user.set_password(new_password)
+    # Invalidate existing active sessions to force re-authentication
+    DeviceSession.query.filter_by(user_id=user_id, is_active=True).update({'is_active': False})
+    db.session.commit()
+
+    log_audit('ADMIN_PASSWORD_RESET', target_type='User', target_id=user_id, notes=f"Password for @{user.username} reset by Admin {g.current_user.username}")
+    return jsonify({'message': f'Password for @{user.username} has been reset successfully'}), 200
 
 # -------------------------------------------------------------------
 # 2. Site-wide Audit Log (/admin/audit-log) - Admin only
@@ -234,6 +290,47 @@ def transfer_root():
     log_audit('TRANSFER_ROOT_STATUS', target_type='User', target_id=target_user_id, target_user_id=target_user_id, notes=f"Root admin transferred to {target_user.username}")
     return jsonify({'message': f'Root admin status transferred to {target_user.username}'}), 200
 
+@admin_bp.route('/users/<int:user_id>/promote-teacher', methods=['POST'])
+@require_role('admin')
+def promote_to_teacher(user_id):
+    data = request.get_json() or {}
+    user = User.query.get_or_404(user_id)
+
+    department = data.get('department', '').strip()
+    designation = data.get('designation', '').strip()
+    staff_id = data.get('staff_id', '').strip()
+    notes = data.get('notes', '').strip()
+
+    user.role = 'teacher'
+    user.status = 'approved'
+    
+    if department:
+        user.bio = f"Department: {department} | Designation: {designation or 'Faculty Member'}"
+    if staff_id:
+        user.student_id = staff_id
+
+    # Create Notification for the user
+    try:
+        from app.models.chat import Notification
+        notif = Notification(
+            user_id=user.id,
+            type='system',
+            title='🎓 Faculty Role Assigned',
+            message=f'Administrator promoted you to Faculty/Teacher status. Department: {department or "General"}. Welcome to the Faculty team!',
+            link='/teacher/students'
+        )
+        db.session.add(notif)
+    except Exception as e:
+        print(f"Notification error: {e}")
+
+    db.session.commit()
+
+    log_audit('PROMOTE_TEACHER', target_type='User', target_id=user.id, target_user_id=user.id, notes=f"Promoted {user.username} to teacher. Dept: {department}, Staff ID: {staff_id}")
+    return jsonify({
+        'message': f'User {user.username} promoted to Teacher successfully',
+        'user': user.to_dict()
+    }), 200
+
 # -------------------------------------------------------------------
 # 6. Flexible Custom Profile Fields (/admin/profile-fields) - Admin Only
 # -------------------------------------------------------------------
@@ -251,6 +348,7 @@ def create_profile_field():
     label = data.get('label', '').strip()
     field_type = data.get('field_type', 'text')
     options = data.get('options', [])
+    target_role = data.get('target_role', 'all')
     required = bool(data.get('required', False))
 
     if not field_key or not label:
@@ -264,6 +362,7 @@ def create_profile_field():
         label=label,
         field_type=field_type,
         options=options,
+        target_role=target_role,
         required=required,
         active=True,
         created_by=g.current_user.id
@@ -271,8 +370,41 @@ def create_profile_field():
     db.session.add(pf)
     db.session.commit()
 
-    log_audit('PROFILE_FIELD_CREATED', target_type='ProfileFieldDefinition', target_id=pf.id, notes=f"Created custom profile field {field_key}")
-    return jsonify(pf.to_dict()), 201
+    # Dispatch automatic notifications based on target_role
+    notified_count = 0
+    try:
+        from app.models.chat import Notification
+        query = User.query.filter_by(status='approved')
+        if target_role == 'member':
+            query = query.filter_by(role='member')
+        elif target_role == 'teacher':
+            query = query.filter(User.role.in_(['teacher', 'instructor']))
+        elif target_role == 'all':
+            query = query.filter(User.role.in_(['member', 'teacher', 'instructor', 'admin']))
+
+        target_users = query.all()
+        target_label = "Members" if target_role == 'member' else "Teachers/Faculty" if target_role == 'teacher' else "All Platform Users"
+
+        for u in target_users:
+            notif = Notification(
+                user_id=u.id,
+                type='system',
+                title=f'📢 Action Required: New Profile Field Added',
+                message=f'Administrator added a new profile field ({label}) for {target_label}. Please update your Profile Settings.',
+                link='/profile'
+            )
+            db.session.add(notif)
+            notified_count += 1
+
+        db.session.commit()
+    except Exception as e:
+        print(f"Notification dispatch warning: {e}")
+
+    log_audit('PROFILE_FIELD_CREATED', target_type='ProfileFieldDefinition', target_id=pf.id, notes=f"Created custom profile field {field_key} targeting {target_role} ({notified_count} notified)")
+
+    result = pf.to_dict()
+    result['notified_count'] = notified_count
+    return jsonify(result), 201
 
 @admin_bp.route('/profile-fields/<int:field_id>', methods=['PUT'])
 @require_role('admin')
@@ -286,6 +418,8 @@ def update_profile_field(field_id):
         pf.field_type = data['field_type']
     if 'options' in data:
         pf.options = data['options']
+    if 'target_role' in data:
+        pf.target_role = data['target_role']
     if 'required' in data:
         pf.required = bool(data['required'])
     if 'active' in data:
@@ -294,6 +428,16 @@ def update_profile_field(field_id):
     db.session.commit()
     log_audit('PROFILE_FIELD_UPDATED', target_type='ProfileFieldDefinition', target_id=field_id, notes=f"Updated profile field {pf.field_key}")
     return jsonify(pf.to_dict()), 200
+
+@admin_bp.route('/profile-fields/<int:field_id>', methods=['DELETE'])
+@require_role('admin')
+def delete_profile_field(field_id):
+    pf = ProfileFieldDefinition.query.get_or_404(field_id)
+    key = pf.field_key
+    db.session.delete(pf)
+    db.session.commit()
+    log_audit('PROFILE_FIELD_DELETED', target_type='ProfileFieldDefinition', target_id=field_id, notes=f"Deleted profile field {key}")
+    return jsonify({'message': f'Profile field {key} deleted successfully'}), 200
 
 # -------------------------------------------------------------------
 # 7. Admin Session Force-Kick (/admin/security/sessions) - Admin Only
@@ -538,11 +682,15 @@ def update_site_settings():
 
     if 'general_chat_enabled' in data:
         toggle.general_chat_enabled = bool(data['general_chat_enabled'])
+    if 'allowed_email_domains' in data:
+        toggle.allowed_email_domains = str(data['allowed_email_domains']).strip()
+    if 'password_min_length' in data:
+        toggle.password_min_length = int(data['password_min_length'])
 
     toggle.updated_by_id = g.current_user.id
     db.session.commit()
 
-    log_audit('SITE_SETTINGS_UPDATED', notes=f"General Chat Enabled: {toggle.general_chat_enabled}")
+    log_audit('SITE_SETTINGS_UPDATED', notes=f"Updated site settings. Allowed domains: {toggle.allowed_email_domains}, Min pass length: {toggle.password_min_length}")
     return jsonify(toggle.to_dict()), 200
 
 

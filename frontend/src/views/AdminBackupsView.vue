@@ -1,95 +1,102 @@
 <template>
-  <div class="container py-4">
-    <div class="d-flex align-items-center justify-content-between mb-4">
+  <div class="space-y-8">
+    <AdminSubNav />
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#1f293d] pb-6">
       <div>
-        <h3 class="fw-bold text-white mb-1"><i class="bi bi-database-fill-gear text-info me-2"></i>Backup & Restore Engine</h3>
-        <p class="text-muted mb-0">System snapshots, scheduled Celery Beat retention (keeps last 14), and database/media restoration.</p>
+        <h1 class="text-3xl font-extrabold text-white font-mono">Backup & Restore Engine</h1>
+        <p class="text-slate-400 text-sm mt-1">System snapshots, scheduled Celery Beat retention (keeps last 14), and database/media restoration.</p>
       </div>
-      <button class="btn btn-cyber" :disabled="creating" @click="createBackupNow">
-        <i class="bi bi-cloud-arrow-up-fill me-1"></i> {{ creating ? 'Creating Snapshot...' : 'Backup Now' }}
+      <button class="btn-htb text-xs font-mono py-2.5 px-5" :disabled="creating" @click="createBackupNow">
+        ⚡ {{ creating ? 'Creating Snapshot...' : 'Backup Now' }}
       </button>
     </div>
 
-    <div class="card card-custom p-4">
-      <h5 class="fw-bold text-white mb-3">System Backup Archives</h5>
+      <!-- Main Backup Archives Table Card -->
+      <div class="glass-panel p-6 bg-[#111927] border border-[#1f293d] space-y-4">
+        <h3 class="font-mono font-bold text-base text-white uppercase border-b border-[#1f293d] pb-3">System Backup Archives</h3>
 
-      <div v-if="loading" class="text-center py-4">
-        <div class="spinner-border text-info" role="status"></div>
-      </div>
-
-      <div v-else-if="backups.length === 0" class="text-muted text-center py-4">
-        No backups recorded yet. Click "Backup Now" to create your first manual system snapshot.
-      </div>
-
-      <div v-else class="table-responsive">
-        <table class="table table-dark table-hover align-middle mb-0">
-          <thead>
-            <tr class="text-muted extra-small text-uppercase">
-              <th>Filename</th>
-              <th>Type</th>
-              <th>Created By</th>
-              <th>Created At</th>
-              <th>Size</th>
-              <th class="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="b in backups" :key="b.id">
-              <td class="fw-bold text-info fs-6">
-                <i class="bi bi-file-earmark-zip me-2 text-warning"></i>{{ b.filename }}
-              </td>
-              <td>
-                <span :class="['badge', b.type === 'manual' ? 'bg-primary' : 'bg-success']">
-                  {{ b.type }}
-                </span>
-              </td>
-              <td class="text-white">{{ b.created_by_username }}</td>
-              <td class="text-muted small">{{ new Date(b.created_at).toLocaleString() }}</td>
-              <td class="text-muted small">{{ (b.size_bytes / 1024 / 1024).toFixed(2) }} MB</td>
-              <td class="text-end">
-                <button class="btn btn-sm btn-outline-info me-2" @click="downloadBackup(b.id)">
-                  <i class="bi bi-download"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-warning me-2" @click="openRestoreModal(b)">
-                  <i class="bi bi-arrow-counterclockwise"></i> Restore
-                </button>
-                <button class="btn btn-sm btn-outline-danger" @click="deleteBackup(b.id)">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Restore Confirmation Modal -->
-    <div v-if="showRestoreModal" class="modal-backdrop-custom d-flex align-items-center justify-content-center">
-      <div class="card card-custom p-4 max-w-md w-100 border-warning">
-        <h5 class="fw-bold text-warning mb-2"><i class="bi bi-exclamation-octagon-fill me-2"></i>Confirm System Restoration</h5>
-        <p class="text-muted small mb-3">
-          Restoring <strong>{{ selectedBackup?.filename }}</strong> will activate maintenance mode and overwrite current databases & uploaded files.
-        </p>
-
-        <div class="mb-3">
-          <label class="form-label text-white extra-small fw-bold">Type site name "HackerXploit" to confirm:</label>
-          <input type="text" v-model="siteNameConfirm" class="form-control bg-dark text-white border-warning" placeholder="HackerXploit">
+        <div v-if="loading" class="py-12 text-center font-mono text-sm text-slate-500">
+          Loading system backups...
         </div>
 
-        <div class="d-flex justify-content-end gap-2">
-          <button class="btn btn-sm btn-secondary" @click="showRestoreModal = false">Cancel</button>
-          <button class="btn btn-sm btn-warning" :disabled="siteNameConfirm !== 'HackerXploit' || restoring" @click="executeRestore">
-            {{ restoring ? 'Restoring System...' : 'Confirm & Restore System' }}
-          </button>
+        <div v-else-if="backups.length === 0" class="py-12 text-center font-mono text-xs text-slate-400">
+          No backups recorded yet. Click "Backup Now" to create your first manual system snapshot.
+        </div>
+
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-left font-mono text-xs">
+            <thead>
+              <tr class="border-b border-[#1f293d] text-slate-400 uppercase text-[10px]">
+                <th class="py-3 px-4">Filename</th>
+                <th class="py-3 px-4">Type</th>
+                <th class="py-3 px-4">Created By</th>
+                <th class="py-3 px-4">Created At</th>
+                <th class="py-3 px-4">Size</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#1f293d]">
+              <tr v-for="b in backups" :key="b.id" class="hover:bg-[#151f30] transition-colors">
+                <td class="py-3 px-4 font-bold text-[#00f0ff]">
+                  📦 {{ b.filename }}
+                </td>
+                <td class="py-3 px-4">
+                  <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold" :class="b.type === 'manual' ? 'bg-[#151f30] text-[#9fef00] border border-[#9fef00]/30' : 'bg-slate-800 text-slate-300'">
+                    {{ b.type }}
+                  </span>
+                </td>
+                <td class="py-3 px-4 text-slate-200">{{ b.created_by_username }}</td>
+                <td class="py-3 px-4 text-slate-400">{{ new Date(b.created_at).toLocaleString() }}</td>
+                <td class="py-3 px-4 text-slate-400">{{ (b.size_bytes / 1024 / 1024).toFixed(2) }} MB</td>
+                <td class="py-3 px-4 text-right space-x-2">
+                  <button @click="downloadBackup(b.id)" class="btn-ghost text-[11px] py-1 px-3">
+                    📥 Download
+                  </button>
+                  <button @click="openRestoreModal(b)" class="btn-ghost text-[11px] py-1 px-3 text-amber-400 border-amber-400/40">
+                    🔄 Restore
+                  </button>
+                  <button @click="deleteBackup(b.id)" class="btn-ghost text-[11px] py-1 px-3 text-red-400 border-red-500/40">
+                    🗑️ Delete
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
+
+      <!-- Restore Confirmation Modal -->
+      <div v-if="showRestoreModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="w-full max-w-md glass-panel p-6 rounded-xl border border-amber-500/50 bg-[#111927] space-y-4">
+          <h3 class="font-mono font-bold text-lg text-amber-400">⚠️ Confirm System Restoration</h3>
+          <p class="text-xs font-mono text-slate-300 leading-relaxed">
+            Restoring <strong>{{ selectedBackup?.filename }}</strong> will activate maintenance mode and overwrite current databases & uploaded files.
+          </p>
+
+          <div class="space-y-1.5">
+            <label class="block text-xs font-mono text-slate-400 uppercase">Type site name "HackerXploit" to confirm:</label>
+            <input type="text" v-model="siteNameConfirm" placeholder="HackerXploit" class="w-full" />
+          </div>
+
+          <div class="flex justify-end space-x-3 pt-2">
+            <button @click="showRestoreModal = false" class="btn-ghost text-xs font-mono py-2 px-4">Cancel</button>
+            <button :disabled="siteNameConfirm !== 'HackerXploit' || restoring" @click="executeRestore" class="btn-ghost text-xs font-mono text-amber-400 border-amber-500/50 py-2 px-4">
+              {{ restoring ? 'Restoring System...' : 'Confirm & Restore System' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import AdminSubNav from '../components/AdminSubNav.vue'
 
 const loading = ref(true)
 const creating = ref(false)
@@ -100,14 +107,10 @@ const selectedBackup = ref(null)
 const siteNameConfirm = ref('')
 const restoring = ref(false)
 
-const getHeaders = () => ({
-  headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-})
-
 const fetchBackups = async () => {
   loading.value = true
   try {
-    const res = await axios.get('/api/admin/backups', getHeaders())
+    const res = await axios.get('/api/admin/backups')
     backups.value = res.data.backups
   } catch (err) {
     console.error(err)
@@ -119,7 +122,7 @@ const fetchBackups = async () => {
 const createBackupNow = async () => {
   creating.value = true
   try {
-    await axios.post('/api/admin/backups/create', {}, getHeaders())
+    await axios.post('/api/admin/backups/create', {})
     await fetchBackups()
   } catch (err) {
     alert(err.response?.data?.error || 'Failed to create backup.')
@@ -135,7 +138,7 @@ const downloadBackup = (id) => {
 const deleteBackup = async (id) => {
   if (!confirm('Are you sure you want to delete this backup archive?')) return
   try {
-    await axios.delete(`/api/admin/backups/${id}`, getHeaders())
+    await axios.delete(`/api/admin/backups/${id}`)
     await fetchBackups()
   } catch (err) {
     alert(err.response?.data?.error || 'Failed to delete backup.')
@@ -154,7 +157,7 @@ const executeRestore = async () => {
     await axios.post('/api/admin/backups/restore', {
       site_name: siteNameConfirm.value,
       backup_id: selectedBackup.value.id
-    }, getHeaders())
+    })
     alert('System backup restored successfully!')
     showRestoreModal.value = false
     await fetchBackups()
@@ -169,31 +172,3 @@ onMounted(() => {
   fetchBackups()
 })
 </script>
-
-<style scoped>
-.card-custom {
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(0, 240, 255, 0.2);
-  backdrop-filter: blur(10px);
-}
-.btn-cyber {
-  background: #00F0FF;
-  color: #0F172A;
-  font-weight: 600;
-}
-.extra-small {
-  font-size: 0.75rem;
-}
-.modal-backdrop-custom {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.8);
-  z-index: 1050;
-}
-.max-w-md {
-  max-width: 450px;
-}
-</style>

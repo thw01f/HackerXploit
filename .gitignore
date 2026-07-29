@@ -6,3 +6,5 @@ dist/
 .pytest_cache/
 .env
 uploads/
+backend.log
+wiki_repo/

@@ -39,10 +39,13 @@ import IDCardView from '../views/IDCardView.vue'
 import VerifyIDCardView from '../views/VerifyIDCardView.vue'
 
 
+import OnboardingView from '../views/OnboardingView.vue'
+
 const routes = [
   { path: '/', name: 'landing', component: LandingView },
   { path: '/login', name: 'login', component: LoginView },
   { path: '/register', name: 'register', component: RegisterView },
+  { path: '/onboarding', name: 'onboarding', component: OnboardingView, meta: { requiresAuth: true } },
   { path: '/setup-admin', name: 'setup-admin', component: SetupAdminView, meta: { requiresAuth: true } },
   { path: '/forgot-password', name: 'forgot-password', component: ForgotPasswordView },
   { path: '/reset-password', name: 'reset-password', component: ResetPasswordView },
@@ -116,7 +119,7 @@ const routes = [
     path: '/inbox/compose', 
     name: 'inbox-compose', 
     component: InboxComposeView, 
-    meta: { requiresAuth: true, roles: ['teacher', 'admin', 'root_admin'] } 
+    meta: { requiresAuth: true } 
   },
   { 
     path: '/teacher/students', 
@@ -143,7 +146,8 @@ const routes = [
     meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
   },
   { 
-    path: '/admin/inbox-log', 
+    path: '/admin/inbox-logs',
+    alias: '/admin/inbox-log', 
     name: 'admin-inbox-log', 
     component: AdminInboxLogView, 
     meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
@@ -167,13 +171,15 @@ const routes = [
     meta: { requiresAuth: true, roles: ['admin', 'root_admin', 'teacher'] } 
   },
   { 
-    path: '/admin/security/login-activity', 
+    path: '/admin/security', 
+    alias: '/admin/security/login-activity',
     name: 'admin-security', 
     component: AdminSecurityView, 
     meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
   },
   { 
-    path: '/admin/audit-log', 
+    path: '/admin/audit-logs', 
+    alias: '/admin/audit-log',
     name: 'admin-audit-log', 
     component: AdminAuditLogView, 
     meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
@@ -191,7 +197,8 @@ const routes = [
     meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
   },
   { 
-    path: '/admin/manage-admins', 
+    path: '/admin/admins', 
+    alias: '/admin/manage-admins',
     name: 'admin-manage', 
     component: AdminAdminsView, 
     meta: { requiresAuth: true, rootOnly: true } 
@@ -242,8 +249,8 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: 'login', query: { redirect: to.fullPath } })
   }
 
-  if (authStore.user && authStore.user.is_first_login && to.name !== 'setup-admin' && to.name !== 'login') {
-    return next({ name: 'setup-admin' })
+  if (authStore.user && authStore.user.status === 'approved' && !authStore.user.is_root_admin && !authStore.user.onboarding_completed && to.name !== 'onboarding' && to.name !== 'login' && to.name !== 'setup-admin') {
+    return next({ name: 'onboarding' })
   }
 
   if (to.meta.rootOnly && !authStore.isRootAdmin) {

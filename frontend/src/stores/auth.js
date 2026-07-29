@@ -6,6 +6,7 @@ export const useAuthStore = defineStore('auth', {
     user: JSON.parse(localStorage.getItem('hx_user')) || null,
     token: localStorage.getItem('hx_token') || null,
     sessions: [],
+    publicSettings: { general_chat_enabled: true },
     loading: false,
     error: null
   }),
@@ -100,6 +101,16 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem('hx_token')
         localStorage.removeItem('hx_user')
         delete axios.defaults.headers.common['Authorization']
+      }
+    },
+
+    async fetchPublicSettings() {
+      try {
+        const res = await axios.get('/api/auth/public-settings')
+        this.publicSettings = res.data
+        return res.data
+      } catch (err) {
+        console.error('Failed to fetch public settings', err)
       }
     }
   }

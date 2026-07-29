@@ -13,8 +13,33 @@ def get_public_custom_fields():
     fields = ProfileFieldDefinition.query.filter_by(active=True).order_by(ProfileFieldDefinition.id.asc()).all()
     return jsonify({'fields': [f.to_dict() for f in fields]}), 200
 
+@auth_bp.route('/registration-config', methods=['GET'])
+def get_registration_config():
+    from app.models.moderation import SiteFeatureToggle
+    toggle = SiteFeatureToggle.query.first()
+    if not toggle:
+        toggle = SiteFeatureToggle()
+    return jsonify({
+        'allowed_email_domains': toggle.allowed_email_domains or "gmail.com,srm.edu.in,hackerxploit.org",
+        'min_password_length': toggle.password_min_length or 8,
+        'general_chat_enabled': toggle.general_chat_enabled if toggle else True
+    }), 200
+
+@auth_bp.route('/public-settings', methods=['GET'])
+def get_public_settings():
+    from app.models.moderation import SiteFeatureToggle
+    toggle = SiteFeatureToggle.query.first()
+    if not toggle:
+        toggle = SiteFeatureToggle()
+    return jsonify({
+        'general_chat_enabled': toggle.general_chat_enabled if toggle else True,
+        'allowed_email_domains': toggle.allowed_email_domains or "",
+        'min_password_length': toggle.password_min_length or 8
+    }), 200
+
 @auth_bp.route('/register', methods=['POST'])
 def register():
+    from app.models.moderation import SiteFeatureToggle
     data = request.get_json() or {}
     email = data.get('email', '').strip().lower()
     username = data.get('username', '').strip()
@@ -28,6 +53,24 @@ def register():
 
     if not email or not username or not password:
         return jsonify({'error': 'Email, Username, and Password are required'}), 400
+
+    # 1. Enforce Allowed Email Domains Restriction
+    toggle = SiteFeatureToggle.query.first()
+    if not toggle:
+        toggle = SiteFeatureToggle()
+
+    if toggle.allowed_email_domains and toggle.allowed_email_domains.strip() != '*':
+        allowed_list = [d.strip().lower() for d in toggle.allowed_email_domains.split(',') if d.strip()]
+        email_domain = email.split('@')[-1] if '@' in email else ''
+        if allowed_list and email_domain not in allowed_list:
+            return jsonify({
+                'error': f'Registration is restricted to authorized email domains: {", ".join(["@" + d for d in allowed_list])}'
+            }), 400
+
+    # 2. Enforce CTFd-Aligned Password Length Restriction
+    min_len = toggle.password_min_length or 8
+    if len(password) < min_len:
+        return jsonify({'error': f'Password must be at least {min_len} characters long'}), 400
 
     if User.query.filter((User.email == email) | (User.username == username)).first():
         return jsonify({'error': 'Email or Username already registered'}), 409
@@ -329,3 +372,65 @@ def reset_password():
     log_audit('PASSWORD_RESET_COMPLETED', target_type='User', target_id=user.id, target_user_id=user.id, notes="Password reset using admin-issued code")
 
     return jsonify({'message': 'Password reset successfully. You may now log in.'}), 200
+
+@auth_bp.route('/onboarding', methods=['POST'])
+@require_auth
+def complete_onboarding():
+    data = request.get_json() or {}
+    user = g.current_user
+    
+    spec_role = data.get('specialization_role', '').strip()
+    if spec_role in ['Security Analyst', 'Penetration Tester', 'Security Engineer']:
+        user.specialization_role = spec_role
+
+    if data.get('full_name'):
+        user.full_name = data.get('full_name').strip()
+    if data.get('student_id'):
+        user.student_id = data.get('student_id').strip()
+    if data.get('academic_year'):
+        user.academic_year = data.get('academic_year').strip()
+    if data.get('department'):
+        user.department = data.get('department').strip()
+    if data.get('graduation_year'):
+        try:
+            user.graduation_year = int(data.get('graduation_year'))
+        except (ValueError, TypeError):
+            pass
+    if data.get('bio'):
+        user.bio = data.get('bio').strip()
+
+    if 'gmail' in data: user.gmail = (data.get('gmail') or '').strip()
+    if 'phone_number' in data: user.phone_number = (data.get('phone_number') or '').strip()
+
+    if 'website_url' in data: user.website_url = (data.get('website_url') or '').strip()
+    if 'github_url' in data: user.github_url = (data.get('github_url') or '').strip()
+    if 'linkedin_url' in data: user.linkedin_url = (data.get('linkedin_url') or '').strip()
+    if 'tryhackme_url' in data: user.tryhackme_url = (data.get('tryhackme_url') or '').strip()
+    if 'htb_url' in data: user.htb_url = (data.get('htb_url') or '').strip()
+
+    # Process custom profile fields
+    custom_fields = data.get('custom_fields') or {}
+    if isinstance(custom_fields, dict):
+        from app.models.user import UserProfileValue, ProfileFieldDefinition
+        for field_key, value in custom_fields.items():
+            field_def = ProfileFieldDefinition.query.filter_by(field_key=field_key, active=True).first()
+            if field_def:
+                pval = UserProfileValue.query.filter_by(user_id=user.id, field_id=field_def.id).first()
+                if not pval:
+                    pval = UserProfileValue(user_id=user.id, field_id=field_def.id)
+                    db.session.add(pval)
+                pval.value = str(value)
+
+    user.is_first_login = False
+    user.onboarding_completed = True
+    db.session.commit()
+
+    # Sync user details to CTFd container
+    try:
+        from app.services.ctfd_sync import sync_user_to_ctfd
+        sync_user_to_ctfd(user)
+    except Exception as e:
+        print(f"CTFd onboarding sync note: {e}")
+
+    log_audit('ONBOARDING_COMPLETED', target_type='User', target_id=user.id, target_user_id=user.id, notes=f"Completed onboarding with specialization: {user.specialization_role}")
+    return jsonify({'message': 'Onboarding profile saved successfully', 'user': user.to_dict(include_private=True)}), 200

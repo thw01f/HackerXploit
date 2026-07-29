@@ -8,13 +8,13 @@
 
       <!-- Search Input Bar -->
       <div class="relative max-w-2xl mx-auto">
-        <Search class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+        <Search class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
         <input 
           v-model="query" 
           @input="handleSearch"
           type="text" 
           placeholder="Search for courses, modules, topics (e.g. Memory Injection, Buffer Overflow)..." 
-          class="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-12 pr-4 py-4 text-slate-100 placeholder-slate-500 text-base focus:outline-none focus:border-cyan-500 shadow-xl transition-all" />
+          class="w-full bg-slate-900 border border-slate-800 rounded-2xl !pl-11 pr-4 py-4 text-slate-100 placeholder-slate-500 text-base focus:outline-none focus:border-cyan-500 shadow-xl transition-all" />
       </div>
     </div>
 

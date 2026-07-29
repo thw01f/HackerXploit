@@ -10,17 +10,39 @@ inbox_bp = Blueprint('inbox', __name__, url_prefix='/api/inbox')
 
 
 @inbox_bp.route('/messages', methods=['POST'])
-@require_role('teacher', 'admin', 'root_admin')
+@require_auth
 def compose_message():
     data = request.get_json() or {}
     subject = data.get('subject', '').strip()
     body = data.get('body', '').strip()
-    scope = data.get('scope', 'individual')  # individual | all_members | role:teacher | role:member | custom_list
+    scope = data.get('scope', 'individual')
     allow_reply = data.get('allow_reply', True)
     target_user_ids = data.get('target_user_ids', [])
+    if isinstance(target_user_ids, (int, str)):
+        try:
+            target_user_ids = [int(target_user_ids)]
+        except ValueError:
+            target_user_ids = []
+    elif isinstance(target_user_ids, list):
+        target_user_ids = [int(x) for x in target_user_ids if str(x).isdigit()]
 
     if not subject or not body:
         return jsonify({'error': 'Subject and body are required'}), 400
+
+    # Restrict broadcast scopes & member recipient rules
+    broadcast_scopes = ('all_members', 'role:teacher', 'role:member', 'role:admin')
+    if scope in broadcast_scopes and g.current_user.role not in ('teacher', 'admin', 'root_admin'):
+        return jsonify({'error': 'Broadcast messages are reserved for Teachers and Admins.'}), 403
+
+    # Members can only message Teachers and Admins
+    if g.current_user.role == 'member':
+        if scope not in ('individual', 'custom_list'):
+            return jsonify({'error': 'Members can only send direct messages to Teachers and Admins.'}), 403
+        if target_user_ids:
+            target_users = User.query.filter(User.id.in_(target_user_ids)).all()
+            invalid_targets = [u for u in target_users if u.role not in ('teacher', 'admin', 'root_admin')]
+            if invalid_targets:
+                return jsonify({'error': 'Members can only send direct messages to Teachers and Admins, not to other members.'}), 403
 
     # Resolve target user IDs based on scope
     recipients = []
@@ -34,7 +56,7 @@ def compose_message():
             recipients = User.query.filter(User.id.in_(target_user_ids), User.status == 'approved').all()
 
     if not recipients:
-        return jsonify({'error': 'No valid recipient users found for selected scope'}), 400
+        return jsonify({'error': 'No valid recipient users selected'}), 400
 
     # Create master message
     msg = Message(
@@ -245,10 +267,30 @@ def delete_recipient_message(recipient_id):
     db.session.commit()
     return jsonify({'message': 'Message removed from your inbox'}), 200
 
+@inbox_bp.route('/users', methods=['GET'])
+@require_auth
+def get_inbox_user_directory():
+    """Returns directory of approved platform users for direct messaging. Members can only message Teachers & Admins."""
+    query = User.query.filter(User.status == 'approved', User.id != g.current_user.id)
+    if g.current_user.role == 'member':
+        query = query.filter(User.role.in_(['teacher', 'admin', 'root_admin']))
+    users = query.order_by(User.role.asc(), User.username.asc()).all()
+    res = []
+    for u in users:
+        res.append({
+            'id': u.id,
+            'username': u.username,
+            'full_name': u.full_name or u.username,
+            'role': u.role,
+            'specialization_role': getattr(u, 'specialization_role', None),
+            'avatar_url': getattr(u, 'avatar_url', None)
+        })
+    return jsonify({'users': res}), 200
+
 @inbox_bp.route('/admin/log', methods=['GET'])
 @require_role('admin')
 def get_admin_inbox_log():
-    """Site-wide broadcast sent record with read-rates for admin oversight"""
+    """Site-wide broadcast & direct message sent audit log with read-rates for admin oversight"""
     messages = Message.query.order_by(Message.sent_at.desc()).all()
     res = []
     for msg in messages:
@@ -262,7 +304,9 @@ def get_admin_inbox_log():
             'message_id': msg.id,
             'sender_id': msg.sender_id,
             'sender_username': sender.username if sender else 'Unknown',
+            'sender_role': sender.role if sender else 'member',
             'subject': msg.subject,
+            'body': msg.body,
             'scope': msg.scope,
             'sent_at': msg.sent_at.isoformat() if msg.sent_at else None,
             'total_recipients': total_recipients,

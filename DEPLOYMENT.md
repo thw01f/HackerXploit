@@ -62,9 +62,9 @@ docker compose exec web python scripts/init_db.py
 
 - `https://hackerxploit.org` (Auth & Marketing)
 - `https://club.hackerxploit.org` (Club Main App)
-- `https://ctf.hackerxploit.org` (CTFd Platform)
+- `https://arena.hackerxploit.org` (CTFd Platform)
 
-Logging in at `hackerxploit.org` persists the `.hackerxploit.org` session cookie, providing seamless access to `club.hackerxploit.org` and single-click SSO into `ctf.hackerxploit.org`.
+Logging in at `hackerxploit.org` persists the `.hackerxploit.org` session cookie, providing seamless access to `club.hackerxploit.org` and single-click SSO into `arena.hackerxploit.org`.
 
 ---
 
@@ -74,7 +74,7 @@ Configure an external uptime monitor (e.g., UptimeRobot) with HTTP(S) 5-minute i
 
 1. **Auth & Public Service**: `https://hackerxploit.org/api/health` (Expects HTTP 200 `{"status": "healthy"}`)
 2. **Club Application**: `https://club.hackerxploit.org/api/health` (Expects HTTP 200 `{"status": "healthy"}`)
-3. **CTFd Competition Platform**: `https://ctf.hackerxploit.org/healthcheck` (Expects HTTP 200 OK)
+3. **CTFd Competition Platform**: `https://arena.hackerxploit.org/healthcheck` (Expects HTTP 200 OK)
 
 Configure alerting notifications via Discord Webhook or Email for downtime detection.
 

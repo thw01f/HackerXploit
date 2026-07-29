@@ -35,15 +35,11 @@ def get_user_id_card():
     is_active_event = active_part is not None
     active_event_name = active_part[1].title if active_part else None
 
+    user_dict = user.to_dict(include_private=False)
+    user_dict['member_id'] = f"HX-{user.id:04d}"
+
     return jsonify({
-        'user': {
-            'id': user.id,
-            'username': user.username,
-            'member_id': f"HX-{user.id:04d}",
-            'role': user.role,
-            'created_at': user.created_at.isoformat(),
-            'avatar_url': getattr(user, 'avatar_url', None)
-        },
+        'user': user_dict,
         'token': token_obj.token,
         'verification_url': f"https://club.hackerxploit.org/verify/{token_obj.token}",
         'live_status': {

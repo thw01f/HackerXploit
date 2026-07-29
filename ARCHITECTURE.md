@@ -13,7 +13,7 @@ The HackerXploit Club Platform operates as a single Docker Compose deployment ho
             ┌───────────────────────────────┼───────────────────────────────┐
             ▼                               ▼                               ▼
 ┌───────────────────────┐       ┌───────────────────────┐       ┌───────────────────────┐
-│   hackerxploit.org    │       │ club.hackerxploit.org │       │  ctf.hackerxploit.org │
+│   hackerxploit.org    │       │ club.hackerxploit.org │       │  arena.hackerxploit.org │
 │  Public Site & Auth   │       │   Club Portal SPA     │       │    CTFd (OAuth SSO)   │
 └───────────┬───────────┘       └───────────┬───────────┘       └───────────┬───────────┘
             │                               │                               │
@@ -45,4 +45,4 @@ The HackerXploit Club Platform operates as a single Docker Compose deployment ho
 
 ## Shared SSO Cookie Scope
 
-All authentication sessions issue HTTP-only cookies scoped to `.hackerxploit.org`. This allows seamless single sign-on across `hackerxploit.org`, `club.hackerxploit.org`, and `ctf.hackerxploit.org`.
+All authentication sessions issue HTTP-only cookies scoped to `.hackerxploit.org`. This allows seamless single sign-on across `hackerxploit.org`, `club.hackerxploit.org`, and `arena.hackerxploit.org`.

@@ -9,6 +9,8 @@ class Course(db.Model):
     title = db.Column(db.String(128), nullable=False)
     description = db.Column(db.Text, nullable=False)
     cover_image = db.Column(db.String(255), nullable=True)
+    difficulty = db.Column(db.String(32), default='Easy')  # 'Easy', 'Intermediate', 'Advanced'
+    is_new = db.Column(db.Boolean, default=True)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     status = db.Column(db.String(20), default='published')  # 'draft' or 'published'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -26,7 +28,9 @@ class Course(db.Model):
             'slug': self.slug,
             'title': self.title,
             'description': self.description,
-            'cover_image': self.cover_image,
+            'cover_image': self.cover_image or '/uploads/courses/default_cover.png',
+            'difficulty': self.difficulty or 'Easy',
+            'is_new': self.is_new,
             'author_id': self.author_id,
             'author_name': self.author.full_name if self.author else 'HackerXploit Team',
             'status': self.status,
@@ -109,4 +113,34 @@ class CourseComment(db.Model):
             'body': self.body,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'is_reported': self.is_reported
+        }
+
+class LiveClass(db.Model):
+    __tablename__ = 'live_classes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(128), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    meeting_link = db.Column(db.String(255), nullable=False)
+    thumbnail_url = db.Column(db.String(255), nullable=True)
+    scheduled_at = db.Column(db.DateTime, nullable=False)
+    duration_minutes = db.Column(db.Integer, default=60)
+    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    instructor = db.relationship('User')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'description': self.description,
+            'meeting_link': self.meeting_link,
+            'thumbnail_url': self.thumbnail_url or '/uploads/courses/default_cover.png',
+            'scheduled_at': self.scheduled_at.isoformat() if self.scheduled_at else None,
+            'duration_minutes': self.duration_minutes,
+            'instructor_id': self.instructor_id,
+            'instructor_name': self.instructor.full_name if self.instructor else 'HackerXploit Staff',
+            'instructor_avatar': self.instructor.avatar_url if self.instructor else '/uploads/avatars/default.png',
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }

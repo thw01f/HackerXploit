@@ -1,18 +1,17 @@
 <template>
-  <div class="min-h-screen flex flex-col justify-between">
-    <Navbar />
+  <div class="space-y-8">
+    <AdminSubNav />
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full space-y-8">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <span class="px-2.5 py-1 rounded bg-red-950 text-red-400 font-mono text-xs font-bold uppercase">ADMIN AUDIT TRAIL</span>
-          <h1 class="text-3xl font-extrabold text-white mt-2">Site-Wide Audit Log</h1>
-          <p class="text-slate-400 text-sm mt-1">Non-repudiable audit records of all administrative actions, user approvals, role changes, and security events.</p>
-        </div>
-        <button @click="clearBulk" class="btn-neon-violet text-xs py-2.5 px-4 self-start md:self-auto border border-red-500/40">
-          Clear History (Bulk Delete)
-        </button>
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <span class="px-2.5 py-1 rounded bg-red-950 text-red-400 font-mono text-xs font-bold uppercase">ADMIN AUDIT TRAIL</span>
+        <h1 class="text-3xl font-extrabold text-white mt-2">Site-Wide Audit Log</h1>
+        <p class="text-slate-400 text-sm mt-1">Non-repudiable audit records of all administrative actions, user approvals, role changes, and security events.</p>
       </div>
+      <button @click="clearBulk" class="btn-neon-violet text-xs py-2.5 px-4 self-start md:self-auto border border-red-500/40">
+        Clear History (Bulk Delete)
+      </button>
+    </div>
 
       <!-- Filters -->
       <div class="glass-panel p-4 flex flex-wrap gap-4 items-center">
@@ -69,17 +68,14 @@
           </tbody>
         </table>
       </div>
-    </main>
 
-    <Footer />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import Navbar from '../components/Navbar.vue'
-import Footer from '../components/Footer.vue'
+import AdminSubNav from '../components/AdminSubNav.vue'
 
 const logs = ref([])
 const filterActor = ref('')

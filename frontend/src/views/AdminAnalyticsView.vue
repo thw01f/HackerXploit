@@ -1,8 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col justify-between">
-    <Navbar />
-
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full space-y-8">
+  <div class="space-y-8">
       <div class="flex items-center justify-between border-b border-slate-800 pb-6">
         <div>
           <h1 class="text-3xl font-extrabold text-white flex items-center gap-3">
@@ -123,17 +120,13 @@
           </div>
         </div>
       </div>
-    </main>
 
-    <Footer />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import Navbar from '../components/Navbar.vue'
-import Footer from '../components/Footer.vue'
 
 const data = ref(null)
 const loading = ref(true)

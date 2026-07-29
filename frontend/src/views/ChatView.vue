@@ -5,8 +5,8 @@
       <div>
         <div class="flex items-center space-x-3">
           <h1 class="text-2xl font-bold text-white tracking-tight">General Chat</h1>
-          <span v-if="chatEnabled" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Live Text Channel
+          <span v-if="chatEnabled" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            Live Text Channel
           </span>
           <span v-else class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
             Disabled by Admin
@@ -27,11 +27,17 @@
     <div class="glass-panel border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[650px]">
       <!-- Messages Scroll Area -->
       <div ref="chatContainer" class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-950/40">
-        <div v-if="messages.length === 0" class="text-center py-16">
+        <div v-if="!chatEnabled" class="text-center py-20 space-y-3">
+          <div class="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-2xl flex items-center justify-center mx-auto">🔒</div>
+          <h3 class="text-lg font-bold text-white">General Text Chat Channel Disabled</h3>
+          <p class="text-xs text-slate-400 max-w-md mx-auto">Real-time text chat has been temporarily paused site-wide by an administrator.</p>
+        </div>
+
+        <div v-else-if="messages.length === 0" class="text-center py-16">
           <p class="text-sm text-slate-500 font-mono">No messages yet. Start the conversation!</p>
         </div>
 
-        <div v-for="msg in messages" :key="msg.id" class="flex items-start space-x-3 group">
+        <div v-else v-for="msg in messages" :key="msg.id || msg.timestamp" class="flex items-start space-x-3 group">
           <img :src="msg.sender_avatar || '/uploads/avatars/default.png'" class="w-9 h-9 rounded-full object-cover border border-slate-700 mt-0.5" />
           <div class="flex-1 min-w-0">
             <div class="flex items-center space-x-2">
@@ -66,7 +72,7 @@
       <!-- Chat Input Section (STRICTLY TEXT ONLY - NO UPLOADS) -->
       <div class="p-4 bg-slate-900/90 border-t border-slate-800">
         <div v-if="!chatEnabled" class="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-center">
-          <p class="text-xs font-semibold text-rose-400">General chat has been temporarily paused by an administrator.</p>
+          <p class="text-xs font-semibold text-rose-400">General chat is currently disabled by an administrator.</p>
         </div>
         <form v-else @submit.prevent="sendMessage" class="flex items-center space-x-3">
           <input
@@ -116,12 +122,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { useChatStore } from '../stores/chat'
 import axios from 'axios'
 
 const authStore = useAuthStore()
-const messages = ref([])
+const chatStore = useChatStore()
+
 const chatEnabled = ref(true)
 const newMessageText = ref('')
 const sending = ref(false)
@@ -132,10 +140,13 @@ const showReportModal = ref(false)
 const targetReportMsg = ref(null)
 const reportReason = ref('')
 
+const messages = computed(() => chatStore.messages)
+
 const fetchMessages = async () => {
   try {
+    chatStore.initSocket()
+    await chatStore.joinChannel('general')
     const res = await axios.get('/api/chat/messages?channel=general')
-    messages.value = res.data.messages || []
     chatEnabled.value = res.data.chat_enabled !== false
     await scrollToBottom()
   } catch (err) {
@@ -143,16 +154,28 @@ const fetchMessages = async () => {
   }
 }
 
+watch(messages, () => {
+  scrollToBottom()
+}, { deep: true })
+
 const sendMessage = async () => {
-  if (!newMessageText.value.trim() || sending.value) return
+  const text = newMessageText.value.trim()
+  if (!text || sending.value) return
   sending.value = true
+  newMessageText.value = ''
+  
   try {
-    const res = await axios.post('/api/chat/messages', {
-      channel: 'general',
-      content: newMessageText.value.trim()
-    })
-    messages.value.push(res.data)
-    newMessageText.value = ''
+    // Send via socket for instant sub-millisecond broadcast
+    if (chatStore.socket && chatStore.socket.connected) {
+      chatStore.sendMessage(text)
+    } else {
+      // Fallback via HTTP POST
+      const res = await axios.post('/api/chat/messages', {
+        channel: 'general',
+        content: text
+      })
+      chatStore.messages.push(res.data)
+    }
     await scrollToBottom()
   } catch (err) {
     alert(err.response?.data?.error || 'Failed to send message')
@@ -164,11 +187,7 @@ const sendMessage = async () => {
 const softDeleteMessage = async (msgId) => {
   if (!confirm('Soft-delete this chat message?')) return
   try {
-    const res = await axios.delete(`/api/chat/messages/${msgId}`)
-    const idx = messages.value.findIndex(m => m.id === msgId)
-    if (idx !== -1) {
-      messages.value[idx] = res.data.chat_message
-    }
+    await chatStore.softDeleteMessage(msgId)
   } catch (err) {
     alert('Failed to delete message')
   }
@@ -178,7 +197,7 @@ const executeHardReset = async () => {
   try {
     await axios.post('/api/chat/reset', { channel: 'general' })
     showResetModal.value = false
-    messages.value = []
+    chatStore.messages = []
     alert('Chat room history purged')
   } catch (err) {
     alert('Failed to reset chat room')

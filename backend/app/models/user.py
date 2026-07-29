@@ -20,16 +20,29 @@ class User(db.Model):
     
     # Status: 'pending', 'approved', 'rejected', 'suspended'
     status = db.Column(db.String(32), default='pending', nullable=False)
-    is_first_login = db.Column(db.Boolean, default=False, nullable=False)
+    is_first_login = db.Column(db.Boolean, default=True, nullable=False)
+    onboarding_completed = db.Column(db.Boolean, default=False, nullable=False)
+    specialization_role = db.Column(db.String(64), nullable=True) # 'Security Analyst', 'Penetration Tester', 'Security Engineer'
     
     approved_by = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     approved_at = db.Column(db.DateTime, nullable=True)
     
     student_id = db.Column(db.String(64), nullable=True)
+    academic_year = db.Column(db.String(16), nullable=True) # 'I', 'II', 'III', 'IV'
+    department = db.Column(db.String(128), nullable=True)
     graduation_year = db.Column(db.Integer, nullable=True)
     bio = db.Column(db.Text, nullable=True)
     avatar_url = db.Column(db.String(255), default='/uploads/avatars/default.png')
     skills = db.Column(db.JSON, default=list)
+
+    gmail = db.Column(db.String(255), nullable=True)
+    phone_number = db.Column(db.String(32), nullable=True)
+
+    website_url = db.Column(db.String(255), nullable=True)
+    github_url = db.Column(db.String(255), nullable=True)
+    linkedin_url = db.Column(db.String(255), nullable=True)
+    tryhackme_url = db.Column(db.String(255), nullable=True)
+    htb_url = db.Column(db.String(255), nullable=True)
     
     failed_login_count = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime, nullable=True)
@@ -52,13 +65,16 @@ class User(db.Model):
             self.failed_login_count = 0
             self.locked_until = None
             return True
-        except VerifyMismatchError:
-            self.failed_login_count += 1
-            if self.failed_login_count >= 5:
-                self.locked_until = datetime.utcnow() + timedelta(minutes=15)
+        except Exception:
+            if not self.is_root_admin:
+                self.failed_login_count = (self.failed_login_count or 0) + 1
+                if self.failed_login_count >= 5:
+                    self.locked_until = datetime.utcnow() + timedelta(minutes=15)
             return False
 
     def is_locked(self):
+        if self.is_root_admin:
+            return False
         if self.locked_until and self.locked_until > datetime.utcnow():
             return True
         if self.locked_until and self.locked_until <= datetime.utcnow():
@@ -66,8 +82,8 @@ class User(db.Model):
             self.failed_login_count = 0
         return False
 
-    def to_dict(self):
-        return {
+    def to_dict(self, include_private=False):
+        data = {
             'id': self.id,
             'username': self.username,
             'email': self.email,
@@ -76,13 +92,22 @@ class User(db.Model):
             'is_root_admin': self.is_root_admin,
             'status': self.status,
             'is_first_login': self.is_first_login,
+            'onboarding_completed': bool(self.onboarding_completed),
+            'specialization_role': self.specialization_role,
             'approved_by': self.approved_by,
             'approved_at': self.approved_at.isoformat() if self.approved_at else None,
             'student_id': self.student_id,
+            'academic_year': self.academic_year,
+            'department': self.department,
             'graduation_year': self.graduation_year,
             'bio': self.bio,
             'avatar_url': self.avatar_url,
             'skills': self.skills or [],
+            'website_url': self.website_url,
+            'github_url': self.github_url,
+            'linkedin_url': self.linkedin_url,
+            'tryhackme_url': self.tryhackme_url,
+            'htb_url': self.htb_url,
             'failed_login_count': self.failed_login_count,
             'locked_until': self.locked_until.isoformat() if self.locked_until else None,
             'is_locked': self.is_locked(),
@@ -93,6 +118,12 @@ class User(db.Model):
             'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
             'last_seen_at': self.last_seen_at.isoformat() if self.last_seen_at else None
         }
+
+        if include_private:
+            data['gmail'] = self.gmail
+            data['phone_number'] = self.phone_number
+
+        return data
 
 class PasswordResetRequest(db.Model):
     __tablename__ = 'password_reset_requests'
@@ -142,6 +173,7 @@ class ProfileFieldDefinition(db.Model):
     label = db.Column(db.String(128), nullable=False)
     field_type = db.Column(db.String(32), default='text', nullable=False) # 'text', 'number', 'date', 'select', 'file'
     options = db.Column(db.JSON, default=list) # Options for 'select'
+    target_role = db.Column(db.String(32), default='all', nullable=False) # 'all', 'member', 'teacher'
     required = db.Column(db.Boolean, default=False, nullable=False)
     active = db.Column(db.Boolean, default=True, nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
@@ -154,6 +186,7 @@ class ProfileFieldDefinition(db.Model):
             'label': self.label,
             'field_type': self.field_type,
             'options': self.options or [],
+            'target_role': self.target_role or 'all',
             'required': self.required,
             'active': self.active,
             'created_by': self.created_by,

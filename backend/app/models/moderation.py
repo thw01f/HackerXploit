@@ -7,6 +7,8 @@ class SiteFeatureToggle(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     general_chat_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    allowed_email_domains = db.Column(db.String(512), default="gmail.com,srm.edu.in,hackerxploit.org", nullable=True)
+    password_min_length = db.Column(db.Integer, default=8, nullable=False)
     updated_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -14,6 +16,8 @@ class SiteFeatureToggle(db.Model):
         return {
             'id': self.id,
             'general_chat_enabled': self.general_chat_enabled,
+            'allowed_email_domains': self.allowed_email_domains or "gmail.com,srm.edu.in,hackerxploit.org",
+            'password_min_length': self.password_min_length or 8,
             'updated_by_id': self.updated_by_id,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
