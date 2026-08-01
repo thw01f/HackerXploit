@@ -13,7 +13,7 @@ def upload_file():
     file_item = request.files['file']
     feature = request.form.get('feature', 'avatars')
 
-    allowed_features = {'avatars', 'courses', 'course_attachments', 'competitions', 'certificates', 'opportunities'}
+    allowed_features = {'avatars', 'courses', 'course_attachments', 'competitions', 'certificates', 'opportunities', 'resumes'}
     if feature not in allowed_features:
         return jsonify({'error': GENERIC_SECURITY_ERROR}), 400
 

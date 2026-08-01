@@ -11,7 +11,11 @@
 
       <!-- Private Profile Error State -->
       <div v-else-if="error" class="glass-panel p-12 text-center max-w-lg mx-auto space-y-4 border border-amber-500/40 bg-[#111927]">
-        <div class="text-4xl">🔒</div>
+        <div class="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
         <h3 class="font-mono font-bold text-xl text-white">Private Profile</h3>
         <p class="text-xs font-mono text-slate-400">{{ error }}</p>
         <router-link to="/" class="btn-htb text-xs font-mono py-2 px-5 inline-block">Return to Home</router-link>
@@ -61,7 +65,7 @@
           <!-- Left Column: Courses & Certificates -->
           <div class="lg:col-span-2 space-y-6">
             <div class="glass-panel p-6 bg-[#111927] border border-[#1f293d] space-y-4">
-              <h3 class="font-mono font-bold text-base text-white uppercase border-b border-[#1f293d] pb-3">📚 Completed Curriculum</h3>
+              <h3 class="font-mono font-bold text-base text-white uppercase border-b border-[#1f293d] pb-3">Completed Curriculum</h3>
               <div v-if="profile.completed_courses.length === 0" class="text-xs font-mono text-slate-500 py-4 text-center">
                 No completed courses yet.
               </div>
@@ -74,7 +78,7 @@
             </div>
 
             <div v-if="profile.certificates && profile.certificates.length > 0" class="glass-panel p-6 bg-[#111927] border border-[#1f293d] space-y-4">
-              <h3 class="font-mono font-bold text-base text-white uppercase border-b border-[#1f293d] pb-3">🏆 Verified Platform Certificates</h3>
+              <h3 class="font-mono font-bold text-base text-white uppercase border-b border-[#1f293d] pb-3">Verified Platform Certificates</h3>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div v-for="cert in profile.certificates" :key="cert.id" class="p-4 rounded-lg bg-[#090d16] border border-[#9fef00]/30 space-y-1">
                   <span class="block font-mono font-bold text-xs text-[#9fef00]">Certificate #{{ cert.cert_id }}</span>
@@ -86,7 +90,7 @@
 
           <!-- Right Column: Trophy Case -->
           <div class="glass-panel p-6 bg-[#111927] border border-[#1f293d] space-y-4 self-start">
-            <h3 class="font-mono font-bold text-base text-white uppercase border-b border-[#1f293d] pb-3">🏆 Trophy Case</h3>
+            <h3 class="font-mono font-bold text-base text-white uppercase border-b border-[#1f293d] pb-3">Trophy Case</h3>
             <div v-if="profile.trophy_case.length === 0" class="text-xs font-mono text-slate-500 py-4 text-center">
               No competition records found.
             </div>

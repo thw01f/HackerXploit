@@ -25,15 +25,17 @@ const isPublicRoute = computed(() => {
   return PUBLIC_ROUTES.includes(route.name) || route.path.startsWith('/verify/')
 })
 
-onMounted(() => {
-  if (authStore.token) {
-    authStore.fetchMe()
+onMounted(async () => {
+  if (!authStore.authChecked) {
+    await authStore.fetchMe()
+  }
+  if (authStore.isAuthenticated) {
     initHeartbeat(authStore)
   }
 })
 
-watch(() => authStore.token, (newToken) => {
-  if (newToken) {
+watch(() => authStore.user, (newUser) => {
+  if (newUser) {
     initHeartbeat(authStore)
   }
 })

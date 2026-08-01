@@ -17,8 +17,13 @@ def list_users():
     query = User.query
     if status:
         query = query.filter_by(status=status)
+
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+    if not is_admin:
+        query = query.filter(User.role.in_(['student', 'member']))
+
     users = query.order_by(User.created_at.desc()).all()
-    return jsonify({'users': [u.to_dict() for u in users]}), 200
+    return jsonify({'users': [u.to_dict(include_security=is_admin) for u in users]}), 200
 
 @admin_bp.route('/users/<int:user_id>/approve', methods=['POST'])
 @require_role('teacher', 'admin')
@@ -26,9 +31,15 @@ def approve_user(user_id):
     data = request.get_json(silent=True) or {}
     user = User.query.get_or_404(user_id)
     
-    assigned_role = data.get('assigned_role')
-    if assigned_role in ['member', 'teacher']:
-        user.role = assigned_role
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+    
+    # Teachers can only approve students
+    if not is_admin:
+        user.role = 'member'
+    else:
+        assigned_role = data.get('assigned_role')
+        if assigned_role in ['member', 'teacher', 'admin']:
+            user.role = assigned_role
 
     user.status = 'approved'
     user.is_first_login = True
@@ -51,6 +62,10 @@ def approve_user(user_id):
 @require_role('teacher', 'admin')
 def reject_user(user_id):
     user = User.query.get_or_404(user_id)
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+    if not is_admin and user.role not in ['student', 'member']:
+        return jsonify({'error': 'Teachers can only manage student accounts'}), 403
+
     if user.is_root_admin:
         return jsonify({'error': 'Root admin cannot be rejected'}), 403
 
@@ -64,6 +79,10 @@ def reject_user(user_id):
 @require_role('teacher', 'admin')
 def suspend_user(user_id):
     user = User.query.get_or_404(user_id)
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+    if not is_admin and user.role not in ['student', 'member']:
+        return jsonify({'error': 'Teachers can only manage student accounts'}), 403
+
     if user.is_root_admin:
         return jsonify({'error': 'Root Admin cannot be suspended'}), 403
 
@@ -80,6 +99,10 @@ def suspend_user(user_id):
 @require_role('teacher', 'admin')
 def reinstate_user(user_id):
     user = User.query.get_or_404(user_id)
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+    if not is_admin and user.role not in ['student', 'member']:
+        return jsonify({'error': 'Teachers can only manage student accounts'}), 403
+
     user.status = 'approved'
     db.session.commit()
 
@@ -125,6 +148,61 @@ def admin_force_reset_password(user_id):
 
     log_audit('ADMIN_PASSWORD_RESET', target_type='User', target_id=user_id, notes=f"Password for @{user.username} reset by Admin {g.current_user.username}")
     return jsonify({'message': f'Password for @{user.username} has been reset successfully'}), 200
+
+@admin_bp.route('/users/<int:user_id>/update', methods=['PUT'])
+@require_role('teacher', 'admin')
+def update_user_details(user_id):
+    user = User.query.get_or_404(user_id)
+    data = request.get_json() or {}
+
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+
+    # Non-admin teachers can only edit student / member accounts
+    if not is_admin and user.role not in ['student', 'member']:
+        return jsonify({'error': 'Teachers can only edit student accounts'}), 403
+
+    if 'full_name' in data and data['full_name']:
+        user.full_name = data['full_name'].strip()
+    if 'email' in data and data['email']:
+        user.email = data['email'].strip()
+    if 'student_id' in data:
+        user.student_id = data['student_id'].strip() if data['student_id'] else None
+    if 'specialization_role' in data:
+        user.specialization_role = data['specialization_role'].strip() if data['specialization_role'] else 'Penetration Tester'
+    if 'total_points' in data:
+        try:
+            user.total_points = int(data['total_points'])
+        except (ValueError, TypeError):
+            pass
+
+    if 'role' in data:
+        new_role = data['role']
+        if is_admin:
+            if new_role in ['student', 'member', 'teacher', 'admin']:
+                user.role = new_role
+                user.badge_id = None # Forces recalculation of Badge ID with new role prefix (e.g. HX-FAC-0001 or HX-ADM-0001)
+        else:
+            if new_role in ['student', 'member']:
+                user.role = new_role
+                user.badge_id = None
+
+    if 'status' in data:
+        if is_admin or user.role in ['student', 'member']:
+            user.status = data['status']
+
+    # Recalculate badge_id for response
+    user.badge_id = user.get_badge_id()
+    db.session.commit()
+
+    # Instant CTFd role & badge sync
+    try:
+        from app.services.ctfd_sync import sync_user_to_ctfd
+        sync_user_to_ctfd(user)
+    except Exception as e:
+        print(f"[CTFd Sync Error on Role Update]: {e}")
+
+    log_audit('USER_DETAILS_UPDATED', target_type='User', target_id=user_id, notes=f"Updated details for @{user.username} (Role: {user.role}, Badge: {user.badge_id}) by {g.current_user.username}")
+    return jsonify(user.to_dict()), 200
 
 # -------------------------------------------------------------------
 # 2. Site-wide Audit Log (/admin/audit-log) - Admin only
@@ -190,7 +268,7 @@ def manual_unlock_user(user_id):
     db.session.commit()
 
     log_audit('manual_unlock', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Manually unlocked by {g.current_user.username}")
-    return jsonify({'message': f'User {user.username} unlocked successfully', 'user': user.to_dict()}), 200
+    return jsonify({'message': f'User {user.username} unlocked successfully', 'user': user.to_dict(include_security=True)}), 200
 
 # -------------------------------------------------------------------
 # 4. Admin-Issued Password Reset (/admin/password-requests) - Admin only
@@ -686,11 +764,15 @@ def update_site_settings():
         toggle.allowed_email_domains = str(data['allowed_email_domains']).strip()
     if 'password_min_length' in data:
         toggle.password_min_length = int(data['password_min_length'])
+    if 'announcement_enabled' in data:
+        toggle.announcement_enabled = bool(data['announcement_enabled'])
+    if 'announcement_banner' in data:
+        toggle.announcement_banner = str(data['announcement_banner']).strip()
 
     toggle.updated_by_id = g.current_user.id
     db.session.commit()
 
-    log_audit('SITE_SETTINGS_UPDATED', notes=f"Updated site settings. Allowed domains: {toggle.allowed_email_domains}, Min pass length: {toggle.password_min_length}")
+    log_audit('SITE_SETTINGS_UPDATED', notes=f"Updated site settings. Announcement enabled: {toggle.announcement_enabled}, Banner: {toggle.announcement_banner}")
     return jsonify(toggle.to_dict()), 200
 
 

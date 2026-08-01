@@ -1,3 +1,4 @@
+import hashlib
 from functools import wraps
 from flask import request, jsonify, g, session
 from app.models import db, User, DeviceSession, AuditLog
@@ -14,7 +15,8 @@ def get_current_user():
     if not token:
         return None, None
 
-    device_session = DeviceSession.query.filter_by(session_token=token, is_active=True).first()
+    token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
+    device_session = DeviceSession.query.filter_by(session_token_hash=token_hash, is_active=True).first()
     if not device_session:
         return None, None
 

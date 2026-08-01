@@ -102,3 +102,71 @@ class CompetitionParticipation(db.Model):
 
 # Alias for backward compatibility
 CompetitionApplication = CompetitionParticipation
+
+class EventAttendance(db.Model):
+    __tablename__ = 'event_attendance'
+
+    id = db.Column(db.Integer, primary_key=True)
+    competition_id = db.Column(db.Integer, db.ForeignKey('competitions.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    scanned_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    scanned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(32), default='present', nullable=False)  # present | approved | late
+    remark = db.Column(db.Text, nullable=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('competition_id', 'user_id', name='uq_event_user_attendance'),
+    )
+
+    def to_dict(self):
+        from app.models.user import User
+        user = User.query.get(self.user_id)
+        scanned_by = User.query.get(self.scanned_by_id) if self.scanned_by_id else None
+        return {
+            'id': self.id,
+            'competition_id': self.competition_id,
+            'user_id': self.user_id,
+            'user_full_name': (user.full_name or user.username) if user else 'Unknown',
+            'user_username': user.username if user else 'Unknown',
+            'user_email': user.email if user else None,
+            'user_avatar_url': user.avatar_url if user else None,
+            'user_member_id': f'HX-2026-{user.id:04d}' if user else None,
+            'user_academic_year': getattr(user, 'academic_year', None) if user else None,
+            'user_department': getattr(user, 'department', None) if user else None,
+            'scanned_by_id': self.scanned_by_id,
+            'scanned_by_name': (scanned_by.full_name or scanned_by.username) if scanned_by else 'Self/System',
+            'scanned_at': self.scanned_at.isoformat() if self.scanned_at else None,
+            'status': self.status,
+            'remark': self.remark
+        }
+
+
+class ClubEventFeedback(db.Model):
+    __tablename__ = 'club_event_feedback'
+
+    id = db.Column(db.Integer, primary_key=True)
+    competition_id = db.Column(db.Integer, db.ForeignKey('competitions.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    rating = db.Column(db.Integer, nullable=False, default=5)  # 1 to 5 stars
+    feedback_text = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('competition_id', 'user_id', name='uq_event_user_feedback'),
+    )
+
+    def to_dict(self):
+        from app.models.user import User
+        user = User.query.get(self.user_id)
+        return {
+            'id': self.id,
+            'competition_id': self.competition_id,
+            'user_id': self.user_id,
+            'user_full_name': (user.full_name or user.username) if user else 'Anonymous',
+            'user_username': user.username if user else 'Anonymous',
+            'user_avatar_url': user.avatar_url if user else None,
+            'user_member_id': user.member_id if user else None,
+            'rating': self.rating,
+            'feedback_text': self.feedback_text,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }

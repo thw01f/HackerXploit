@@ -15,7 +15,8 @@ def sync_user_to_ctfd(user):
         dept_str = getattr(user, 'department', '') or "Cyber Security"
         yr_str = getattr(user, 'academic_year', '') or ''
 
-        aff_parts = [role_label]
+        badge_id = getattr(user, 'get_badge_id', lambda: '')() or getattr(user, 'badge_id', '') or f"HX-USER-{getattr(user, 'id', 0):04d}"
+        aff_parts = [f"Badge ID: {badge_id}", role_label]
         if full_name:
             aff_parts.append(f"Name: {full_name}")
         if student_id:
@@ -57,7 +58,7 @@ def sync_user_to_ctfd(user):
         }
 
         py_script = """
-import sys, json, sqlite3
+import sys, json, sqlite3, secrets
 data = json.loads(sys.stdin.read())
 conn = sqlite3.connect('/tmp/ctfd.db')
 cur = conn.cursor()
@@ -68,10 +69,14 @@ row = cur.fetchone()
 role_type = 'admin' if data['is_admin'] else 'user'
 
 if not row:
+    # Each provisioned account gets its own random, never-disclosed password so CTFd's
+    # native local login cannot be used to impersonate a member (SSO is the only login path).
+    from passlib.hash import bcrypt_sha256
+    random_password_hash = bcrypt_sha256.hash(secrets.token_urlsafe(32))
     cur.execute('''
         INSERT INTO users (name, email, password, type, verified, hidden, banned, affiliation, website, created)
-        VALUES (?, ?, '$bcrypt-sha256$v=2,t=2b,r=12$uyDIXXrLJsNoXJ8902.eT.$DJSRP0.17PU6An6CqCnSAvWKvgJuFy2', ?, 1, 0, 0, ?, ?, CURRENT_TIMESTAMP);
-    ''', (data['username'], data['email'], role_type, data['affiliation'], data['website']))
+        VALUES (?, ?, ?, ?, 1, 0, 0, ?, ?, CURRENT_TIMESTAMP);
+    ''', (data['username'], data['email'], random_password_hash, role_type, data['affiliation'], data['website']))
     conn.commit()
     print("[CTFd Sync] Created user:", data['username'])
 else:

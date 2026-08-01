@@ -36,7 +36,7 @@ def get_user_id_card():
     active_event_name = active_part[1].title if active_part else None
 
     user_dict = user.to_dict(include_private=False)
-    user_dict['member_id'] = f"HX-{user.id:04d}"
+    user_dict['member_id'] = user.get_badge_id()
 
     return jsonify({
         'user': user_dict,
@@ -97,7 +97,7 @@ def verify_id_card_token(token):
         'status': 'verified',
         'member': {
             'username': user.username,
-            'member_id': f"HX-{user.id:04d}",
+            'member_id': user.get_badge_id(),
             'role': user.role,
             'member_since': user.created_at.strftime('%B %Y'),
             'avatar_url': getattr(user, 'avatar_url', None)

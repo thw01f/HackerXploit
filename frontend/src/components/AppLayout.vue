@@ -13,7 +13,7 @@
     <div
       :class="[
         'flex-1 flex flex-col min-h-screen transition-all duration-300',
-        sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64'
+        sidebarCollapsed ? 'lg:ml-[76px]' : 'lg:ml-72'
       ]"
     >
       <!-- Top Bar Header -->
@@ -157,23 +157,19 @@
 
               <!-- ACCOUNT Links -->
               <div class="space-y-2">
-                <span class="text-xs text-[#9fef00] uppercase tracking-widest block font-extrabold mb-3">Account Options</span>
+                <span class="text-xs text-[#9fef00] uppercase tracking-widest block font-extrabold mb-3">Account</span>
                 
-                <router-link to="/profile" @click="showProfileDrawer = false" class="flex items-center gap-3.5 text-slate-200 hover:text-[#9fef00] hover:bg-[#151f30] transition-all py-2.5 px-3 rounded-xl font-semibold">
+                <router-link to="/account-settings" @click="showProfileDrawer = false" class="flex items-center gap-3.5 text-slate-200 hover:text-[#9fef00] hover:bg-[#151f30] transition-all py-2.5 px-3 rounded-xl font-semibold">
                   <svg class="w-5 h-5 text-[#9fef00]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                  <span>My Profile</span>
+                  <span>Account Settings</span>
                 </router-link>
 
                 <router-link to="/id-card" @click="showProfileDrawer = false" class="flex items-center gap-3.5 text-slate-200 hover:text-[#00f0ff] hover:bg-[#151f30] transition-all py-2.5 px-3 rounded-xl font-semibold">
                   <svg class="w-5 h-5 text-[#00f0ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg>
                   <span>Digital ID Card</span>
                 </router-link>
-
-                <router-link to="/profile/privacy" @click="showProfileDrawer = false" class="flex items-center gap-3.5 text-slate-200 hover:text-purple-400 hover:bg-[#151f30] transition-all py-2.5 px-3 rounded-xl font-semibold">
-                  <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                  <span>Preferences & Privacy</span>
-                </router-link>
               </div>
+
 
               <!-- DISPLAY OPTIONS -->
               <div class="space-y-3 border-t border-[#1a2332] pt-4">

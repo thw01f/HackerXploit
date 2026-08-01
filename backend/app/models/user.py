@@ -36,7 +36,10 @@ class User(db.Model):
     skills = db.Column(db.JSON, default=list)
 
     gmail = db.Column(db.String(255), nullable=True)
+    personal_gmail = db.Column(db.String(255), nullable=True)
+    student_gmail = db.Column(db.String(255), nullable=True)
     phone_number = db.Column(db.String(32), nullable=True)
+    resume_url = db.Column(db.String(255), nullable=True)
 
     website_url = db.Column(db.String(255), nullable=True)
     github_url = db.Column(db.String(255), nullable=True)
@@ -48,10 +51,24 @@ class User(db.Model):
     locked_until = db.Column(db.DateTime, nullable=True)
     oauth_ctfd_synced = db.Column(db.Boolean, default=False)
     leaderboard_score = db.Column(db.Float, default=0.0)
-    
+    badge_id = db.Column(db.String(64), nullable=True, unique=True, index=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login_at = db.Column(db.DateTime, nullable=True)
     last_seen_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def get_badge_id(self):
+        if self.badge_id and self.badge_id.startswith(('HX-ROOT-', 'HX-ADM-', 'HX-FAC-', 'HX-STU-')):
+            return self.badge_id
+        if self.is_root_admin or self.role == 'root_admin':
+            return f"HX-ROOT-{self.id:04d}"
+        elif self.role == 'admin':
+            return f"HX-ADM-{self.id:04d}"
+        elif self.role in ['teacher', 'faculty', 'teacher_admin']:
+            return f"HX-FAC-{self.id:04d}"
+        else:
+            std_str = self.student_id if self.student_id else f"{self.id:04d}"
+            return f"HX-STU-{std_str}"
 
 
     def set_password(self, password):
@@ -82,7 +99,7 @@ class User(db.Model):
             self.failed_login_count = 0
         return False
 
-    def to_dict(self, include_private=False):
+    def to_dict(self, include_private=False, include_security=False):
         data = {
             'id': self.id,
             'username': self.username,
@@ -97,6 +114,7 @@ class User(db.Model):
             'approved_by': self.approved_by,
             'approved_at': self.approved_at.isoformat() if self.approved_at else None,
             'student_id': self.student_id,
+            'badge_id': self.get_badge_id(),
             'academic_year': self.academic_year,
             'department': self.department,
             'graduation_year': self.graduation_year,
@@ -108,9 +126,7 @@ class User(db.Model):
             'linkedin_url': self.linkedin_url,
             'tryhackme_url': self.tryhackme_url,
             'htb_url': self.htb_url,
-            'failed_login_count': self.failed_login_count,
-            'locked_until': self.locked_until.isoformat() if self.locked_until else None,
-            'is_locked': self.is_locked(),
+            'resume_url': self.resume_url,
             'oauth_ctfd_synced': self.oauth_ctfd_synced,
             'leaderboard_score': round(self.leaderboard_score or 0.0, 1),
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -121,7 +137,16 @@ class User(db.Model):
 
         if include_private:
             data['gmail'] = self.gmail
+            data['personal_gmail'] = self.personal_gmail or self.gmail
+            data['student_gmail'] = self.student_gmail or self.email
             data['phone_number'] = self.phone_number
+
+        # Account-lockout state: restricted to admin/root_admin contexts per SECURITY.md
+        # ("Teachers cannot view login activity or security logs").
+        if include_security:
+            data['failed_login_count'] = self.failed_login_count
+            data['locked_until'] = self.locked_until.isoformat() if self.locked_until else None
+            data['is_locked'] = self.is_locked()
 
         return data
 

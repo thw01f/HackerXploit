@@ -11,7 +11,7 @@
         @click="handleLogout" 
         class="btn-ghost text-xs py-2 px-4 font-mono text-red-400 border-red-500/30 hover:bg-red-950/40 flex items-center gap-1.5"
       >
-        <span>🚪 Sign Out</span>
+        <span>Sign Out</span>
       </button>
     </header>
 
@@ -38,64 +38,88 @@
             1. Select Cyber Specialization Role <span class="text-rose-400">*</span>
           </label>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <!-- Option 1: Security Analyst -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <!-- Option 1: Security Analyst (Blue Team Shield Insignia) -->
             <div 
               @click="selectedRole = 'Security Analyst'"
               :class="[
-                'p-4 rounded-xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 select-none',
+                'p-5 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-4 select-none relative overflow-hidden',
                 selectedRole === 'Security Analyst' 
-                  ? 'bg-cyan-500/10 border-cyan-400 shadow-lg shadow-cyan-500/10 scale-[1.02]' 
-                  : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                  ? 'bg-cyan-950/30 border-cyan-400 shadow-xl shadow-cyan-500/15 scale-[1.03] ring-1 ring-cyan-400/50' 
+                  : 'bg-slate-900/80 border-slate-800 hover:border-cyan-500/40 hover:bg-slate-900'
               ]"
             >
               <div class="flex items-center justify-between">
-                <span class="text-2xl">🛡️</span>
-                <span v-if="selectedRole === 'Security Analyst'" class="text-xs text-cyan-400 font-bold font-mono">SELECTED</span>
+                <!-- Custom Blue Team Shield Badge -->
+                <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-400/40 flex items-center justify-center text-cyan-400 shadow-inner">
+                  <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                  </svg>
+                </div>
+                <span v-if="selectedRole === 'Security Analyst'" class="text-xs px-2.5 py-1 rounded-md bg-cyan-400/20 text-cyan-300 font-extrabold font-mono border border-cyan-400/50 uppercase">ACTIVE ROLE</span>
               </div>
               <div>
-                <h4 class="font-bold text-sm text-white font-mono">Security Analyst</h4>
-                <p class="text-[11px] text-slate-400 mt-1 leading-snug">SOC Analytics, Blue Team Defense, Incident Response & Threat Hunting.</p>
+                <h4 class="font-extrabold text-base text-white font-mono flex items-center gap-2">
+                  <span>Security Analyst</span>
+                  <span class="text-[10px] text-cyan-400 font-mono px-1.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30">BLUE TEAM</span>
+                </h4>
+                <p class="text-xs text-slate-300 mt-1.5 leading-relaxed font-sans">SOC Operations, Blue Team Defense, Threat Intelligence & Incident Response.</p>
               </div>
             </div>
 
-            <!-- Option 2: Penetration Tester -->
+            <!-- Option 2: Penetration Tester (Red Team Trident Insignia) -->
             <div 
               @click="selectedRole = 'Penetration Tester'"
               :class="[
-                'p-4 rounded-xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 select-none',
+                'p-5 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-4 select-none relative overflow-hidden',
                 selectedRole === 'Penetration Tester' 
-                  ? 'bg-[#9fef00]/10 border-[#9fef00] shadow-lg shadow-[#9fef00]/10 scale-[1.02]' 
-                  : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                  ? 'bg-[#9fef00]/10 border-[#9fef00] shadow-xl shadow-[#9fef00]/15 scale-[1.03] ring-1 ring-[#9fef00]/50' 
+                  : 'bg-slate-900/80 border-slate-800 hover:border-[#9fef00]/40 hover:bg-slate-900'
               ]"
             >
               <div class="flex items-center justify-between">
-                <span class="text-2xl">⚔️</span>
-                <span v-if="selectedRole === 'Penetration Tester'" class="text-xs text-[#9fef00] font-bold font-mono">SELECTED</span>
+                <!-- Custom Red Team Exploit Trident Badge -->
+                <div class="w-12 h-12 rounded-xl bg-[#9fef00]/10 border border-[#9fef00]/40 flex items-center justify-center text-[#9fef00] shadow-inner">
+                  <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  </svg>
+                </div>
+                <span v-if="selectedRole === 'Penetration Tester'" class="text-xs px-2.5 py-1 rounded-md bg-[#9fef00]/20 text-[#9fef00] font-extrabold font-mono border border-[#9fef00]/50 uppercase">ACTIVE ROLE</span>
               </div>
               <div>
-                <h4 class="font-bold text-sm text-white font-mono">Penetration Tester</h4>
-                <p class="text-[11px] text-slate-400 mt-1 leading-snug">Red Team Exploitation, Vulnerability Research & Ethical Hacking.</p>
+                <h4 class="font-extrabold text-base text-white font-mono flex items-center gap-2">
+                  <span>Penetration Tester</span>
+                  <span class="text-[10px] text-[#9fef00] font-mono px-1.5 py-0.5 rounded bg-emerald-950/60 border border-[#9fef00]/30">RED TEAM</span>
+                </h4>
+                <p class="text-xs text-slate-300 mt-1.5 leading-relaxed font-sans">Offensive Security, Ethical Exploitation, Vulnerability Research & Breach Assessment.</p>
               </div>
             </div>
 
-            <!-- Option 3: Security Engineer -->
+            <!-- Option 3: Security Engineer (Purple Hexagon Matrix Insignia) -->
             <div 
               @click="selectedRole = 'Security Engineer'"
               :class="[
-                'p-4 rounded-xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 select-none',
+                'p-5 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-4 select-none relative overflow-hidden',
                 selectedRole === 'Security Engineer' 
-                  ? 'bg-purple-500/10 border-purple-400 shadow-lg shadow-purple-500/10 scale-[1.02]' 
-                  : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                  ? 'bg-purple-950/30 border-purple-400 shadow-xl shadow-purple-500/15 scale-[1.03] ring-1 ring-purple-400/50' 
+                  : 'bg-slate-900/80 border-slate-800 hover:border-purple-500/40 hover:bg-slate-900'
               ]"
             >
               <div class="flex items-center justify-between">
-                <span class="text-2xl">⚡</span>
-                <span v-if="selectedRole === 'Security Engineer'" class="text-xs text-purple-400 font-bold font-mono">SELECTED</span>
+                <!-- Custom Purple SecOps Engineering Matrix Badge -->
+                <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-400/40 flex items-center justify-center text-purple-400 shadow-inner">
+                  <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                  </svg>
+                </div>
+                <span v-if="selectedRole === 'Security Engineer'" class="text-xs px-2.5 py-1 rounded-md bg-purple-400/20 text-purple-300 font-extrabold font-mono border border-purple-400/50 uppercase">ACTIVE ROLE</span>
               </div>
               <div>
-                <h4 class="font-bold text-sm text-white font-mono">Security Engineer</h4>
-                <p class="text-[11px] text-slate-400 mt-1 leading-snug">SecOps Infrastructure, Code Hardening & Cryptographic Systems.</p>
+                <h4 class="font-extrabold text-base text-white font-mono flex items-center gap-2">
+                  <span>Security Engineer</span>
+                  <span class="text-[10px] text-purple-400 font-mono px-1.5 py-0.5 rounded bg-purple-950/60 border border-purple-500/30">PURPLE / SecOps</span>
+                </h4>
+                <p class="text-xs text-slate-300 mt-1.5 leading-relaxed font-sans">DevSecOps Infrastructure, Cryptography, Systems Hardening & Automation.</p>
               </div>
             </div>
           </div>
@@ -263,7 +287,7 @@
             :disabled="submitting || !selectedRole || !form.full_name.trim() || !form.student_id.trim()" 
             class="btn-neon-cyan py-3 px-8 text-xs font-bold font-mono uppercase tracking-wider w-full sm:w-auto"
           >
-            {{ submitting ? 'Saving Credentials...' : 'Complete Initialization & Enter Platform 🚀' }}
+            {{ submitting ? 'Saving Credentials...' : 'Complete Initialization & Enter Platform' }}
           </button>
         </div>
 

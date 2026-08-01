@@ -62,7 +62,7 @@
         <!-- Sidebar Header -->
         <div class="p-3 border-b border-[#21262d] flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider">
           <span>Modules Tree</span>
-          <span class="text-[10px] text-[#9fef00]">MkDocs Workspace</span>
+          <span class="text-[10px] text-[#9fef00]">Module Workspace</span>
         </div>
 
         <!-- Folder Tree & Files -->
@@ -176,7 +176,7 @@
           <div class="flex-1 relative">
             <textarea 
               v-model="currentNote.content_markdown" 
-              placeholder="# Write MkDocs Markdown note...\n\nUse [links](https://example.com) and images ![alt](url)..." 
+              placeholder="# Write Markdown note...\n\nUse [links](https://example.com) and images ![alt](url)..." 
               class="w-full h-full p-5 bg-[#0b0e14] text-slate-200 font-mono text-xs leading-relaxed focus:outline-none resize-none"
             ></textarea>
           </div>
@@ -257,8 +257,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const mode = ref('editor')
 const loading = ref(false)
 const selectedFileName = ref('')
@@ -659,6 +661,10 @@ const publishCurrentNote = async () => {
 }
 
 onMounted(() => {
+  if (!authStore.isTeacher) {
+    router.push('/academy')
+    return
+  }
   fetchRealCoursesAndChapters()
 })
 </script>

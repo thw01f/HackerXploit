@@ -280,7 +280,6 @@ def login():
 
     resp = make_response(jsonify({
         'message': 'Login successful',
-        'token': token,
         'user': user.to_dict(),
         'require_setup': user.is_first_login
     }))
@@ -291,7 +290,8 @@ def login():
         token,
         domain=cookie_domain,
         httponly=True,
-        samesite='Lax',
+        secure=current_app.config.get('SESSION_COOKIE_SECURE', True),
+        samesite=current_app.config.get('SESSION_COOKIE_SAMESITE', 'Lax'),
         max_age=86400 * 7
     )
     return resp, 200
@@ -299,11 +299,8 @@ def login():
 @auth_bp.route('/logout', methods=['POST'])
 @require_auth
 def logout():
-    session_token = g.current_session.session_token
-    device = DeviceSession.query.filter_by(session_token=session_token).first()
-    if device:
-        device.is_active = False
-        db.session.commit()
+    g.current_session.is_active = False
+    db.session.commit()
 
     resp = make_response(jsonify({'message': 'Logged out successfully'}))
     cookie_domain = current_app.config.get('SESSION_COOKIE_DOMAIN', '.hackerxploit.org')
@@ -400,6 +397,8 @@ def complete_onboarding():
         user.bio = data.get('bio').strip()
 
     if 'gmail' in data: user.gmail = (data.get('gmail') or '').strip()
+    if 'personal_gmail' in data: user.personal_gmail = (data.get('personal_gmail') or '').strip()
+    if 'student_gmail' in data: user.student_gmail = (data.get('student_gmail') or '').strip()
     if 'phone_number' in data: user.phone_number = (data.get('phone_number') or '').strip()
 
     if 'website_url' in data: user.website_url = (data.get('website_url') or '').strip()
@@ -407,6 +406,7 @@ def complete_onboarding():
     if 'linkedin_url' in data: user.linkedin_url = (data.get('linkedin_url') or '').strip()
     if 'tryhackme_url' in data: user.tryhackme_url = (data.get('tryhackme_url') or '').strip()
     if 'htb_url' in data: user.htb_url = (data.get('htb_url') or '').strip()
+    if 'resume_url' in data: user.resume_url = (data.get('resume_url') or '').strip()
 
     # Process custom profile fields
     custom_fields = data.get('custom_fields') or {}

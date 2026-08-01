@@ -19,10 +19,16 @@
 
       <div class="flex items-center space-x-3">
         <router-link to="/inbox/compose" class="btn-htb text-xs py-2.5 px-4 flex items-center space-x-2 font-mono font-bold shadow-lg">
-          <span>✉️ New Message</span>
+          <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          <span>New Message</span>
         </router-link>
         <router-link v-if="authStore.isAdmin" to="/admin/inbox-log" class="btn-ghost text-xs py-2.5 px-4 font-mono font-semibold flex items-center space-x-1.5">
-          <span>📊 Admin Audit Logs</span>
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+          <span>Admin Audit Logs</span>
         </router-link>
       </div>
     </div>
@@ -42,7 +48,10 @@
             ]"
           >
             <div class="flex items-center space-x-2.5">
-              <span>📥 Inbox</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+              </svg>
+              <span>Inbox</span>
             </div>
             <span v-if="unreadCount > 0" class="bg-[#9fef00] text-black px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold animate-pulse">
               {{ unreadCount }}
@@ -57,7 +66,10 @@
             ]"
           >
             <div class="flex items-center space-x-2.5">
-              <span>📤 Sent Messages</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+              </svg>
+              <span>Sent Messages</span>
             </div>
           </button>
 
@@ -69,7 +81,10 @@
             ]"
           >
             <div class="flex items-center space-x-2.5">
-              <span>📦 Archived</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+              </svg>
+              <span>Archived</span>
             </div>
           </button>
 
@@ -110,16 +125,22 @@
               </button>
               <button 
                 @click="filterMode = 'direct'" 
-                :class="['px-3 py-1 rounded-lg text-[11px] font-mono font-bold transition-all', filterMode === 'direct' ? 'bg-[#00f0ff] text-black shadow' : 'text-slate-400 hover:text-white']"
+                :class="['px-3 py-1 rounded-lg text-[11px] font-mono font-bold transition-all flex items-center gap-1.5', filterMode === 'direct' ? 'bg-[#00f0ff] text-black shadow' : 'text-slate-400 hover:text-white']"
               >
-                💬 Direct 1-on-1
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+                <span>Direct 1-on-1</span>
               </button>
               <button 
                 v-if="authStore.isTeacher || authStore.isAdmin"
                 @click="filterMode = 'broadcast'" 
-                :class="['px-3 py-1 rounded-lg text-[11px] font-mono font-bold transition-all', filterMode === 'broadcast' ? 'bg-amber-400 text-black shadow' : 'text-slate-400 hover:text-white']"
+                :class="['px-3 py-1 rounded-lg text-[11px] font-mono font-bold transition-all flex items-center gap-1.5', filterMode === 'broadcast' ? 'bg-amber-400 text-black shadow' : 'text-slate-400 hover:text-white']"
               >
-                📣 Broadcasts
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/>
+                </svg>
+                <span>Broadcasts</span>
               </button>
             </div>
           </div>
@@ -131,7 +152,9 @@
             </div>
 
             <div v-else-if="displayList.length === 0" class="p-12 text-center text-xs font-mono text-slate-500 space-y-2">
-              <span class="block text-2xl">📭</span>
+              <svg class="w-8 h-8 mx-auto text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+              </svg>
               <p>No communications found in this view.</p>
             </div>
 
@@ -194,14 +217,18 @@
                     class="p-1.5 rounded-lg text-slate-400 hover:text-[#00f0ff] hover:bg-[#151f30] transition-colors" 
                     :title="msg.is_archived ? 'Unarchive' : 'Archive'"
                   >
-                    📦
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                    </svg>
                   </button>
                   <button 
                     @click="deleteFromInbox(msg)" 
                     class="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-[#151f30] transition-colors" 
                     title="Remove from my inbox"
                   >
-                    🗑️
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -242,7 +269,10 @@
         <!-- Interactive Reply Section -->
         <div v-if="selectedMsg.allow_reply && currentFolder !== 'sent'" class="border-t border-[#1f293d] pt-4 space-y-3 font-mono">
           <h4 class="text-xs font-bold text-[#00f0ff] uppercase tracking-wider flex items-center gap-1.5">
-            <span>💬 Send Direct Reply</span>
+            <svg class="w-4 h-4 text-[#00f0ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+            </svg>
+            <span>Send Direct Reply</span>
           </h4>
           <textarea 
             v-model="replyText" 

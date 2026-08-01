@@ -29,7 +29,7 @@
           :class="activeTab === 'retention' ? 'btn-neon-violet' : 'bg-slate-900 text-slate-400 hover:text-white'" 
           class="text-xs py-2 px-4 rounded-lg font-mono font-bold uppercase transition"
         >
-          ⚙️ Competition Retention Settings
+          Competition Retention Settings
         </button>
       </div>
 

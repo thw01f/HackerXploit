@@ -34,9 +34,7 @@
           </svg>
           <span>ID Card</span>
         </router-link>
-        <router-link to="/profile/privacy" class="nav-link" active-class="nav-link-active">Privacy</router-link>
-        <router-link v-if="authStore.isTeacher" to="/teacher/students" class="nav-link" active-class="nav-link-active">Roster</router-link>
-        <router-link v-if="authStore.isAdmin" to="/admin/backups" class="nav-link" active-class="nav-link-active">Backups</router-link>
+        <router-link v-if="authStore.isTeacher" to="/teacher/students" class="nav-link" active-class="nav-link-active">Students</router-link>
         <router-link v-if="authStore.isTeacher" to="/admin" class="nav-link text-amber-400 font-bold" active-class="nav-link-active">Control Center</router-link>
       </nav>
 
@@ -58,7 +56,9 @@
             <div v-if="showNotifications" class="absolute right-0 mt-3 w-96 md:w-[440px] bg-[#0d1420] border-2 border-[#1f293d] rounded-2xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl">
               <div class="px-5 py-4 border-b border-[#1f293d] flex justify-between items-center bg-[#0b0e14]">
                 <div class="flex items-center space-x-2">
-                  <span class="text-base">🔔</span>
+                  <svg class="w-4 h-4 text-[#9fef00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                  </svg>
                   <span class="text-sm font-mono font-extrabold text-white uppercase tracking-wider">Notifications</span>
                   <span v-if="unreadCount > 0" class="text-xs font-mono font-bold text-black bg-[#9fef00] px-2 py-0.5 rounded-full">
                     {{ unreadCount }} new
@@ -95,11 +95,22 @@
             </div>
           </div>
 
+          <!-- Contact & Bug Report Button (Top Right Corner with Profile View Box) -->
+          <router-link to="/contact" class="px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-[#00f0ff] hover:bg-[#151f30] transition-colors border border-transparent hover:border-[#00f0ff]/30 flex items-center space-x-1.5 group" title="Contact Support & Report Bugs">
+            <svg class="w-4 h-4 text-[#00f0ff] group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <span class="hidden lg:inline text-[11px] font-mono font-bold text-slate-300 group-hover:text-[#00f0ff]">Contact & Bug Report</span>
+          </router-link>
+
           <!-- User Profile & Avatar -->
-          <router-link to="/profile" class="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-[#151f30] transition-colors border border-transparent hover:border-[#1f293d]">
+          <router-link to="/account-settings" class="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-[#151f30] transition-colors border border-transparent hover:border-[#1f293d]">
             <img :src="authStore.user?.avatar_url || '/uploads/avatars/default.png'" class="w-8 h-8 rounded-lg border border-[#9fef00]/50 object-cover" />
-            <div class="hidden sm:block text-left">
-              <span class="block text-xs font-bold text-white leading-tight font-mono">{{ authStore.user?.username }}</span>
+            <div class="hidden sm:block text-left font-mono">
+              <div class="flex items-center space-x-1.5">
+                <span class="block text-xs font-bold text-white leading-tight font-mono">{{ authStore.user?.username }}</span>
+                <span class="text-[9px] px-1.5 py-0.2 rounded border bg-black/60 border-[#9fef00]/40 text-[#9fef00] font-extrabold">{{ authStore.user?.badge_id || 'HX-OPERATOR' }}</span>
+              </div>
               <span :class="roleBadgeClass" class="text-[9px] uppercase font-mono font-bold">{{ authStore.user?.role }}</span>
             </div>
           </router-link>
@@ -130,13 +141,12 @@
       <router-link to="/academy" @click="mobileMenuOpen = false" class="mobile-nav-link">Academy</router-link>
       <router-link to="/competitions" @click="mobileMenuOpen = false" class="mobile-nav-link">Competitions</router-link>
       <router-link to="/opportunities" @click="mobileMenuOpen = false" class="mobile-nav-link">Opportunities</router-link>
-      <router-link to="/leaderboard" @click="mobileMenuOpen = false" class="mobile-nav-link text-amber-400">🏆 Leaderboard</router-link>
+      <router-link to="/leaderboard" @click="mobileMenuOpen = false" class="mobile-nav-link text-amber-400">Leaderboard</router-link>
       <router-link to="/inbox" @click="mobileMenuOpen = false" class="mobile-nav-link">Inbox</router-link>
       <router-link to="/chat" @click="mobileMenuOpen = false" class="mobile-nav-link">Chat</router-link>
-      <router-link to="/id-card" @click="mobileMenuOpen = false" class="mobile-nav-link text-[#00f0ff]">🪪 ID Card</router-link>
-      <router-link to="/profile/privacy" @click="mobileMenuOpen = false" class="mobile-nav-link">Privacy</router-link>
-      <router-link v-if="authStore.isTeacher" to="/teacher/students" @click="mobileMenuOpen = false" class="mobile-nav-link">Student Roster</router-link>
-      <router-link v-if="authStore.isAdmin" to="/admin/backups" @click="mobileMenuOpen = false" class="mobile-nav-link">Backups</router-link>
+      <router-link to="/id-card" @click="mobileMenuOpen = false" class="mobile-nav-link text-[#00f0ff]">ID Card</router-link>
+      <router-link to="/account-settings" @click="mobileMenuOpen = false" class="mobile-nav-link">Account Settings</router-link>
+      <router-link v-if="authStore.isTeacher" to="/teacher/students" @click="mobileMenuOpen = false" class="mobile-nav-link">Students</router-link>
       <router-link v-if="authStore.isTeacher" to="/admin" @click="mobileMenuOpen = false" class="mobile-nav-link text-amber-400">Control Center</router-link>
     </div>
   </header>

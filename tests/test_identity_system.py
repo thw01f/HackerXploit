@@ -1,3 +1,4 @@
+import hashlib
 import os
 import sys
 import pytest
@@ -50,7 +51,7 @@ def test_approval_state_machine(client):
         assert member.approved_by == admin.id
 
         # 4. Create active session for member
-        sess = DeviceSession(user_id=member.id, session_token='token123', ip_address='127.0.0.1', user_agent='Test', is_active=True)
+        sess = DeviceSession(user_id=member.id, session_token='token123', session_token_hash=hashlib.sha256(b'token123').hexdigest(), ip_address='127.0.0.1', user_agent='Test', is_active=True)
         db.session.add(sess)
         db.session.commit()
 
@@ -102,7 +103,7 @@ def test_device_kill_switch_invalidation(client):
         db.session.add(user)
         db.session.commit()
 
-        sess = DeviceSession(user_id=user.id, session_token='valid_token_77', ip_address='10.0.0.1', user_agent='Chrome', is_active=True)
+        sess = DeviceSession(user_id=user.id, session_token='valid_token_77', session_token_hash=hashlib.sha256(b'valid_token_77').hexdigest(), ip_address='10.0.0.1', user_agent='Chrome', is_active=True)
         db.session.add(sess)
         db.session.commit()
 
@@ -111,7 +112,7 @@ def test_device_kill_switch_invalidation(client):
         db.session.commit()
 
         # Query active session
-        found = DeviceSession.query.filter_by(session_token='valid_token_77', is_active=True).first()
+        found = DeviceSession.query.filter_by(session_token='valid_token_77', session_token_hash=hashlib.sha256(b'valid_token_77').hexdigest(), is_active=True).first()
         assert found is None
 
 def test_root_admin_promotion_cap(client):

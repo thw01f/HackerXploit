@@ -90,8 +90,13 @@ class UploadPipeline:
                 return False, f"Malware detected: {response.strip()}"
             return True, "Clean"
         except Exception:
-            # When daemon is unreachable in dev/testing, default to clean pass
-            return True, "ClamAV daemon offline"
+            # Fail closed in production: an unreachable scanner must not silently
+            # disable malware scanning. Dev/test environments (no ClamAV container
+            # running) still pass through so local development isn't blocked.
+            is_production = os.environ.get('FLASK_ENV', 'production') == 'production'
+            if is_production:
+                return False, "ClamAV daemon unreachable"
+            return True, "ClamAV daemon offline (non-production, allowing)"
 
     @classmethod
     def process_and_save(cls, file_storage, feature: str = 'avatars') -> dict:

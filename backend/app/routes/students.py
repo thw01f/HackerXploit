@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from app.models import db, User, Enrollment, Course, Competition, CompetitionParticipation, Certificate, ActivitySession
 from app.utils.decorators import require_role
 
@@ -13,8 +13,18 @@ def list_students():
     comp_id = request.args.get('competition_id', type=int)
     activity_level = request.args.get('activity_level', '').strip()
 
-    # Query members and teachers
+    # Query members and students (Teachers only see students; Admins see all)
     query = User.query.filter(User.status == 'approved')
+
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+    if not is_admin:
+        query = query.filter(
+            User.role.in_(['student', 'member']),
+            User.role != 'teacher',
+            User.role != 'admin',
+            User.role != 'root_admin',
+            User.is_root_admin == False
+        )
 
     if q:
         search_pattern = f"%{q}%"

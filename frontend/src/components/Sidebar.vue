@@ -10,20 +10,20 @@
   <aside
     :class="[
       'fixed top-0 left-0 h-screen z-50 flex flex-col bg-[#0c1117] border-r border-[#1a2332]',
-      'transition-all duration-300 ease-in-out',
-      collapsed && !mobileOpen ? 'w-[72px]' : 'w-64',
+      'transition-all duration-300 ease-in-out shadow-2xl',
+      collapsed && !mobileOpen ? 'w-[76px]' : 'w-72',
       mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
     ]"
   >
     <!-- Logo Section -->
-    <div class="flex items-center h-20 px-4 border-b border-[#1a2332] flex-shrink-0">
-      <router-link to="/" class="flex items-center gap-3.5 min-w-0">
+    <div class="flex items-center h-20 px-5 border-b border-[#1a2332] flex-shrink-0">
+      <router-link to="/" class="flex items-center gap-4 min-w-0">
         <img src="/logo.png" class="w-14 h-14 object-contain flex-shrink-0" alt="HackerXploit" />
         <div v-if="!collapsed || mobileOpen" class="min-w-0">
-          <div class="font-extrabold text-base text-white font-mono leading-tight tracking-tight">
+          <div class="font-extrabold text-lg text-white font-mono leading-tight tracking-tight">
             Hacker<span class="text-red-500">Xploit</span>
           </div>
-          <div class="text-[11px] text-[#9fef00] font-mono font-bold tracking-widest uppercase mt-0.5">Cyber Platform</div>
+          <div class="text-xs text-[#9fef00] font-mono font-extrabold tracking-widest uppercase mt-0.5">Cyber Platform</div>
         </div>
       </router-link>
     </div>
@@ -70,9 +70,10 @@
         General Chat
       </NavItem>
 
-      <!-- Profile Section -->
+
+      <!-- Account Section -->
       <div v-if="!collapsed || mobileOpen" class="px-2 mt-5 mb-2">
-        <span class="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest">Profile</span>
+        <span class="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest">Account</span>
       </div>
       <div v-else class="my-3 mx-2 border-t border-[#1a2332]"></div>
 
@@ -80,23 +81,27 @@
         Digital ID Card
       </NavItem>
 
-      <NavItem to="/profile/privacy" :collapsed="collapsed && !mobileOpen" icon="privacy">
-        Privacy
-      </NavItem>
-
-      <!-- Admin Section -->
-      <template v-if="authStore.isTeacher">
+      <!-- Faculty / Staff Section for Teachers -->
+      <template v-if="authStore.isTeacher && !authStore.isAdmin">
         <div v-if="!collapsed || mobileOpen" class="px-2 mt-5 mb-2">
-          <span class="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest">Admin</span>
+          <span class="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest">Faculty Hub</span>
+        </div>
+        <div v-else class="my-3 mx-2 border-t border-[#1a2332]"></div>
+
+        <NavItem to="/teacher/students" :collapsed="collapsed && !mobileOpen" icon="roster" accent="cyan">
+          Students
+        </NavItem>
+      </template>
+
+      <!-- Full System Control Section for Admins Only -->
+      <template v-if="authStore.isAdmin">
+        <div v-if="!collapsed || mobileOpen" class="px-2 mt-5 mb-2">
+          <span class="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest">System Admin</span>
         </div>
         <div v-else class="my-3 mx-2 border-t border-[#1a2332]"></div>
 
         <NavItem to="/teacher/students" :collapsed="collapsed && !mobileOpen" icon="roster">
-          Student Roster
-        </NavItem>
-
-        <NavItem v-if="authStore.isAdmin" to="/admin/backups" :collapsed="collapsed && !mobileOpen" icon="backups">
-          Backups
+          Students
         </NavItem>
 
         <NavItem to="/admin" :collapsed="collapsed && !mobileOpen" icon="control" accent="amber">

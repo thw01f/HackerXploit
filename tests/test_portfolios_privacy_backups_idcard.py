@@ -1,3 +1,4 @@
+import hashlib
 import pytest
 import json
 import zipfile
@@ -25,17 +26,17 @@ def app():
     with app.app_context():
         db.create_all()
 
-        admin = User(username='admin', email='admin@test.org', role='admin', status='approved', is_root_admin=True, is_first_login=False)
+        admin = User(username='admin', email='admin@test.org', role='admin', status='approved', is_root_admin=True, is_first_login=False, onboarding_completed=True)
         admin.set_password('AdminPass123!')
 
-        student = User(username='student', email='student@test.org', role='member', status='approved', is_first_login=False)
+        student = User(username='student', email='student@test.org', role='member', status='approved', is_first_login=False, onboarding_completed=True)
         student.set_password('StudentPass123!')
 
         db.session.add_all([admin, student])
         db.session.commit()
 
-        s_admin = DeviceSession(user_id=admin.id, session_token='token_admin', ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
-        s_student = DeviceSession(user_id=student.id, session_token='token_student', ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
+        s_admin = DeviceSession(user_id=admin.id, session_token='token_admin', session_token_hash=hashlib.sha256(b'token_admin').hexdigest(), ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
+        s_student = DeviceSession(user_id=student.id, session_token='token_student', session_token_hash=hashlib.sha256(b'token_student').hexdigest(), ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
 
         db.session.add_all([s_admin, s_student])
         db.session.commit()
@@ -124,7 +125,7 @@ def test_id_card_token_and_public_verification(client, app):
     res = client.get(f"/api/verify/{token}")
     assert res.status_code == 200
     assert res.json['member']['username'] == 'student'
-    assert res.json['member']['member_id'] == 'HX-0002'
+    assert res.json['member']['member_id'] == 'HX-STU-0002'
 
     # 3. Regenerate token
     res = client.post('/api/profile/id-card/regenerate', headers=student_headers)

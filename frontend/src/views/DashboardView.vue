@@ -2,14 +2,19 @@
   <div class="space-y-8">
       
       <!-- Announcement Header -->
-      <div v-if="clubStore.stats?.announcement" class="glass-panel p-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-l-4 border-l-[#9fef00]">
+      <div v-if="clubStore.stats?.announcement && !announcementDismissed" class="glass-panel p-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-l-4 border-l-[#9fef00] relative">
         <div class="flex items-center space-x-3">
           <span class="px-2.5 py-0.5 rounded bg-[#151f30] border border-[#9fef00]/30 text-[#9fef00] font-mono text-xs font-bold uppercase">ANNOUNCEMENT</span>
           <p class="text-sm text-slate-200 font-medium">{{ clubStore.stats.announcement }}</p>
         </div>
-        <a href="http://arena.hackerxploit.org" target="_blank" class="btn-htb text-xs py-1.5 px-4 whitespace-nowrap font-mono">
-          LAUNCH CTF ARENA &rarr;
-        </a>
+        <div class="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-end">
+          <a href="http://arena.hackerxploit.org" target="_blank" class="btn-htb text-xs py-1.5 px-4 whitespace-nowrap font-mono">
+            LAUNCH CTF ARENA &rarr;
+          </a>
+          <button @click="announcementDismissed = true" class="px-2 py-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors font-mono text-base font-bold" title="Close Banner">
+            &times;
+          </button>
+        </div>
       </div>
 
       <!-- Main Dashboard Grid -->
@@ -123,7 +128,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import DigitalIDCard from '../components/DigitalIDCard.vue'
 import { useAuthStore } from '../stores/auth'
 import { useClubStore } from '../stores/club'
@@ -132,6 +137,8 @@ import { useChatStore } from '../stores/chat'
 const authStore = useAuthStore()
 const clubStore = useClubStore()
 const chatStore = useChatStore()
+
+const announcementDismissed = ref(false)
 
 const ctfdUrl = computed(() => {
   if (window.location.hostname.includes('hackerxploit.org')) {

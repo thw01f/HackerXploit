@@ -7,8 +7,8 @@
       :style="{ width: `${scrollProgress}%` }"
     ></div>
 
-    <!-- Main Container -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
+    <!-- Main Container (Full width responsive layout) -->
+    <div class="w-full px-4 sm:px-6 lg:px-8 pt-4 space-y-8">
       
       <!-- Loading Skeleton -->
       <div v-if="loading" class="animate-pulse space-y-8">
@@ -34,7 +34,7 @@
               <div class="flex items-center space-x-2 text-xs">
                 <router-link to="/academy" class="text-[#00f0ff] hover:underline font-bold">&larr; Modules</router-link>
                 <span class="text-slate-600">•</span>
-                <span class="text-slate-400 uppercase tracking-wider font-semibold">MkDocs Documentation</span>
+                <span class="text-slate-400 uppercase tracking-wider font-semibold">Interactive Module</span>
               </div>
               <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight font-serif">
                 {{ course.title }}
@@ -76,14 +76,14 @@
           </div>
         </div>
 
-        <!-- MkDocs Layout: Left Chapters Tree + Main Reader + Right TOC -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <!-- MkDocs Layout: Compact Left Navigation + Extended Content Reader -->
+        <div class="flex flex-col lg:flex-row gap-6 items-start">
           
-          <!-- Left Navigation Sidebar: Chapters List -->
-          <div class="lg:col-span-3 glass-panel p-4 rounded-2xl border border-[#1f293d] bg-[#0d1420] space-y-3 sticky top-6 font-mono">
-            <div class="flex items-center justify-between px-2">
-              <h3 class="text-xs font-extrabold text-[#00f0ff] uppercase tracking-wider">Module Navigation</h3>
-              <span class="text-[10px] text-slate-500">({{ course.chapters?.length || 0 }})</span>
+          <!-- Left Navigation Sidebar: Compact Chapter List -->
+          <div class="w-full lg:w-64 xl:w-72 shrink-0 glass-panel p-3.5 rounded-2xl border border-[#1f293d] bg-[#0d1420] space-y-3 sticky top-6 font-mono">
+            <div class="flex items-center justify-between px-1">
+              <h3 class="text-[11px] font-extrabold text-[#00f0ff] uppercase tracking-wider">Module Navigation</h3>
+              <span class="text-[10px] text-slate-500 font-bold">({{ course.chapters?.length || 0 }})</span>
             </div>
             
             <div class="space-y-1.5 max-h-[70vh] overflow-y-auto pr-1">
@@ -94,32 +94,32 @@
                 :class="[
                   activeChapterIndex === idx ? 'bg-[#00f0ff]/15 border-[#00f0ff]/40 text-[#00f0ff] font-bold shadow-[0_0_10px_rgba(0,240,255,0.1)]' : 'bg-[#0b0e14] border-[#1f293d] text-slate-400 hover:text-white'
                 ]"
-                class="w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between text-xs group cursor-pointer"
+                class="w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between text-xs group cursor-pointer"
               >
-                <div class="flex items-center space-x-2.5 truncate">
+                <div class="flex items-center space-x-2 truncate">
                   <span class="w-5 h-5 rounded bg-[#151f30] text-slate-300 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
                     {{ idx + 1 }}
                   </span>
-                  <span class="truncate font-sans text-xs">{{ ch.title }}</span>
+                  <span class="truncate font-sans text-xs font-semibold">{{ ch.title }}</span>
                 </div>
 
-                <div class="flex items-center space-x-1.5">
+                <div class="flex items-center space-x-1">
                   <span v-if="isChapterCompleted(ch.id)" class="text-[#9fef00] text-xs font-bold flex-shrink-0">✓</span>
                   
                   <!-- Teacher & Admin Note Reordering Controls -->
                   <div v-if="authStore.isTeacher" class="opacity-0 group-hover:opacity-100 flex items-center space-x-0.5 transition-opacity">
-                    <button @click.stop="moveChapterUp(idx)" title="Move Note Up" class="hover:text-[#00f0ff] text-[10px] px-1 font-bold">▲</button>
-                    <button @click.stop="moveChapterDown(idx)" title="Move Note Down" class="hover:text-[#00f0ff] text-[10px] px-1 font-bold">▼</button>
+                    <button @click.stop="moveChapterUp(idx)" title="Move Note Up" class="hover:text-[#00f0ff] text-[10px] px-0.5 font-bold">▲</button>
+                    <button @click.stop="moveChapterDown(idx)" title="Move Note Down" class="hover:text-[#00f0ff] text-[10px] px-0.5 font-bold">▼</button>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Main MkDocs Article Reader -->
-          <div v-if="activeChapter" class="lg:col-span-6 space-y-8">
+          <!-- Main MkDocs Article Reader (Extended full width content field) -->
+          <div v-if="activeChapter" class="flex-1 min-w-0 w-full space-y-8">
             
-            <article class="glass-panel p-6 md:p-10 rounded-3xl border border-[#1f293d] bg-[#0d1420] shadow-2xl space-y-8">
+            <article class="glass-panel p-6 md:p-10 lg:p-12 rounded-3xl border border-[#1f293d] bg-[#0d1420] shadow-2xl space-y-8">
               
               <!-- Chapter Header -->
               <header class="space-y-4 border-b border-[#1f293d] pb-6">
@@ -133,14 +133,37 @@
                   </span>
                 </div>
 
-                <h1 class="text-3xl md:text-4xl font-extrabold text-white font-serif tracking-tight leading-tight">
+                <h1 class="text-3xl md:text-5xl font-extrabold text-white font-serif tracking-tight leading-tight">
                   {{ activeChapter.title }}
                 </h1>
+
+                <!-- Interactive Quick Table of Contents Bar -->
+                <div v-if="chapterHeadings && chapterHeadings.length" class="p-3.5 bg-[#0b0e14]/90 rounded-2xl border border-[#1f293d] font-mono text-xs space-y-2">
+                  <div class="flex items-center justify-between text-slate-400">
+                    <span class="font-bold text-[#00f0ff] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/>
+                      </svg>
+                      Quick Chapter Outline
+                    </span>
+                    <span class="text-[10px] text-slate-500">({{ chapterHeadings.length }} sections)</span>
+                  </div>
+                  <div class="flex flex-wrap gap-2 pt-1">
+                    <a 
+                      v-for="h in chapterHeadings" 
+                      :key="h.id" 
+                      :href="`#${h.id}`" 
+                      class="px-2.5 py-1 bg-[#151f30] hover:bg-[#00f0ff]/20 hover:text-[#00f0ff] border border-[#1f293d] rounded-lg text-[11px] text-slate-300 transition-all font-sans font-medium"
+                    >
+                      {{ h.text }}
+                    </a>
+                  </div>
+                </div>
               </header>
 
-              <!-- Markdown Body Output -->
+              <!-- Markdown Body Output (Expanded spacious text) -->
               <main 
-                class="mkdocs-content prose prose-invert max-w-none text-slate-200 leading-relaxed space-y-5 font-sans text-base border-b border-[#1f293d] pb-8"
+                class="mkdocs-content prose prose-invert prose-lg max-w-none text-slate-200 leading-relaxed space-y-6 font-sans border-b border-[#1f293d] pb-8 w-full"
                 v-html="processedHtml"
               ></main>
 
@@ -259,26 +282,6 @@
               </div>
             </section>
 
-          </div>
-
-          <!-- Right Sidebar: MkDocs On-This-Page TOC -->
-          <div class="lg:col-span-3 glass-panel p-4 rounded-2xl border border-[#1f293d] bg-[#0d1420] space-y-3 sticky top-6 font-mono text-xs hidden lg:block">
-            <h3 class="text-xs font-extrabold text-slate-400 uppercase tracking-wider px-1">On This Page</h3>
-
-            <nav class="space-y-1 max-h-[70vh] overflow-y-auto pr-1">
-              <a 
-                v-for="h in chapterHeadings" 
-                :key="h.id" 
-                :href="`#${h.id}`" 
-                :class="[
-                  'block py-1 hover:text-[#00f0ff] transition-colors truncate',
-                  h.level === 1 ? 'font-bold text-white' : (h.level === 2 ? 'pl-3 text-slate-300' : 'pl-5 text-slate-400')
-                ]"
-              >
-                {{ h.text }}
-              </a>
-            </nav>
-            <div v-if="!chapterHeadings.length" class="text-xs text-slate-500 italic">No section headings found</div>
           </div>
 
         </div>

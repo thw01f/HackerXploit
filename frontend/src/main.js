@@ -9,16 +9,9 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
   axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
 }
 
+// Session identity travels via the HttpOnly session_token cookie only —
+// the SPA never reads or sends the raw token itself.
 axios.defaults.withCredentials = true
-
-axios.interceptors.request.use((config) => {
-  const token = localStorage.getItem('hx_token')
-  if (token) {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
-  return config
-}, (error) => Promise.reject(error))
-
 
 const app = createApp(App)
 

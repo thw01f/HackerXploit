@@ -8,3 +8,5 @@ dist/
 uploads/
 backend.log
 wiki_repo/
+.claude/
+frontend/.vite_cache/
