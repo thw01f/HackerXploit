@@ -367,6 +367,31 @@
             </button>
           </div>
         </div>
+
+        <div class="border-t border-[#1f293d] pt-6 space-y-3">
+          <div>
+            <h4 class="text-sm font-bold text-white font-mono">Font Size</h4>
+            <p class="text-slate-400 text-xs mt-1">Scales text and UI elements across the whole platform.</p>
+          </div>
+          <div class="grid grid-cols-4 gap-3 max-w-lg">
+            <button
+              v-for="opt in fontScaleOptions"
+              :key="opt.value"
+              @click="prefs.setFontScale(opt.value)"
+              :class="[
+                'flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all font-mono',
+                prefs.fontScale.value === opt.value ? 'border-[#9fef00] bg-[#9fef00]/10' : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+              ]"
+            >
+              <span :class="[prefs.fontScale.value === opt.value ? 'text-white font-bold' : 'text-slate-400', opt.previewClass]">
+                Aa
+              </span>
+              <span :class="prefs.fontScale.value === opt.value ? 'text-[#9fef00] font-bold' : 'text-slate-500'" class="text-[11px] uppercase tracking-wide">
+                {{ opt.label }}
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Privacy & Data Governance (embedded) -->
@@ -476,6 +501,13 @@ const themeOptions = [
 const timeFormatOptions = [
   { value: '12h', label: '12-Hour', preview: '2:30 PM' },
   { value: '24h', label: '24-Hour', preview: '14:30' }
+]
+
+const fontScaleOptions = [
+  { value: 'sm', label: 'Small', previewClass: 'text-xs' },
+  { value: 'md', label: 'Default', previewClass: 'text-sm' },
+  { value: 'lg', label: 'Large', previewClass: 'text-base' },
+  { value: 'xl', label: 'X-Large', previewClass: 'text-lg' }
 ]
 
 const form = ref({
