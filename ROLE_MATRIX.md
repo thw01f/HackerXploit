@@ -15,7 +15,7 @@
 | **Verify Competition Applications** | ✅ | ✅ | ✅ | ❌ |
 | **File Post-Event Wrap-ups** | ✅ | ✅ | ✅ | ❌ |
 | **Moderate Chat Messages (Soft-Delete)** | ✅ | ✅ | ✅ | ❌ |
-| **Wipe / Reset Chat Room** | ❌ (Forbidden) | ❌ (Forbidden) | ❌ (Forbidden) | ❌ (Forbidden) |
+| **Wipe / Reset Chat Room (hard delete, `/api/chat/reset`)** | ✅ | ✅ | ❌ | ❌ |
 | **Read Courses, Apply to Comps / Opps** | ✅ | ✅ | ✅ | ✅ |
 | **Manage Own Profile & Device Sessions** | ✅ | ✅ | ✅ | ✅ |
 

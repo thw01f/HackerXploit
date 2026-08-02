@@ -111,32 +111,40 @@
               </span>
             </div>
 
-            <!-- Deadline -->
-            <div class="text-[11px] font-mono text-slate-400 pt-1 flex justify-between">
-              <span>Deadline:</span>
-              <span :class="isExpired(opp.deadline) ? 'text-red-400' : 'text-amber-400'" class="font-semibold">
-                {{ formatDate(opp.deadline) }}
-              </span>
+            <!-- Deadline: same boxed grid style as the Competitions date block,
+                 for visual consistency between the two card types. -->
+            <div class="text-xs bg-[#080c14] rounded-xl border border-[#1f293d]/80 font-mono overflow-hidden">
+              <div class="grid grid-cols-[auto_1fr] items-center gap-x-3 p-3">
+                <span class="text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
+                  <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  Deadline
+                </span>
+                <span :class="isExpired(opp.deadline) ? 'text-red-400' : 'text-amber-400'" class="font-semibold text-right tabular-nums">
+                  {{ formatDate(opp.deadline) }}
+                </span>
+              </div>
             </div>
           </div>
 
           <!-- Apply Action -->
-          <div class="pt-4 border-t border-slate-800 flex justify-between items-center">
-            <span class="text-[11px] text-slate-500 font-mono">Posted by Faculty/Admin</span>
-            
-            <a 
-              v-if="opp.apply_link" 
-              :href="opp.apply_link" 
-              target="_blank" 
-              class="btn-neon-cyan text-xs py-1.5 px-4 inline-flex items-center gap-1"
+          <div class="pt-4 border-t border-slate-800 flex justify-between items-center gap-3">
+            <span class="text-xs text-slate-500 font-mono">Posted by Faculty/Admin</span>
+
+            <a
+              v-if="opp.apply_link"
+              :href="opp.apply_link"
+              target="_blank"
+              class="btn-neon-cyan text-xs py-1.5 px-4 inline-flex items-center gap-1 shrink-0"
             >
               Apply via Link ↗
             </a>
 
-            <button 
-              v-else 
-              @click="handleApplyInternal(opp.id)" 
-              class="btn-neon-cyan text-xs py-1.5 px-4"
+            <button
+              v-else
+              @click="handleApplyInternal(opp.id)"
+              class="btn-neon-cyan text-xs py-1.5 px-4 shrink-0"
             >
               Submit Application
             </button>

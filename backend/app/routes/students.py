@@ -141,6 +141,7 @@ def build_structured_profile(user):
         if not comp:
             continue
         cert = Certificate.query.filter_by(user_id=user.id, source_id=comp.id, type='competition').first()
+        verifier = User.query.get(p.verified_by_id) if p.verified_by_id else None
         trophy_case.append({
             'participation_id': p.id,
             'competition_id': comp.id,
@@ -150,14 +151,22 @@ def build_structured_profile(user):
             'external_link': comp.external_link,
             'starts_at': comp.starts_at.isoformat() if comp.starts_at else None,
             'ends_at': comp.ends_at.isoformat() if comp.ends_at else None,
+            'applied_at': p.applied_at.isoformat() if p.applied_at else None,
             'application_screenshot': p.application_screenshot,
             'application_status': p.application_status,
+            'verified_by_id': p.verified_by_id,
+            'verified_by_name': (verifier.full_name or verifier.username) if verifier else None,
+            'verified_at': p.verified_at.isoformat() if p.verified_at else None,
             'result': p.result,
             'placement_label': p.placement_label,
+            'certificate_file': p.certificate_file,
             'summary_notes': p.summary_notes,
             'event_photos': p.event_photos or [],
             'certificate': cert.to_dict() if cert else None
         })
+    # Newest applications first, so a teacher scanning the profile sees
+    # anything still awaiting review before older, already-resolved entries.
+    trophy_case.sort(key=lambda t: t['applied_at'] or '', reverse=True)
 
     return {
         'overview': overview,

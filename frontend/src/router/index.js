@@ -6,7 +6,6 @@ import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import SetupAdminView from '../views/SetupAdminView.vue'
 import ForgotPasswordView from '../views/ForgotPasswordView.vue'
-import ResetPasswordView from '../views/ResetPasswordView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import AcademyView from '../views/AcademyView.vue'
 import AcademyWriteView from '../views/AcademyWriteView.vue'
@@ -50,7 +49,7 @@ const routes = [
   { path: '/onboarding', name: 'onboarding', component: OnboardingView, meta: { requiresAuth: true } },
   { path: '/setup-admin', name: 'setup-admin', component: SetupAdminView, meta: { requiresAuth: true } },
   { path: '/forgot-password', name: 'forgot-password', component: ForgotPasswordView },
-  { path: '/reset-password', name: 'reset-password', component: ResetPasswordView },
+  { path: '/reset-password', name: 'reset-password', component: ForgotPasswordView },
   { 
     path: '/dashboard', 
     name: 'dashboard', 

@@ -10,7 +10,7 @@ from .certificate import Certificate
 from .competition import Competition, CompetitionParticipation, CompetitionApplication, EventAttendance, ClubEventFeedback
 from .retention import RetentionSettings
 from .opportunity import Opportunity, OpportunityApplication, Skill, member_skills, opportunity_skills
-from .chat import ChatMessage, Notification
+from .chat import ChatMessage, Notification, NotificationPreference
 from .oauth import OAuth2Client, OAuth2AuthorizationCode, OAuth2Token
 from .activity import ActivitySession, ActivityHeartbeat
 from .moderation import SiteFeatureToggle, Report, EmailLog
@@ -48,6 +48,7 @@ __all__ = [
     'opportunity_skills',
     'ChatMessage',
     'Notification',
+    'NotificationPreference',
     'OAuth2Client',
     'OAuth2AuthorizationCode',
     'OAuth2Token',

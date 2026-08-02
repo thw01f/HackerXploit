@@ -3,7 +3,34 @@
       <div>
         <span class="px-2.5 py-1 rounded bg-purple-950 text-purple-400 font-mono text-xs font-bold uppercase">ADMIN ONLY</span>
         <h1 class="text-3xl font-extrabold text-white mt-2">Password Reset Requests</h1>
-        <p class="text-slate-400 text-sm mt-1">Review pending user password reset requests and issue 8-character single-use codes (expires in 30 minutes).</p>
+        <p class="text-slate-400 text-sm mt-1">Review pending user password reset requests and issue 8-character single-use codes (expires in 3 minutes).</p>
+      </div>
+
+      <!-- Proactive: generate a code for any member, even without a pending request -->
+      <div class="glass-panel p-6 space-y-4">
+        <h3 class="text-lg font-bold text-white border-b border-slate-800 pb-3">Generate Code For Any Member</h3>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input
+            v-model="searchQuery"
+            @input="searchUsers"
+            type="text"
+            placeholder="Search by username, name, or email..."
+            class="input-field flex-1"
+          />
+        </div>
+        <div v-if="searchResults.length > 0" class="space-y-2">
+          <div v-for="u in searchResults" :key="u.id" class="p-3 bg-slate-900/80 rounded-xl border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <span class="font-bold text-white">{{ u.full_name || u.username }}</span>
+              <span class="text-xs text-cyan-400 font-mono ml-2">@{{ u.username }}</span>
+              <p class="text-xs text-slate-400 mt-0.5">{{ u.email }}</p>
+            </div>
+            <button @click="generateCode(u.id)" class="btn-neon-violet text-xs py-2 px-4 shrink-0">
+              Generate 8-Char Code
+            </button>
+          </div>
+        </div>
+        <p v-else-if="searchQuery.trim()" class="text-center py-4 text-slate-500 text-xs font-mono">No members match "{{ searchQuery }}".</p>
       </div>
 
       <div class="glass-panel p-6 space-y-4">
@@ -33,7 +60,7 @@
       <div v-if="generatedCode" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
         <div class="w-full max-w-md glass-panel p-6 rounded-2xl border border-cyan-500/40 text-center space-y-4">
           <h3 class="text-xl font-bold text-white">Reset Code Issued</h3>
-          <p class="text-xs text-slate-300">Provide this 8-character code to <strong>@{{ targetUsername }}</strong>. It expires in 30 minutes.</p>
+          <p class="text-xs text-slate-300">Provide this 8-character code to <strong>@{{ targetUsername }}</strong> through a trusted channel (in person, a call - not the same inbox/email you'd use to prove identity). It expires in 3 minutes.</p>
           <div class="p-4 bg-slate-950 rounded-xl border border-cyan-500/50 font-mono text-2xl font-bold text-cyan-400 tracking-widest select-all">
             {{ generatedCode }}
           </div>
@@ -51,6 +78,9 @@ import axios from 'axios'
 const requests = ref([])
 const generatedCode = ref(null)
 const targetUsername = ref('')
+const searchQuery = ref('')
+const searchResults = ref([])
+let searchDebounce = null
 
 const fetchRequests = async () => {
   try {
@@ -62,6 +92,22 @@ const fetchRequests = async () => {
 }
 
 onMounted(fetchRequests)
+
+const searchUsers = () => {
+  clearTimeout(searchDebounce)
+  if (!searchQuery.value.trim()) {
+    searchResults.value = []
+    return
+  }
+  searchDebounce = setTimeout(async () => {
+    try {
+      const res = await axios.get('/api/admin/users', { params: { search: searchQuery.value.trim() } })
+      searchResults.value = (res.data.users || []).slice(0, 8)
+    } catch (err) {
+      console.error(err)
+    }
+  }, 300)
+}
 
 const generateCode = async (userId) => {
   try {

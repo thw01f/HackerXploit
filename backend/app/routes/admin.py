@@ -1,11 +1,33 @@
 import secrets
 from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify, g
-from app.models import db, User, DeviceSession, LoginAttempt, AuditLog, PasswordResetRequest, PasswordResetCode, ProfileFieldDefinition
+from flask import Blueprint, request, jsonify, g, current_app
+from app.models import db, User, DeviceSession, LoginAttempt, AuditLog, PasswordResetRequest, PasswordResetCode, ProfileFieldDefinition, NotificationPreference
 from app.utils.decorators import require_auth, require_role, require_root, log_audit
 from app.services.ctfd_sync import sync_user_to_ctfd, delete_user_from_ctfd
+from app.services.email_service import send_account_status_email, send_announcement_email
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
+
+
+def _dispatch_email_task(task, *args):
+    """Runs a celery-decorated email task synchronously in tests, async otherwise."""
+    try:
+        if current_app.config.get('TESTING'):
+            task(*args)
+        else:
+            task.delay(*args)
+    except Exception as e:
+        print(f"Email dispatch note: {e}")
+
+
+def _maybe_send_status_email(user, status):
+    if NotificationPreference.get_or_create(user.id).email_account_updates:
+        _dispatch_email_task(send_account_status_email, user.id, status)
+
+
+def _maybe_send_announcement_email(user, title, message):
+    if NotificationPreference.get_or_create(user.id).email_announcements:
+        _dispatch_email_task(send_announcement_email, user.id, title, message)
 
 # -------------------------------------------------------------------
 # 1. Approval Workflow (/admin/users) - Admin & Teacher allowed
@@ -14,9 +36,13 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 @require_role('teacher', 'admin')
 def list_users():
     status = request.args.get('status')
+    search = (request.args.get('search') or '').strip()
     query = User.query
     if status:
         query = query.filter_by(status=status)
+    if search:
+        like = f"%{search}%"
+        query = query.filter(db.or_(User.username.ilike(like), User.full_name.ilike(like), User.email.ilike(like)))
 
     is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
     if not is_admin:
@@ -55,6 +81,8 @@ def approve_user(user_id):
     except Exception as e:
         print(f"CTFd auto-provision note: {e}")
 
+    _maybe_send_status_email(user, 'approved')
+
     log_audit('approved', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Approved as {user.role} by {g.current_user.username}")
     return jsonify(user.to_dict()), 200
 
@@ -71,6 +99,8 @@ def reject_user(user_id):
 
     user.status = 'rejected'
     db.session.commit()
+
+    _maybe_send_status_email(user, 'rejected')
 
     log_audit('rejected', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Rejected by {g.current_user.username}")
     return jsonify(user.to_dict()), 200
@@ -91,6 +121,8 @@ def suspend_user(user_id):
     # KILL-SWITCH: Invalidate all live device sessions immediately
     DeviceSession.query.filter_by(user_id=user_id, is_active=True).update({'is_active': False})
     db.session.commit()
+
+    _maybe_send_status_email(user, 'suspended')
 
     log_audit('suspended', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Suspended by {g.current_user.username}")
     return jsonify(user.to_dict()), 200
@@ -205,10 +237,10 @@ def update_user_details(user_id):
     return jsonify(user.to_dict()), 200
 
 # -------------------------------------------------------------------
-# 2. Site-wide Audit Log (/admin/audit-log) - Admin only
+# 2. Site-wide Audit Log (/admin/audit-log) - View: teacher+; Delete: admin only
 # -------------------------------------------------------------------
 @admin_bp.route('/audit-log', methods=['GET'])
-@require_role('admin')
+@require_role('teacher', 'admin')
 def get_audit_log():
     actor_id = request.args.get('actor_id')
     action = request.args.get('action')
@@ -298,7 +330,7 @@ def generate_password_reset_code():
 
     # Generate random 8-character uppercase alphanumeric code
     code = secrets.token_hex(4).upper()
-    expires_at = datetime.utcnow() + timedelta(minutes=30)
+    expires_at = datetime.utcnow() + timedelta(minutes=3)
 
     reset_code = PasswordResetCode(
         user_id=user.id,
@@ -309,7 +341,7 @@ def generate_password_reset_code():
     db.session.add(reset_code)
     db.session.commit()
 
-    log_audit('PASSWORD_RESET_CODE_ISSUED', target_type='User', target_id=user.id, target_user_id=user.id, notes=f"Issued code {code} expiring in 30m")
+    log_audit('PASSWORD_RESET_CODE_ISSUED', target_type='User', target_id=user.id, target_user_id=user.id, notes=f"Issued code {code} expiring in 3m")
 
     return jsonify({
         'message': 'Password reset code generated successfully',
@@ -403,6 +435,12 @@ def promote_to_teacher(user_id):
 
     db.session.commit()
 
+    _maybe_send_announcement_email(
+        user,
+        'Faculty Role Assigned',
+        f'An administrator promoted you to Faculty/Teacher status. Department: {department or "General"}. Welcome to the Faculty team!'
+    )
+
     log_audit('PROMOTE_TEACHER', target_type='User', target_id=user.id, target_user_id=user.id, notes=f"Promoted {user.username} to teacher. Dept: {department}, Staff ID: {staff_id}")
     return jsonify({
         'message': f'User {user.username} promoted to Teacher successfully',
@@ -475,6 +513,13 @@ def create_profile_field():
             notified_count += 1
 
         db.session.commit()
+
+        for u in target_users:
+            _maybe_send_announcement_email(
+                u,
+                'New Profile Field Added',
+                f'A new profile field ({label}) was added for {target_label}. Please update your Profile Settings.'
+            )
     except Exception as e:
         print(f"Notification dispatch warning: {e}")
 

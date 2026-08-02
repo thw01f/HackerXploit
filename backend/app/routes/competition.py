@@ -89,6 +89,11 @@ def announce_competition():
     ends_at = datetime.fromisoformat(ends_at_str)
     deadline = datetime.fromisoformat(data['application_deadline']) if data.get('application_deadline') else None
 
+    if ends_at <= starts_at:
+        return jsonify({'error': 'Ends At must be after Starts At'}), 400
+    if deadline and deadline > starts_at:
+        return jsonify({'error': 'Application Deadline must be on or before Starts At'}), 400
+
     # Compute status based on Kolkata (IST) current time
     now_ist = get_kolkata_now()
     if now_ist < starts_at:
@@ -135,12 +140,21 @@ def update_competition(comp_id):
         comp.poster_image = data['poster_image']
     if 'external_link' in data:
         comp.external_link = data['external_link']
-    if 'starts_at' in data and data['starts_at']:
-        comp.starts_at = datetime.fromisoformat(data['starts_at'])
-    if 'ends_at' in data and data['ends_at']:
-        comp.ends_at = datetime.fromisoformat(data['ends_at'])
+    new_starts_at = datetime.fromisoformat(data['starts_at']) if data.get('starts_at') else comp.starts_at
+    new_ends_at = datetime.fromisoformat(data['ends_at']) if data.get('ends_at') else comp.ends_at
     if 'application_deadline' in data:
-        comp.application_deadline = datetime.fromisoformat(data['application_deadline']) if data['application_deadline'] else None
+        new_deadline = datetime.fromisoformat(data['application_deadline']) if data['application_deadline'] else None
+    else:
+        new_deadline = comp.application_deadline
+
+    if new_ends_at <= new_starts_at:
+        return jsonify({'error': 'Ends At must be after Starts At'}), 400
+    if new_deadline and new_deadline > new_starts_at:
+        return jsonify({'error': 'Application Deadline must be on or before Starts At'}), 400
+
+    comp.starts_at = new_starts_at
+    comp.ends_at = new_ends_at
+    comp.application_deadline = new_deadline
 
     # Re-evaluate status based on Kolkata time
     now_ist = get_kolkata_now()

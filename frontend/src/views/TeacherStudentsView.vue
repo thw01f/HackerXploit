@@ -48,19 +48,19 @@
               <div class="min-w-0 flex-1">
                 <h3 class="font-bold text-white text-base truncate">{{ student.full_name || student.username }}</h3>
                 <p class="text-xs font-mono text-cyan-400">@{{ student.username }}</p>
-                <p v-if="student.student_id" class="text-[11px] font-mono text-slate-400">ID: {{ student.student_id }}</p>
+                <p v-if="student.student_id" class="text-xs font-mono text-slate-400">ID: {{ student.student_id }}</p>
               </div>
             </div>
 
             <!-- Badges & Activity Pill -->
             <div class="flex flex-wrap gap-2 pt-2 border-t border-slate-800">
-              <span :class="getActivityBadgeClass(student.activity_level)" class="text-[10px] font-mono px-2 py-0.5 rounded border uppercase">
+              <span :class="getActivityBadgeClass(student.activity_level)" class="text-[11px] font-mono px-2 py-0.5 rounded border uppercase">
                 {{ student.total_activity_hours }}h Active
               </span>
-              <span class="text-[10px] font-mono px-2 py-0.5 rounded border border-purple-500/30 bg-purple-950/30 text-purple-400">
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded border border-purple-500/30 bg-purple-950/30 text-purple-400">
                 {{ student.enrollments_count }} Courses
               </span>
-              <span class="text-[10px] font-mono px-2 py-0.5 rounded border border-amber-500/30 bg-amber-950/30 text-amber-400">
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded border border-amber-500/30 bg-amber-950/30 text-amber-400">
                 {{ student.competitions_count }} Comps
               </span>
             </div>

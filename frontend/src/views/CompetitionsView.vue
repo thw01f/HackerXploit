@@ -134,7 +134,7 @@
             :style="getCardBannerStyle(comp)"
           >
             <!-- Overlay Gradient for contrast -->
-            <div class="absolute inset-0 bg-gradient-to-t from-[#090d16] via-transparent to-black/60"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-[#111927] via-transparent to-black/60"></div>
 
             <!-- Custom Category Icon/Artwork if no poster image -->
             <div v-if="!comp.poster_image || comp.poster_image === '/logo.png'" class="relative z-10 text-center p-4 space-y-1">
@@ -212,41 +212,44 @@
               </a>
             </div>
 
-            <!-- Structured Date Timeline Grid -->
-            <div class="space-y-1.5 text-[11px] text-slate-400 bg-[#080c14] p-3 rounded-xl border border-[#1f293d]/80 font-mono">
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 flex items-center gap-1">
-                  <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <!-- Structured Date Timeline Grid: a true 2-column grid (label | value)
+                 instead of per-row flex, so labels and values each form a clean
+                 aligned column regardless of "Starts"/"Ends"/"Deadline" length. -->
+            <div class="text-xs bg-[#080c14] rounded-xl border border-[#1f293d]/80 font-mono overflow-hidden">
+              <div class="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 p-3">
+                <span class="text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
+                  <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                   </svg>
-                  Starts:
+                  Starts
                 </span>
-                <span class="text-slate-200 font-semibold">{{ formatDate(comp.starts_at) }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-500 flex items-center gap-1">
-                  <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span class="text-slate-200 font-semibold text-right tabular-nums">{{ formatDate(comp.starts_at) }}</span>
+
+                <span class="text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
+                  <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                   </svg>
-                  Ends:
+                  Ends
                 </span>
-                <span class="text-slate-200 font-semibold">{{ formatDate(comp.ends_at) }}</span>
-              </div>
-              <div v-if="comp.application_deadline" class="flex items-center justify-between text-amber-400 pt-0.5 border-t border-slate-800/80">
-                <span class="flex items-center gap-1">
-                  <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
-                  Deadline:
-                </span>
-                <span class="font-bold">{{ formatDate(comp.application_deadline) }}</span>
+                <span class="text-slate-200 font-semibold text-right tabular-nums">{{ formatDate(comp.ends_at) }}</span>
+
+                <template v-if="comp.application_deadline">
+                  <div class="col-span-2 border-t border-slate-800/80 -mx-3 mt-1"></div>
+                  <span class="text-amber-400 flex items-center gap-1.5 whitespace-nowrap">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Deadline
+                  </span>
+                  <span class="text-amber-400 font-bold text-right tabular-nums">{{ formatDate(comp.application_deadline) }}</span>
+                </template>
               </div>
             </div>
 
             <!-- User Involvement Badge Bar -->
-            <div class="flex items-center justify-between pt-1">
-              <span class="text-[11px] text-slate-500 font-mono uppercase">My Status:</span>
-              <span :class="getInvolvementBadgeClass(comp.user_involvement)" class="text-[10px] uppercase px-2.5 py-0.5 rounded font-bold border">
+            <div class="flex items-center justify-between pt-1 gap-2">
+              <span class="text-xs text-slate-500 font-mono uppercase shrink-0">My Status</span>
+              <span :class="getInvolvementBadgeClass(comp.user_involvement)" class="text-[11px] uppercase px-2.5 py-0.5 rounded font-bold border text-right whitespace-nowrap">
                 {{ formatInvolvement(comp.user_involvement) }}
               </span>
             </div>
@@ -343,22 +346,22 @@
         
         <!-- Header Banner with Poster Image or Category Gradient -->
         <div class="h-44 w-full relative p-6 flex flex-col justify-between overflow-hidden shrink-0" :style="getCardBannerStyle(selectedComp)">
-          <div class="absolute inset-0 bg-gradient-to-t from-[#0c1117] via-[#0c1117]/60 to-transparent"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-[#111927] via-[#111927]/60 to-transparent"></div>
           
           <div class="relative z-10 flex items-center justify-between">
-            <span class="px-3 py-1 rounded-full text-xs font-mono font-extrabold uppercase bg-black/60 backdrop-blur border border-white/20 text-white flex items-center gap-1.5 shadow">
+            <span class="px-3 py-1 rounded-full text-sm font-mono font-extrabold uppercase bg-black/60 backdrop-blur border border-white/20 text-white flex items-center gap-1.5 shadow">
               <span>{{ getCategoryEmoji(selectedComp?.category) }}</span>
               <span>{{ selectedComp?.category?.toUpperCase() || 'EVENT' }}</span>
             </span>
             <button @click="showDetailsModal = false" class="w-8 h-8 rounded-full bg-black/60 hover:bg-black text-slate-300 hover:text-white border border-white/20 flex items-center justify-center font-mono font-bold text-base transition-all">✕</button>
           </div>
 
-          <div class="relative z-10 space-y-1">
+          <div class="relative z-10 space-y-1.5">
             <div class="flex items-center gap-2">
-              <span :class="getPriorityBadgeClass(selectedComp?.priority)" class="text-[10px] font-mono font-extrabold uppercase px-2 py-0.5 rounded border">
+              <span :class="getPriorityBadgeClass(selectedComp?.priority)" class="text-xs font-mono font-extrabold uppercase px-2 py-0.5 rounded border">
                 {{ selectedComp?.priority }} PRIORITY
               </span>
-              <span :class="selectedComp?.computed_status === 'ended' ? 'bg-slate-900 text-slate-400 border-slate-700' : selectedComp?.computed_status === 'ongoing' ? 'bg-emerald-950 text-[#9fef00] border-[#9fef00]' : 'bg-cyan-950 text-[#00f0ff] border-[#00f0ff]'" class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border">
+              <span :class="selectedComp?.computed_status === 'ended' ? 'bg-slate-900 text-slate-400 border-slate-700' : selectedComp?.computed_status === 'ongoing' ? 'bg-emerald-950 text-[#9fef00] border-[#9fef00]' : 'bg-cyan-950 text-[#00f0ff] border-[#00f0ff]'" class="text-xs font-mono font-bold uppercase px-2 py-0.5 rounded border">
                 {{ selectedComp?.computed_status || 'UPCOMING' }}
               </span>
             </div>
@@ -367,60 +370,60 @@
         </div>
 
         <!-- Scrollable Modal Content Body (10 Detailed Sections) -->
-        <div class="p-6 space-y-5 overflow-y-auto font-mono text-xs text-slate-300 flex-1">
-          
+        <div class="p-6 space-y-5 overflow-y-auto font-mono text-sm text-slate-300 flex-1">
+
           <!-- 1. Full Description -->
           <div class="space-y-1.5 bg-[#090d16] p-4 rounded-xl border border-slate-800/80">
-            <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               <span>📜</span>
               <span>Complete Event Overview & Description</span>
             </h4>
-            <p class="text-slate-200 text-xs leading-relaxed whitespace-pre-line">
+            <p class="text-slate-200 text-sm leading-relaxed whitespace-pre-line">
               {{ selectedComp?.description || 'No detailed overview supplied for this competition.' }}
             </p>
           </div>
 
           <!-- 2. Detailed IST Timeline Grid (Starts, Ends, Deadline) -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div class="bg-[#090d16] p-3.5 rounded-xl border border-emerald-500/30 space-y-1">
-              <span class="text-[10px] text-slate-400 uppercase block font-bold">1. Event Starts (IST)</span>
-              <p class="text-xs font-bold text-emerald-400">{{ formatDate(selectedComp?.starts_at) }}</p>
+            <div class="bg-[#090d16] p-3.5 rounded-xl border border-emerald-500/30 space-y-1.5">
+              <span class="text-[11px] text-slate-400 uppercase block font-bold">1. Event Starts (IST)</span>
+              <p class="text-sm font-bold text-emerald-400">{{ formatDate(selectedComp?.starts_at) }}</p>
             </div>
-            <div class="bg-[#090d16] p-3.5 rounded-xl border border-rose-500/30 space-y-1">
-              <span class="text-[10px] text-slate-400 uppercase block font-bold">2. Event Ends (IST)</span>
-              <p class="text-xs font-bold text-rose-400">{{ formatDate(selectedComp?.ends_at) }}</p>
+            <div class="bg-[#090d16] p-3.5 rounded-xl border border-rose-500/30 space-y-1.5">
+              <span class="text-[11px] text-slate-400 uppercase block font-bold">2. Event Ends (IST)</span>
+              <p class="text-sm font-bold text-rose-400">{{ formatDate(selectedComp?.ends_at) }}</p>
             </div>
-            <div class="bg-[#090d16] p-3.5 rounded-xl border border-amber-500/30 space-y-1">
-              <span class="text-[10px] text-slate-400 uppercase block font-bold">3. Application Deadline</span>
-              <p class="text-xs font-bold text-amber-400">{{ formatDate(selectedComp?.application_deadline) || 'No hard deadline' }}</p>
+            <div class="bg-[#090d16] p-3.5 rounded-xl border border-amber-500/30 space-y-1.5">
+              <span class="text-[11px] text-slate-400 uppercase block font-bold">3. Application Deadline</span>
+              <p class="text-sm font-bold text-amber-400">{{ formatDate(selectedComp?.application_deadline) || 'No hard deadline' }}</p>
             </div>
           </div>
 
           <!-- 3. Key Details Metadata Grid -->
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 bg-[#090d16] p-4 rounded-xl border border-slate-800">
-            <div>
-              <span class="text-[10px] text-slate-500 block uppercase">Category</span>
-              <span class="text-white font-bold uppercase">{{ selectedComp?.category }}</span>
+            <div class="space-y-1">
+              <span class="text-[11px] text-slate-500 block uppercase">Category</span>
+              <span class="text-sm text-white font-bold uppercase">{{ selectedComp?.category }}</span>
             </div>
-            <div>
-              <span class="text-[10px] text-slate-500 block uppercase">Priority</span>
-              <span class="text-white font-bold uppercase">{{ selectedComp?.priority }}</span>
+            <div class="space-y-1">
+              <span class="text-[11px] text-slate-500 block uppercase">Priority</span>
+              <span class="text-sm text-white font-bold uppercase">{{ selectedComp?.priority }}</span>
             </div>
-            <div>
-              <span class="text-[10px] text-slate-500 block uppercase">My Status</span>
-              <span class="text-cyan-400 font-bold uppercase">{{ formatInvolvement(selectedComp?.user_involvement) }}</span>
+            <div class="space-y-1">
+              <span class="text-[11px] text-slate-500 block uppercase">My Status</span>
+              <span class="text-sm text-cyan-400 font-bold uppercase">{{ formatInvolvement(selectedComp?.user_involvement) }}</span>
             </div>
-            <div>
-              <span class="text-[10px] text-slate-500 block uppercase">Attendees / Scanned</span>
-              <span class="text-emerald-400 font-bold">{{ selectedComp?.attendee_count || 0 }} Members</span>
+            <div class="space-y-1">
+              <span class="text-[11px] text-slate-500 block uppercase">Attendees / Scanned</span>
+              <span class="text-sm text-emerald-400 font-bold">{{ selectedComp?.attendee_count || 0 }} Members</span>
             </div>
           </div>
 
           <!-- 4. Registration & Portal External Link -->
           <div v-if="selectedComp?.external_link" class="bg-cyan-950/40 p-3.5 rounded-xl border border-cyan-500/40 flex items-center justify-between gap-3">
             <div class="min-w-0 flex-1">
-              <span class="text-[10px] text-cyan-300 uppercase block font-bold">Official External Portal / Link</span>
-              <p class="text-xs text-slate-300 font-mono truncate">{{ selectedComp?.external_link }}</p>
+              <span class="text-xs text-cyan-300 uppercase block font-bold">Official External Portal / Link</span>
+              <p class="text-sm text-slate-300 font-mono truncate">{{ selectedComp?.external_link }}</p>
             </div>
             <a :href="selectedComp?.external_link" target="_blank" class="btn-neon-cyan text-xs py-2 px-4 rounded-lg font-bold shrink-0">
               Open Portal ↗
@@ -537,14 +540,15 @@
 
             <div>
               <label class="block font-mono text-slate-400 mb-1">Ends At *</label>
-              <input v-model="newComp.ends_at" type="datetime-local" required class="input-field" />
+              <input v-model="newComp.ends_at" type="datetime-local" required :min="newComp.starts_at" class="input-field" />
             </div>
           </div>
 
           <div>
             <label class="block font-mono text-slate-400 mb-1">Application Deadline</label>
-            <input v-model="newComp.application_deadline" type="datetime-local" class="input-field" />
+            <input v-model="newComp.application_deadline" type="datetime-local" :max="newComp.starts_at" class="input-field" />
           </div>
+          <p v-if="announceError" class="text-rose-400 text-xs font-bold">{{ announceError }}</p>
 
           <div>
             <label class="block font-mono text-slate-400 mb-1">External Registration Link</label>
@@ -929,11 +933,11 @@
             </div>
             <div>
               <label class="block font-bold text-slate-300 uppercase mb-1">Ends At *</label>
-              <input v-model="editingForm.ends_at" type="datetime-local" required class="input-field w-full bg-[#090d16] border-slate-700" />
+              <input v-model="editingForm.ends_at" type="datetime-local" required :min="editingForm.starts_at" class="input-field w-full bg-[#090d16] border-slate-700" />
             </div>
             <div>
               <label class="block font-bold text-slate-300 uppercase mb-1">Registration Deadline</label>
-              <input v-model="editingForm.application_deadline" type="datetime-local" class="input-field w-full bg-[#090d16] border-slate-700" />
+              <input v-model="editingForm.application_deadline" type="datetime-local" :max="editingForm.starts_at" class="input-field w-full bg-[#090d16] border-slate-700" />
             </div>
           </div>
 
@@ -1042,8 +1046,16 @@ const openEditModal = (comp) => {
 }
 
 const submitEditCompetition = async () => {
-  editSubmitting.value = true
   editError.value = ''
+  if (editingForm.value.ends_at <= editingForm.value.starts_at) {
+    editError.value = 'Ends At must be after Starts At'
+    return
+  }
+  if (editingForm.value.application_deadline && editingForm.value.application_deadline > editingForm.value.starts_at) {
+    editError.value = 'Application Deadline must be on or before Starts At'
+    return
+  }
+  editSubmitting.value = true
   try {
     const payload = {
       title: editingForm.value.title,
@@ -1176,6 +1188,7 @@ const newComp = ref({
   external_link: '',
   poster_image: ''
 })
+const announceError = ref('')
 
 const fetchCompetitions = async () => {
   loading.value = true
@@ -1288,13 +1301,22 @@ const submitApplicationProof = async () => {
 }
 
 const submitAnnounce = async () => {
+  announceError.value = ''
+  if (newComp.value.ends_at && newComp.value.starts_at && newComp.value.ends_at <= newComp.value.starts_at) {
+    announceError.value = 'Ends At must be after Starts At'
+    return
+  }
+  if (newComp.value.application_deadline && newComp.value.starts_at && newComp.value.application_deadline > newComp.value.starts_at) {
+    announceError.value = 'Application Deadline must be on or before Starts At'
+    return
+  }
   try {
     await axios.post('/api/competitions', newComp.value)
     showAnnounceModal.value = false
     newComp.value = { title: '', description: '', category: 'ctf', priority: 'normal', starts_at: '', ends_at: '', application_deadline: '', external_link: '' }
     await fetchCompetitions()
   } catch (err) {
-    alert(err.response?.data?.error || 'Failed to announce competition')
+    announceError.value = err.response?.data?.error || 'Failed to announce competition'
   }
 }
 

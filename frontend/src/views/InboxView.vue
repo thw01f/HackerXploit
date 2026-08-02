@@ -53,7 +53,7 @@
               </svg>
               <span>Inbox</span>
             </div>
-            <span v-if="unreadCount > 0" class="bg-[#9fef00] text-black px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold animate-pulse">
+            <span v-if="unreadCount > 0" class="bg-[#9fef00] text-black px-2 py-0.5 rounded-full text-[11px] font-mono font-extrabold animate-pulse">
               {{ unreadCount }}
             </span>
           </button>
@@ -94,9 +94,9 @@
         <div class="glass-panel border border-[#1f293d] rounded-2xl p-4 bg-[#0d1420]/80 space-y-2 text-xs font-mono">
           <div class="flex items-center space-x-2 text-[#9fef00]">
             <span class="w-2 h-2 rounded-full bg-[#9fef00]"></span>
-            <span class="font-bold uppercase tracking-wider text-[10px]">Encrypted Channel Active</span>
+            <span class="font-bold uppercase tracking-wider text-[11px]">Encrypted Channel Active</span>
           </div>
-          <p class="text-slate-400 text-[11px] leading-relaxed">
+          <p class="text-slate-400 text-xs leading-relaxed">
             All messages are monitored under Cyber Club governance guidelines.
           </p>
         </div>
@@ -119,13 +119,13 @@
             <div v-if="currentFolder === 'inbox'" class="flex items-center space-x-1.5 bg-[#151f30] p-1 rounded-xl border border-[#1f293d]">
               <button 
                 @click="filterMode = 'all'" 
-                :class="['px-3 py-1 rounded-lg text-[11px] font-mono font-bold transition-all', filterMode === 'all' ? 'bg-[#9fef00] text-black shadow' : 'text-slate-400 hover:text-white']"
+                :class="['px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all', filterMode === 'all' ? 'bg-[#9fef00] text-black shadow' : 'text-slate-400 hover:text-white']"
               >
                 All
               </button>
               <button 
                 @click="filterMode = 'direct'" 
-                :class="['px-3 py-1 rounded-lg text-[11px] font-mono font-bold transition-all flex items-center gap-1.5', filterMode === 'direct' ? 'bg-[#00f0ff] text-black shadow' : 'text-slate-400 hover:text-white']"
+                :class="['px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5', filterMode === 'direct' ? 'bg-[#00f0ff] text-black shadow' : 'text-slate-400 hover:text-white']"
               >
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
@@ -135,7 +135,7 @@
               <button 
                 v-if="authStore.isTeacher || authStore.isAdmin"
                 @click="filterMode = 'broadcast'" 
-                :class="['px-3 py-1 rounded-lg text-[11px] font-mono font-bold transition-all flex items-center gap-1.5', filterMode === 'broadcast' ? 'bg-amber-400 text-black shadow' : 'text-slate-400 hover:text-white']"
+                :class="['px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5', filterMode === 'broadcast' ? 'bg-amber-400 text-black shadow' : 'text-slate-400 hover:text-white']"
               >
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/>
@@ -183,15 +183,15 @@
                     <span :class="['text-xs font-bold truncate', !msg.is_read && currentFolder === 'inbox' ? 'text-white font-extrabold' : 'text-slate-300']">
                       {{ msg.sender_name || msg.sender_username }}
                     </span>
-                    <span class="text-[10px] text-slate-500">(@{{ msg.sender_username }})</span>
+                    <span class="text-[11px] text-slate-500">(@{{ msg.sender_username }})</span>
                     
                     <!-- Role Pill -->
-                    <span :class="getRoleBadgeClass(msg.sender_role)" class="text-[9px] font-bold uppercase px-2 py-0.2 rounded border">
+                    <span :class="getRoleBadgeClass(msg.sender_role)" class="text-[10px] font-bold uppercase px-2 py-0.2 rounded border">
                       {{ msg.sender_role }}
                     </span>
 
                     <!-- Scope Badge -->
-                    <span :class="getScopeBadgeClass(msg.scope)" class="text-[9px] font-extrabold uppercase px-2 py-0.2 rounded border shadow">
+                    <span :class="getScopeBadgeClass(msg.scope)" class="text-[10px] font-extrabold uppercase px-2 py-0.2 rounded border shadow">
                       {{ getScopeLabel(msg.scope) }}
                     </span>
                   </div>
@@ -208,7 +208,7 @@
 
               <!-- Right Info: Sent date & actions -->
               <div class="flex items-center space-x-3 text-right flex-shrink-0 self-end md:self-center font-mono">
-                <span class="text-[11px] text-slate-500">{{ formatDate(msg.sent_at) }}</span>
+                <span class="text-xs text-slate-500">{{ formatDate(msg.sent_at) }}</span>
 
                 <!-- Quick Action Buttons -->
                 <div v-if="currentFolder !== 'sent'" class="flex items-center space-x-1.5" @click.stop>
@@ -247,15 +247,15 @@
         <div class="flex justify-between items-start border-b border-[#1f293d] pb-4">
           <div class="space-y-1 font-mono">
             <div class="flex items-center space-x-2">
-              <span :class="getScopeBadgeClass(selectedMsg.scope)" class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border">
+              <span :class="getScopeBadgeClass(selectedMsg.scope)" class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border">
                 {{ getScopeLabel(selectedMsg.scope) }}
               </span>
-              <span class="text-[11px] text-slate-400">{{ formatDate(selectedMsg.sent_at) }}</span>
+              <span class="text-xs text-slate-400">{{ formatDate(selectedMsg.sent_at) }}</span>
             </div>
             <h3 class="text-lg font-bold text-white leading-snug">{{ selectedMsg.subject }}</h3>
             <p class="text-xs text-slate-400">
               From: <span class="text-white font-bold">{{ selectedMsg.sender_name }}</span> (@{{ selectedMsg.sender_username }})
-              &bull; <span class="text-[#9fef00] uppercase font-bold text-[10px]">{{ selectedMsg.sender_role }}</span>
+              &bull; <span class="text-[#9fef00] uppercase font-bold text-[11px]">{{ selectedMsg.sender_role }}</span>
             </p>
           </div>
           <button @click="selectedMsg = null" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#151f30] transition-colors">✕</button>

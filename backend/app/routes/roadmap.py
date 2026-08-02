@@ -1,6 +1,7 @@
-from flask import Blueprint, request, jsonify, session
-from app.models import db, User, Roadmap, RoadmapNode, RoadmapNodeResource, UserRoadmapProgress
+from flask import Blueprint, request, jsonify, g
+from app.models import db, Roadmap, RoadmapNode, RoadmapNodeResource, UserRoadmapProgress
 from app.services.markdown_service import render_sanitized_html
+from app.utils.decorators import require_auth, get_current_user
 
 roadmap_bp = Blueprint('roadmap', __name__, url_prefix='/api/roadmaps')
 
@@ -283,10 +284,12 @@ def list_roadmaps():
 def get_roadmap(slug):
     roadmap = seed_default_cybersecurity_roadmap() if slug == 'cyber-security' else Roadmap.query.filter_by(slug=slug).first_or_404()
 
-    current_user_id = session.get('user_id')
+    # Public route (anonymous visitors can browse the roadmap), but if a real
+    # session cookie is present we still resolve it to show personal progress.
+    current_user, _ = get_current_user()
     user_status_map = {}
-    if current_user_id:
-        progress_entries = UserRoadmapProgress.query.filter_by(user_id=current_user_id).all()
+    if current_user:
+        progress_entries = UserRoadmapProgress.query.filter_by(user_id=current_user.id).all()
         for entry in progress_entries:
             user_status_map[entry.node_id] = entry.status
 
@@ -310,10 +313,9 @@ def get_roadmap(slug):
     }), 200
 
 @roadmap_bp.route('/nodes/<int:node_id>/progress', methods=['PATCH'])
+@require_auth
 def update_node_progress(node_id):
-    current_user_id = session.get('user_id')
-    if not current_user_id:
-        return jsonify({'error': 'Authentication required to track progress'}), 401
+    current_user_id = g.current_user.id
 
     node = RoadmapNode.query.get_or_404(node_id)
     data = request.get_json() or {}

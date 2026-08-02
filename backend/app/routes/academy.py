@@ -81,7 +81,7 @@ def modify_course(course_id):
     return jsonify(course.to_dict()), 200
 
 @academy_bp.route('/write', methods=['POST'])
-@require_auth
+@require_role('teacher', 'admin', 'root_admin')
 def write_course_content():
     """
     Markdown editor endpoint AND file upload (.md) endpoint.

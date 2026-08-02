@@ -222,6 +222,111 @@
         </div>
       </div>
 
+      <!-- Security: Change Password -->
+      <div class="glass-panel p-8 bg-[#111927] border border-[#1f293d] space-y-6">
+        <div class="border-b border-[#1f293d] pb-4">
+          <h3 class="text-lg font-bold text-white font-mono">Security</h3>
+          <p class="text-slate-400 text-xs mt-1">Change your password. This signs you out on every other device and revokes CTFd SSO tokens - only this session stays active.</p>
+        </div>
+
+        <form @submit.prevent="submitChangePassword" class="space-y-4 max-w-md">
+          <div v-if="passwordError" class="p-3 bg-rose-950/80 border border-rose-500/50 text-rose-300 rounded-lg text-xs font-bold">
+            {{ passwordError }}
+          </div>
+          <div v-if="passwordSuccess" class="p-3 bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 rounded-lg text-xs font-bold">
+            {{ passwordSuccess }}
+          </div>
+
+          <div>
+            <label class="block text-xs font-mono text-slate-400 uppercase mb-1">Current Password</label>
+            <input v-model="passwordForm.current_password" type="password" required class="input-field w-full" placeholder="••••••••••••" />
+          </div>
+          <div>
+            <label class="block text-xs font-mono text-slate-400 uppercase mb-1">New Password</label>
+            <input v-model="passwordForm.new_password" type="password" required minlength="8" class="input-field w-full" placeholder="••••••••••••" />
+          </div>
+          <div>
+            <label class="block text-xs font-mono text-slate-400 uppercase mb-1">Confirm New Password</label>
+            <input v-model="passwordForm.confirm_password" type="password" required minlength="8" class="input-field w-full" placeholder="••••••••••••" />
+          </div>
+
+          <button type="submit" :disabled="passwordSubmitting" class="btn-neon-cyan text-xs py-2.5 px-6 font-bold">
+            {{ passwordSubmitting ? 'Updating...' : 'Update Password' }}
+          </button>
+        </form>
+      </div>
+
+      <!-- Notification Preferences -->
+      <div class="glass-panel p-8 bg-[#111927] border border-[#1f293d] space-y-6">
+        <div class="border-b border-[#1f293d] pb-4">
+          <h3 class="text-lg font-bold text-white font-mono">Notification Preferences</h3>
+          <p class="text-slate-400 text-xs mt-1">The in-app notification bell always shows these. These toggles control whether HackerXploit ALSO emails you.</p>
+        </div>
+
+        <div class="space-y-3 max-w-xl">
+          <label class="flex items-center justify-between p-4 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer">
+            <div>
+              <span class="text-sm font-bold text-white block">Inbox Messages</span>
+              <span class="text-xs text-slate-400">New messages and replies sent to you (only if you're offline at the time).</span>
+            </div>
+            <input type="checkbox" v-model="notifPrefs.email_inbox_messages" class="w-5 h-5 accent-[#9fef00] shrink-0 ml-4" />
+          </label>
+
+          <label class="flex items-center justify-between p-4 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer">
+            <div>
+              <span class="text-sm font-bold text-white block">Announcements</span>
+              <span class="text-xs text-slate-400">Role changes, new profile fields, and other admin broadcasts.</span>
+            </div>
+            <input type="checkbox" v-model="notifPrefs.email_announcements" class="w-5 h-5 accent-[#9fef00] shrink-0 ml-4" />
+          </label>
+
+          <label class="flex items-center justify-between p-4 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer">
+            <div>
+              <span class="text-sm font-bold text-white block">Account & Approval Updates</span>
+              <span class="text-xs text-slate-400">Approved, rejected, or suspended status changes to your account.</span>
+            </div>
+            <input type="checkbox" v-model="notifPrefs.email_account_updates" class="w-5 h-5 accent-[#9fef00] shrink-0 ml-4" />
+          </label>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button @click="saveNotifPrefs" :disabled="notifSaving" class="btn-neon-cyan text-xs py-2.5 px-6 font-bold">
+            {{ notifSaving ? 'Saving...' : 'Save Preferences' }}
+          </button>
+          <span v-if="notifSaved" class="text-xs text-emerald-400 font-bold">✓ Saved</span>
+        </div>
+      </div>
+
+      <!-- Appearance -->
+      <div class="glass-panel p-8 bg-[#111927] border border-[#1f293d] space-y-6">
+        <div class="border-b border-[#1f293d] pb-4">
+          <h3 class="text-lg font-bold text-white font-mono">Appearance</h3>
+          <p class="text-slate-400 text-xs mt-1">Choose how HackerXploit looks on this device.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-xl">
+          <button
+            v-for="opt in themeOptions"
+            :key="opt.value"
+            @click="theme.setMode(opt.value)"
+            :class="[
+              'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all font-mono',
+              theme.mode.value === opt.value ? 'border-[#9fef00] bg-[#9fef00]/10' : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+            ]"
+          >
+            <svg class="w-6 h-6" :class="theme.mode.value === opt.value ? 'text-[#9fef00]' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="opt.icon"/>
+            </svg>
+            <span :class="theme.mode.value === opt.value ? 'text-white font-bold' : 'text-slate-400'" class="text-xs uppercase tracking-wide">
+              {{ opt.label }}
+            </span>
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-500 font-mono">
+          "System" follows your OS/browser's light or dark setting automatically and switches live if you change it.
+        </p>
+      </div>
+
       <!-- Privacy & Data Governance (embedded) -->
       <div class="glass-panel p-8 bg-[#111927] border border-[#1f293d] space-y-6">
         <div class="border-b border-[#1f293d] pb-4">
@@ -305,8 +410,16 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import { useTheme } from '../stores/theme'
 
 const authStore = useAuthStore()
+const theme = useTheme()
+
+const themeOptions = [
+  { value: 'light', label: 'Light', icon: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z' },
+  { value: 'dark', label: 'Dark', icon: 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z' },
+  { value: 'system', label: 'System', icon: 'M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25' }
+]
 
 const form = ref({
   full_name: authStore.user?.full_name || '',
@@ -333,6 +446,71 @@ const fetchDevices = async () => {
     devices.value = res.data.devices
   } catch (err) {
     console.error(err)
+  }
+}
+
+// Security: change password
+const passwordForm = ref({ current_password: '', new_password: '', confirm_password: '' })
+const passwordSubmitting = ref(false)
+const passwordError = ref('')
+const passwordSuccess = ref('')
+
+const submitChangePassword = async () => {
+  passwordError.value = ''
+  passwordSuccess.value = ''
+  if (passwordForm.value.new_password !== passwordForm.value.confirm_password) {
+    passwordError.value = 'New password and confirmation do not match'
+    return
+  }
+  if (passwordForm.value.new_password.length < 8) {
+    passwordError.value = 'New password must be at least 8 characters'
+    return
+  }
+  passwordSubmitting.value = true
+  try {
+    const res = await axios.post('/api/auth/change-password', {
+      current_password: passwordForm.value.current_password,
+      new_password: passwordForm.value.new_password
+    })
+    passwordSuccess.value = res.data.message
+    passwordForm.value = { current_password: '', new_password: '', confirm_password: '' }
+    await fetchDevices()
+  } catch (err) {
+    passwordError.value = err.response?.data?.error || 'Failed to change password'
+  } finally {
+    passwordSubmitting.value = false
+  }
+}
+
+// Notification preferences
+const notifPrefs = ref({ email_inbox_messages: true, email_announcements: false, email_account_updates: true })
+const notifSaving = ref(false)
+const notifSaved = ref(false)
+
+const fetchNotifPrefs = async () => {
+  try {
+    const res = await axios.get('/api/notifications/preferences')
+    notifPrefs.value = {
+      email_inbox_messages: res.data.email_inbox_messages,
+      email_announcements: res.data.email_announcements,
+      email_account_updates: res.data.email_account_updates
+    }
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+const saveNotifPrefs = async () => {
+  notifSaving.value = true
+  notifSaved.value = false
+  try {
+    await axios.put('/api/notifications/preferences', notifPrefs.value)
+    notifSaved.value = true
+    setTimeout(() => { notifSaved.value = false }, 2500)
+  } catch (err) {
+    alert(err.response?.data?.error || 'Failed to save notification preferences')
+  } finally {
+    notifSaving.value = false
   }
 }
 
@@ -475,5 +653,5 @@ const submitDeleteRequest = async () => {
   } finally { submittingDelete.value = false }
 }
 
-onMounted(() => { fetchDevices(); fetchPrivacy() })
+onMounted(() => { fetchDevices(); fetchPrivacy(); fetchNotifPrefs() })
 </script>

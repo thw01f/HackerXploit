@@ -16,9 +16,21 @@
     ]"
   >
     <!-- Logo Section -->
-    <div class="flex items-center h-20 px-5 border-b border-[#1a2332] flex-shrink-0">
+    <div
+      :class="[
+        'flex items-center h-20 border-b border-[#1a2332] flex-shrink-0',
+        collapsed && !mobileOpen ? 'justify-center px-2' : 'px-5'
+      ]"
+    >
       <router-link to="/" class="flex items-center gap-4 min-w-0">
-        <img src="/logo.png" class="w-14 h-14 object-contain flex-shrink-0" alt="HackerXploit" />
+        <img
+          src="/logo.png"
+          alt="HackerXploit"
+          :class="[
+            'object-contain flex-shrink-0',
+            collapsed && !mobileOpen ? 'w-11 h-11' : 'w-14 h-14'
+          ]"
+        />
         <div v-if="!collapsed || mobileOpen" class="min-w-0">
           <div class="font-extrabold text-lg text-white font-mono leading-tight tracking-tight">
             Hacker<span class="text-red-500">Xploit</span>

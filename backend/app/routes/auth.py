@@ -2,7 +2,7 @@ import secrets
 import hashlib
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, session, make_response, g, current_app
-from app.models import db, User, DeviceSession, LoginAttempt, AuditLog, ProfileFieldDefinition, UserProfileValue, PasswordResetRequest, PasswordResetCode
+from app.models import db, User, DeviceSession, LoginAttempt, AuditLog, ProfileFieldDefinition, UserProfileValue, PasswordResetRequest, PasswordResetCode, OAuth2Token
 from app.utils.captcha import verify_turnstile
 from app.utils.decorators import require_auth, log_audit, get_current_user
 
@@ -312,6 +312,42 @@ def logout():
 def get_me():
     return jsonify({'user': g.current_user.to_dict()}), 200
 
+@auth_bp.route('/change-password', methods=['POST'])
+@require_auth
+def change_password():
+    data = request.get_json() or {}
+    current_password = data.get('current_password', '')
+    new_password = data.get('new_password', '')
+
+    if not current_password or not new_password:
+        return jsonify({'error': 'Current password and new password are required'}), 400
+
+    user = g.current_user
+    if not user.check_password(current_password):
+        return jsonify({'error': 'Current password is incorrect'}), 400
+
+    if len(new_password) < 8:
+        return jsonify({'error': 'New password must be at least 8 characters'}), 400
+
+    user.set_password(new_password)
+
+    # Same hardening as the admin-code reset flow: a password change is a
+    # credential event, so kill every OTHER session and any live CTFd SSO
+    # tokens. The session making this request stays alive since the user
+    # just proved they still hold the current (soon to be old) credential.
+    current_session_id = g.current_session.id if g.current_session else None
+    revoke_query = DeviceSession.query.filter_by(user_id=user.id, is_active=True)
+    if current_session_id:
+        revoke_query = revoke_query.filter(DeviceSession.id != current_session_id)
+    revoke_query.update({'is_active': False})
+    OAuth2Token.query.filter_by(user_id=user.id).delete()
+
+    db.session.commit()
+
+    log_audit('PASSWORD_CHANGED_SELF', target_type='User', target_id=user.id, target_user_id=user.id, notes="User changed their own password; other sessions and CTFd SSO tokens revoked")
+
+    return jsonify({'message': 'Password updated successfully. You have been logged out on all other devices.'}), 200
+
 @auth_bp.route('/forgot-password', methods=['POST'])
 def forgot_password():
     data = request.get_json() or {}
@@ -337,22 +373,59 @@ def forgot_password():
 
     return jsonify({'message': 'Password reset request submitted to admin queue.'}), 200
 
+def _resolve_reset_code(login_id, code_str):
+    """
+    Looks up a reset code and cross-checks it against the given username/email.
+    Returns (user, reset_code, error_response_or_None). Error messages are
+    intentionally generic and identical across failure reasons (unknown user,
+    wrong code, expired/used code, code belonging to a different account) to
+    avoid leaking which part was wrong (username enumeration / oracle risk).
+    """
+    GENERIC_ERROR = ('Invalid or expired reset code', 400)
+
+    login_id = (login_id or '').strip()
+    code_str = (code_str or '').strip().upper()
+    if not login_id or not code_str:
+        return None, None, (jsonify({'error': 'Invalid or expired reset code'}), 400)
+
+    user = User.query.filter(
+        (User.email == login_id.lower()) | (User.username == login_id)
+    ).first()
+
+    reset_code = PasswordResetCode.query.filter_by(code=code_str).first()
+
+    if not user or not reset_code or reset_code.user_id != user.id or not reset_code.is_valid():
+        return None, None, (jsonify({'error': GENERIC_ERROR[0]}), GENERIC_ERROR[1])
+
+    return user, reset_code, None
+
+
+@auth_bp.route('/verify-reset-code', methods=['POST'])
+def verify_reset_code():
+    """
+    Checks a (username, code) pair without consuming the code, so the frontend
+    wizard can advance from the "enter code" step to the "set new password"
+    step before the user has typed a new password at all.
+    """
+    data = request.get_json() or {}
+    user, reset_code, error = _resolve_reset_code(data.get('email_or_username'), data.get('code'))
+    if error:
+        return error
+
+    return jsonify({'message': 'Code verified', 'expires_at': reset_code.expires_at.isoformat()}), 200
+
+
 @auth_bp.route('/reset-password', methods=['POST'])
 def reset_password():
     data = request.get_json() or {}
-    code_str = data.get('code', '').strip().upper()
     new_password = data.get('password', '')
 
-    if not code_str or not new_password:
-        return jsonify({'error': 'Code and new password are required'}), 400
+    user, reset_code, error = _resolve_reset_code(data.get('email_or_username'), data.get('code'))
+    if error:
+        return error
 
-    reset_code = PasswordResetCode.query.filter_by(code=code_str).first()
-    if not reset_code or not reset_code.is_valid():
-        return jsonify({'error': 'Invalid or expired reset code'}), 400
-
-    user = User.query.get(reset_code.user_id)
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
+    if not new_password:
+        return jsonify({'error': 'New password is required'}), 400
 
     user.set_password(new_password)
     user.failed_login_count = 0
@@ -364,11 +437,21 @@ def reset_password():
     for r in reqs:
         r.status = 'fulfilled'
 
+    # A password reset is a credential-compromise-recovery event: kill every
+    # existing session (this platform's own cookie sessions, and any live
+    # CTFd SSO access/refresh tokens) so a possibly-compromised session can't
+    # keep riding on the old password. CTFd itself has no separate password
+    # to update here - its accounts are provisioned with a random, never-used
+    # local password specifically so OAuth SSO through this platform is the
+    # only real login path (see ctfd_sync.py) - so there is nothing to sync.
+    DeviceSession.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
+    OAuth2Token.query.filter_by(user_id=user.id).delete()
+
     db.session.commit()
 
-    log_audit('PASSWORD_RESET_COMPLETED', target_type='User', target_id=user.id, target_user_id=user.id, notes="Password reset using admin-issued code")
+    log_audit('PASSWORD_RESET_COMPLETED', target_type='User', target_id=user.id, target_user_id=user.id, notes="Password reset using admin-issued code; all sessions and CTFd SSO tokens revoked")
 
-    return jsonify({'message': 'Password reset successfully. You may now log in.'}), 200
+    return jsonify({'message': 'Password reset successfully. You have been logged out everywhere and may now log in.'}), 200
 
 @auth_bp.route('/onboarding', methods=['POST'])
 @require_auth

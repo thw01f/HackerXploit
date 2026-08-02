@@ -186,7 +186,7 @@
                     @click="theme.toggleTheme()"
                     :class="[
                       'w-12 h-6 rounded-full p-1 transition-colors flex items-center',
-                      theme.isDark.value ? 'bg-[#9fef00]' : 'bg-slate-700'
+                      theme.isDark.value ? 'bg-[#9fef00]' : 'bg-[#334155]'
                     ]"
                   >
                     <div

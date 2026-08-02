@@ -46,17 +46,17 @@
           <div class="flex-1 min-w-0">
             <div class="flex items-center space-x-2">
               <span class="text-xs font-bold text-white">{{ msg.sender_username }}</span>
-              <span :class="getRoleColor(msg.sender_role)" class="text-[10px] font-semibold uppercase px-1.5 py-0.2 bg-slate-800 rounded">
+              <span :class="getRoleColor(msg.sender_role)" class="text-[11px] font-semibold uppercase px-1.5 py-0.2 bg-slate-800 rounded">
                 {{ msg.sender_role }}
               </span>
-              <span class="text-[10px] text-slate-500">{{ formatTimestamp(msg.timestamp) }}</span>
+              <span class="text-[11px] text-slate-500">{{ formatTimestamp(msg.timestamp) }}</span>
 
               <!-- Message Actions -->
               <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-2 ml-auto">
-                <button v-if="!msg.is_deleted" @click="openReportModal(msg)" class="text-[11px] text-slate-500 hover:text-amber-400">
+                <button v-if="!msg.is_deleted" @click="openReportModal(msg)" class="text-xs text-slate-500 hover:text-amber-400">
                   Report
                 </button>
-                <button v-if="authStore.isTeacher && !msg.is_deleted" @click="softDeleteMessage(msg.id)" class="text-[11px] text-slate-500 hover:text-rose-400">
+                <button v-if="authStore.isTeacher && !msg.is_deleted" @click="softDeleteMessage(msg.id)" class="text-xs text-slate-500 hover:text-rose-400">
                   Delete
                 </button>
               </div>

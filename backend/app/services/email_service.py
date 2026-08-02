@@ -70,6 +70,26 @@ def send_account_status_email(user_id, status):
         db.session.commit()
         return f"Status notification email sent to {user.email}"
 
+@celery.task
+def send_announcement_email(user_id, title, message):
+    from app import create_app
+    from app.models import db, User, EmailLog
+
+    app = create_app()
+    with app.app_context():
+        user = User.query.get(user_id)
+        if not user:
+            return "User not found"
+
+        subject = f"[HackerXploit] {title}"
+        body = f"<h2>{title}</h2><p>Hello {user.username},</p><p>{message}</p>"
+        success = send_smtp_email(user.email, subject, body)
+
+        log = EmailLog(user_id=user.id, type='announcement', sent_at=datetime.utcnow(), delivered=success)
+        db.session.add(log)
+        db.session.commit()
+        return f"Announcement email sent to {user.email}"
+
 def _send_offline_inbox_email_impl(user_id, subject_text, snippet):
     from app.models import db, User, EmailLog
     user = User.query.get(user_id)

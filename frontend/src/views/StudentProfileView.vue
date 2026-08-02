@@ -56,7 +56,8 @@
           </button>
           <button @click="activeTab = 'trophy_case'" :class="activeTab === 'trophy_case' ? 'text-amber-400 border-b-2 border-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'" class="uppercase transition-colors flex items-center gap-1.5 pb-3 px-4">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
-            Trophy Case
+            Competitions & Trophy Case
+            <span v-if="pendingCount > 0" class="bg-amber-400 text-black text-[10px] font-extrabold px-1.5 py-0.5 rounded-full leading-none">{{ pendingCount }}</span>
           </button>
         </div>
 
@@ -185,32 +186,67 @@
         <!-- TAB 4: TROPHY CASE -->
         <div v-if="activeTab === 'trophy_case'" class="space-y-6">
           <div v-if="profile.trophy_case.length === 0" class="glass-panel p-12 text-center text-slate-400">
-            No competition records or trophies found.
+            No competition applications or trophies found for this student.
           </div>
 
           <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div v-for="item in profile.trophy_case" :key="item.participation_id" class="glass-panel p-6 space-y-4 border-l-4" :class="getTrophyBorderClass(item.result)">
-              <div class="flex justify-between items-start">
-                <div>
-                  <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded border border-slate-700 bg-slate-900 text-slate-300">
+              <div class="flex justify-between items-start gap-2">
+                <div class="min-w-0">
+                  <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded border border-slate-700 bg-slate-900 text-slate-300">
                     {{ item.category }}
                   </span>
-                  <h4 class="font-bold text-white text-lg mt-1">{{ item.competition_title }}</h4>
+                  <h4 class="font-bold text-white text-lg mt-1 truncate">{{ item.competition_title }}</h4>
+                  <p class="text-[11px] text-slate-500 font-mono mt-0.5">Applied {{ formatDate(item.applied_at) }}</p>
                 </div>
 
-                <span :class="getResultBadgeClass(item.result)" class="text-xs font-mono px-3 py-1 rounded-lg border font-bold uppercase">
-                  {{ item.result }}
+                <span :class="getStatusBadgeClass(item.application_status)" class="text-xs font-mono px-3 py-1 rounded-lg border font-bold uppercase shrink-0">
+                  {{ formatStatus(item.application_status) }}
                 </span>
               </div>
 
+              <!-- Result, once the event has actually been scored/wrapped up -->
+              <div v-if="item.result && item.result !== 'participated'" class="flex items-center gap-2">
+                <span :class="getResultBadgeClass(item.result)" class="text-xs font-mono px-3 py-1 rounded-lg border font-bold uppercase">
+                  {{ item.result }}
+                </span>
+                <span v-if="item.placement_label" class="text-xs font-mono text-amber-300 font-bold">{{ item.placement_label }}</span>
+              </div>
+
               <div v-if="item.application_screenshot" class="pt-2">
-                <p class="text-[11px] font-mono text-slate-400 mb-1">Verification Screenshot:</p>
-                <img :src="item.application_screenshot" class="w-full h-36 object-cover rounded-xl border border-slate-800" />
+                <p class="text-[11px] font-mono text-slate-400 mb-1">Uploaded Registration Proof:</p>
+                <a :href="item.application_screenshot" target="_blank">
+                  <img :src="item.application_screenshot" class="w-full h-36 object-cover rounded-xl border border-slate-800 hover:border-cyan-500/50 transition-colors" />
+                </a>
+              </div>
+
+              <div v-if="item.event_photos && item.event_photos.length > 0" class="pt-1">
+                <p class="text-[11px] font-mono text-slate-400 mb-1">Event Photos:</p>
+                <div class="grid grid-cols-4 gap-1.5">
+                  <a v-for="(photo, idx) in item.event_photos" :key="idx" :href="photo" target="_blank">
+                    <img :src="photo" class="w-full h-14 object-cover rounded-lg border border-slate-800 hover:border-cyan-500/50 transition-colors" />
+                  </a>
+                </div>
               </div>
 
               <p v-if="item.summary_notes" class="text-xs text-slate-300 bg-slate-900/60 p-3 rounded-lg border border-slate-800">
                 "{{ item.summary_notes }}"
               </p>
+
+              <!-- Verification trail -->
+              <p v-if="item.verified_by_name" class="text-[11px] font-mono text-slate-500">
+                {{ item.application_status === 'rejected' ? 'Rejected' : 'Verified' }} by <span class="text-slate-300">{{ item.verified_by_name }}</span> on {{ formatDate(item.verified_at) }}
+              </p>
+
+              <!-- Reviewer actions: only while a decision is still pending -->
+              <div v-if="item.application_status === 'pending_verification'" class="pt-3 border-t border-slate-800/80 flex gap-2">
+                <button @click="reviewApplication(item, 'verified')" class="btn-neon-cyan text-[11px] px-3 py-1.5 font-bold flex-1">
+                  ✓ Verify Application
+                </button>
+                <button @click="reviewApplication(item, 'rejected')" class="bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-600/40 text-[11px] px-3 py-1.5 rounded font-mono font-bold flex-1">
+                  ✕ Reject
+                </button>
+              </div>
 
               <div v-if="item.certificate" class="pt-3 border-t border-slate-800/80 flex justify-between items-center text-xs font-mono">
                 <span class="text-amber-400 font-bold flex items-center gap-1">
@@ -228,7 +264,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 import axios from 'axios'
@@ -237,6 +273,11 @@ const route = useRoute()
 const activeTab = ref('overview')
 const profile = ref(null)
 const loading = ref(true)
+
+const pendingCount = computed(() => {
+  if (!profile.value) return 0
+  return profile.value.trophy_case.filter(t => t.application_status === 'pending_verification').length
+})
 
 const fetchProfile = async () => {
   loading.value = true
@@ -261,6 +302,37 @@ const getTrophyBorderClass = (res) => {
   if (res === 'winner') return 'border-amber-500'
   if (res === 'runner_up') return 'border-slate-400'
   return 'border-cyan-500'
+}
+
+const getStatusBadgeClass = (status) => {
+  if (status === 'verified') return 'border-emerald-500/50 bg-emerald-950/40 text-emerald-300'
+  if (status === 'rejected') return 'border-rose-500/50 bg-rose-950/40 text-rose-300'
+  return 'border-amber-500/50 bg-amber-950/40 text-amber-300 animate-pulse'
+}
+
+const formatStatus = (status) => {
+  if (status === 'pending_verification') return 'Pending Review'
+  return status || 'Unknown'
+}
+
+const formatDate = (isoStr) => {
+  if (!isoStr) return 'N/A'
+  try {
+    return new Date(isoStr).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } catch (e) {
+    return isoStr
+  }
+}
+
+const reviewApplication = async (item, status) => {
+  const verb = status === 'verified' ? 'verify' : 'reject'
+  if (!confirm(`Are you sure you want to ${verb} this application?`)) return
+  try {
+    await axios.post(`/api/competitions/${item.competition_id}/applications/${item.participation_id}/verify`, { status })
+    await fetchProfile()
+  } catch (err) {
+    alert(err.response?.data?.error || `Failed to ${verb} application`)
+  }
 }
 
 onMounted(() => {
