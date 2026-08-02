@@ -155,7 +155,7 @@
                   <label class="block text-xs font-mono text-slate-300 uppercase mb-1">
                     Phone Number / WhatsApp <span class="text-red-500 font-bold">*</span>
                   </label>
-                  <input v-model="form.phone_number" type="tel" required placeholder="e.g. +91 9876543210" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
+                  <input v-model="form.phone_number" type="tel" required placeholder="e.g. +91 XXXXXXXXXX" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
                 </div>
               </div>
             </div>
