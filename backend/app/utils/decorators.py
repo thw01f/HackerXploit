@@ -1,7 +1,19 @@
 import hashlib
+from datetime import datetime, timedelta
 from functools import wraps
 from flask import request, jsonify, g, session
 from app.models import db, User, DeviceSession, AuditLog
+
+# Matches the session_token cookie's max_age (see auth.py's login route,
+# resp.set_cookie(..., max_age=86400*7)). The cookie expiring client-side was
+# the ONLY thing ever limiting a session's lifetime - a DeviceSession row had
+# no expiry check at all here, so it stayed valid forever server-side once
+# created, for as long as anything (a browser that hadn't purged the cookie,
+# a saved token, etc.) kept presenting it.
+SESSION_MAX_AGE_DAYS = 7
+# Avoid a DB write on literally every authenticated request just to bump a
+# timestamp - only touch last_active_at if it's gone stale by more than this.
+LAST_ACTIVE_UPDATE_INTERVAL_MINUTES = 5
 
 def get_current_user():
     token = request.headers.get('Authorization')
@@ -20,12 +32,24 @@ def get_current_user():
     if not device_session:
         return None, None
 
+    if datetime.utcnow() - device_session.created_at > timedelta(days=SESSION_MAX_AGE_DAYS):
+        device_session.is_active = False
+        db.session.commit()
+        return None, None
+
     user = User.query.get(device_session.user_id)
     if not user or user.status == 'suspended':
         # Immediate session kill-switch on suspension
         device_session.is_active = False
         db.session.commit()
         return None, None
+
+    # last_active_at was previously set once at creation and never touched
+    # again, so it was always identical to created_at regardless of how
+    # recently the session was actually used.
+    if datetime.utcnow() - device_session.last_active_at > timedelta(minutes=LAST_ACTIVE_UPDATE_INTERVAL_MINUTES):
+        device_session.last_active_at = datetime.utcnow()
+        db.session.commit()
 
     return user, device_session
 

@@ -55,8 +55,9 @@
       </VueFlow>
     </div>
 
-    <!-- Fixed Legend Panel -->
-    <div class="absolute bottom-6 left-6 z-20 bg-[#161b22]/95 backdrop-blur-md p-4 rounded-xl border border-[#21262d] shadow-2xl text-xs space-y-3 max-w-xs">
+    <!-- Fixed Legend Panel - top-left, so it doesn't collide with vue-flow's
+         own Controls (bottom-left) and MiniMap (bottom-right) -->
+    <div class="absolute top-20 left-6 z-20 bg-[#161b22]/95 backdrop-blur-md p-4 rounded-xl border border-[#21262d] shadow-2xl text-xs space-y-3 max-w-xs">
       <div class="flex items-center justify-between border-b border-[#21262d] pb-2">
         <span class="font-extrabold text-white uppercase text-[11px] tracking-wider">// ROADMAP LEGEND</span>
         <span class="text-[10px] text-slate-400">Guide</span>

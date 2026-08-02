@@ -182,7 +182,13 @@ def login():
     ).first()
 
     ip_addr = request.remote_addr or '127.0.0.1'
-    user_agent = request.user_agent.string if request.user_agent else 'Unknown'
+    # request.user_agent's __bool__ checks .browser (only set if a custom
+    # parser is configured via Request.user_agent_class - this app never
+    # configures one), NOT whether a UA header was actually sent, so
+    # `if request.user_agent` was always False and every login stored
+    # 'Unknown' regardless of the real header. .string is always populated
+    # correctly when the header is present, so check that directly instead.
+    user_agent = request.user_agent.string or 'Unknown'
 
     if not user:
         attempt = LoginAttempt(

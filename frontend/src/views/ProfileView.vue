@@ -211,11 +211,8 @@
               <span class="text-[10px] text-slate-500 font-mono">{{ devices.length }} active</span>
             </div>
             <div class="flex gap-2 mt-3 flex-wrap">
-              <button @click="revokeToolSessions" class="text-[10px] font-mono font-bold py-1 px-2.5 rounded border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-all">
-                Purge API/Tool Sessions
-              </button>
-              <button @click="logoutAllOthers" class="text-[10px] font-mono font-bold py-1 px-2.5 rounded border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-all">
-                Revoke All Others
+              <button v-if="devices.length > 1" @click="logoutAllOthers" class="text-[10px] font-mono font-bold py-1 px-2.5 rounded border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-all">
+                Revoke All Other Devices
               </button>
             </div>
           </div>
@@ -225,14 +222,21 @@
               :class="s.is_current_device ? 'border-cyan-500/50 bg-cyan-950/20' : isToolSession(s) ? 'border-amber-500/20 bg-amber-950/10' : 'border-slate-800 bg-slate-900/60'"
               class="p-3 rounded-lg border space-y-1">
               <div class="flex justify-between items-start gap-2">
-                <div class="min-w-0">
-                  <span class="text-[11px] font-bold text-white flex items-center gap-1.5 flex-wrap">
-                    <span class="truncate max-w-[160px]">{{ friendlyAgent(s.user_agent) }}</span>
-                    <span v-if="s.is_current_device" class="text-[9px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 font-mono border border-cyan-500/30 shrink-0">THIS DEVICE</span>
-                    <span v-else-if="isToolSession(s)" class="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-400 font-mono border border-amber-500/30 shrink-0">API/TOOL</span>
-                  </span>
-                  <p class="text-[10px] font-mono text-cyan-400 mt-0.5">{{ s.ip_address }}</p>
-                  <p class="text-[10px] text-slate-500 font-mono">{{ new Date(s.last_active_at || s.created_at).toLocaleString() }}</p>
+                <div class="min-w-0 flex items-start gap-2">
+                  <svg class="w-7 h-7 p-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="deviceIconPath(s)"/>
+                  </svg>
+                  <div class="min-w-0">
+                    <span class="text-[11px] font-bold text-white flex items-center gap-1.5 flex-wrap">
+                      <span class="truncate max-w-[160px]">{{ friendlyAgent(effectiveAgent(s)) }}</span>
+                      <span v-if="s.is_current_device" class="text-[9px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 font-mono border border-cyan-500/30 shrink-0">THIS DEVICE</span>
+                      <span v-else-if="isToolSession(s)" class="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-400 font-mono border border-amber-500/30 shrink-0">API/TOOL</span>
+                    </span>
+                    <p class="text-[10px] font-mono text-cyan-400 mt-0.5">{{ s.ip_address }}</p>
+                    <p class="text-[10px] text-slate-500 font-mono" :title="new Date(s.last_active_at || s.created_at).toLocaleString()">
+                      Active {{ timeAgo(s.last_active_at || s.created_at) }}
+                    </p>
+                  </div>
                 </div>
                 <button v-if="!s.is_current_device" @click="revokeDevice(s.id)"
                   class="shrink-0 p-1 text-red-400 hover:text-red-300 border border-red-500/30 rounded hover:bg-red-500/10 transition-all" title="Revoke">
@@ -703,33 +707,90 @@ const logoutAllOthers = async () => {
   }
 }
 
-const revokeToolSessions = async () => {
-  if (confirm('Revoke all API/tool sessions (curl, Werkzeug, Python-urllib)?')) {
-    try {
-      const res = await axios.delete('/api/club/profile/devices/tools')
-      alert(res.data.message)
-      await fetchDevices()
-    } catch (err) { alert('Failed to revoke tool sessions') }
-  }
+// Browser/OS/device-type detection for the device session cards. Werkzeug's
+// request.user_agent does zero parsing by default (its __bool__ only checks
+// .browser, which stays unset without a custom parser class) - the backend
+// only ever gives us the raw header string, so this does its own lightweight
+// matching rather than relying on anything upstream.
+const detectBrowser = (ua) => {
+  // Order matters: Edge/Opera/Chromium UAs all also contain "Chrome/", and
+  // Chrome's UA also contains "Safari/" - most-specific match first.
+  let m
+  if ((m = ua.match(/Edg\/(\d+)/))) return `Edge ${m[1]}`
+  if ((m = ua.match(/OPR\/(\d+)/))) return `Opera ${m[1]}`
+  if ((m = ua.match(/Firefox\/(\d+)/))) return `Firefox ${m[1]}`
+  if ((m = ua.match(/Chromium\/(\d+)/))) return `Chromium ${m[1]}`
+  if ((m = ua.match(/Chrome\/(\d+)/))) return `Chrome ${m[1]}`
+  if (/Safari/.test(ua) && (m = ua.match(/Version\/(\d+)/))) return `Safari ${m[1]}`
+  return null
 }
+
+const detectOS = (ua) => {
+  if (/Windows NT 10/.test(ua)) return 'Windows 10/11'
+  if (/Windows NT/.test(ua)) return 'Windows'
+  if (/Mac OS X/.test(ua)) return 'macOS'
+  if (/CrOS/.test(ua)) return 'ChromeOS'
+  if (/Android/.test(ua)) return 'Android'
+  if (/iPhone|iPad|iPod/.test(ua)) return 'iOS'
+  if (/Linux/.test(ua)) return 'Linux'
+  return null
+}
+
+const isMobileUA = (ua) => /Mobile|Android|iPhone|iPad/.test(ua)
 
 // Returns a concise browser/agent label
 const friendlyAgent = (ua) => {
-  if (!ua) return 'Unknown'
+  if (!ua || ua === 'Unknown') return 'Unknown Device'
   if (ua.startsWith('curl/')) return 'cURL ' + ua.split('/')[1]
   if (ua.startsWith('Werkzeug/')) return 'Werkzeug ' + ua.split('/')[1]
   if (ua.startsWith('Python-urllib/')) return 'Python urllib'
   if (ua.startsWith('python-requests/')) return 'Python requests'
-  if (/Firefox\/([\d.]+)/.test(ua)) return 'Firefox ' + ua.match(/Firefox\/(\d+)/)[1]
-  if (/Chrome\/([\d.]+)/.test(ua) && !ua.includes('Chromium')) return 'Chrome ' + ua.match(/Chrome\/(\d+)/)[1]
-  if (/Mobile/.test(ua)) return 'Mobile Browser'
+
+  const browser = detectBrowser(ua)
+  const os = detectOS(ua)
+  if (browser && os) return `${browser} on ${os}`
+  if (browser) return browser
+  if (os) return os
   return ua.substring(0, 40)
+}
+
+// Concise relative time for "Active X ago" - a raw timestamp answers "when",
+// but what actually matters for reviewing sessions is "is this recent or
+// stale", which a relative label answers at a glance (full timestamp is
+// still available via the title tooltip).
+const timeAgo = (dateStr) => {
+  if (!dateStr) return 'unknown'
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  return new Date(dateStr).toLocaleDateString()
+}
+
+// SVG path for a small device-type icon on each session card
+// Sessions created before the request.user_agent parsing fix (see
+// backend/app/routes/auth.py) have user_agent='Unknown' but their
+// device_label happens to hold the real header (it was always read
+// directly, bypassing the buggy check) - fall back to it so old sessions
+// still get a real label instead of "Unknown Device" forever.
+const effectiveAgent = (s) => (s.user_agent && s.user_agent !== 'Unknown' ? s.user_agent : s.device_label)
+
+const deviceIconPath = (s) => {
+  if (isToolSession(s)) return 'M10 20l4-16m4 4l4 4-4 4M6 8l-4 4 4 4' // </>
+  const ua = effectiveAgent(s)
+  if (ua && isMobileUA(ua)) return 'M12 18h.01M8 21h8a1 1 0 001-1V4a1 1 0 00-1-1H8a1 1 0 00-1 1v16a1 1 0 001 1z' // phone
+  return 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' // monitor
 }
 
 // True if session came from a tool (curl, Werkzeug etc.)
 const isToolSession = (s) => {
-  if (!s.user_agent) return false
-  return ['curl/', 'Werkzeug/', 'Python-urllib/', 'python-requests/'].some(t => s.user_agent.startsWith(t))
+  const ua = effectiveAgent(s)
+  if (!ua) return false
+  return ['curl/', 'Werkzeug/', 'Python-urllib/', 'python-requests/'].some(t => ua.startsWith(t))
 }
 
 // Privacy settings
