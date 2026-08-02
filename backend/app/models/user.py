@@ -86,7 +86,7 @@ class User(db.Model):
             if not self.is_root_admin:
                 self.failed_login_count = (self.failed_login_count or 0) + 1
                 if self.failed_login_count >= 5:
-                    self.locked_until = datetime.utcnow() + timedelta(minutes=15)
+                    self.locked_until = datetime.utcnow() + timedelta(minutes=30)
             return False
 
     def is_locked(self):

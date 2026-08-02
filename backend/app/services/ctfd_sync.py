@@ -54,7 +54,11 @@ def sync_user_to_ctfd(user):
             'email': user.email,
             'is_admin': getattr(user, 'is_root_admin', False) or user.role == 'admin',
             'affiliation': affiliation_str,
-            'website': website_str
+            'website': website_str,
+            # A suspended platform account must not be able to keep using an
+            # already-open CTFd session - ban mirrors the platform's status
+            # so suspend/reinstate on this side take effect in CTFd too.
+            'banned': getattr(user, 'status', '') == 'suspended'
         }
 
         py_script = """
@@ -67,6 +71,7 @@ cur.execute("SELECT id FROM users WHERE name = ? OR email = ?;", (data['username
 row = cur.fetchone()
 
 role_type = 'admin' if data['is_admin'] else 'user'
+banned_flag = 1 if data.get('banned') else 0
 
 if not row:
     # Each provisioned account gets its own random, never-disclosed password so CTFd's
@@ -75,14 +80,14 @@ if not row:
     random_password_hash = bcrypt_sha256.hash(secrets.token_urlsafe(32))
     cur.execute('''
         INSERT INTO users (name, email, password, type, verified, hidden, banned, affiliation, website, created)
-        VALUES (?, ?, ?, ?, 1, 0, 0, ?, ?, CURRENT_TIMESTAMP);
-    ''', (data['username'], data['email'], random_password_hash, role_type, data['affiliation'], data['website']))
+        VALUES (?, ?, ?, ?, 1, 0, ?, ?, ?, CURRENT_TIMESTAMP);
+    ''', (data['username'], data['email'], random_password_hash, role_type, banned_flag, data['affiliation'], data['website']))
     conn.commit()
     print("[CTFd Sync] Created user:", data['username'])
 else:
     cur.execute('''
-        UPDATE users SET name = ?, affiliation = ?, website = ?, type = ? WHERE id = ?;
-    ''', (data['username'], data['affiliation'], data['website'], role_type, row[0]))
+        UPDATE users SET name = ?, affiliation = ?, website = ?, type = ?, banned = ? WHERE id = ?;
+    ''', (data['username'], data['affiliation'], data['website'], role_type, banned_flag, row[0]))
     conn.commit()
     print("[CTFd Sync] Updated user:", data['username'])
 

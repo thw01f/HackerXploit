@@ -1,17 +1,21 @@
 <template>
   <div class="space-y-8">
       
-      <!-- Announcement Header -->
-      <div v-if="clubStore.stats?.announcement && !announcementDismissed" class="glass-panel p-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-l-4 border-l-[#9fef00] relative">
+      <!-- Announcements -->
+      <div
+        v-for="ann in visibleAnnouncements"
+        :key="ann.id"
+        class="glass-panel p-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-l-4 border-l-[#9fef00] relative"
+      >
         <div class="flex items-center space-x-3">
-          <span class="px-2.5 py-0.5 rounded bg-[#151f30] border border-[#9fef00]/30 text-[#9fef00] font-mono text-xs font-bold uppercase">ANNOUNCEMENT</span>
-          <p class="text-sm text-slate-200 font-medium">{{ clubStore.stats.announcement }}</p>
+          <span class="px-2.5 py-0.5 rounded bg-[#151f30] border border-[#9fef00]/30 text-[#9fef00] font-mono text-xs font-bold uppercase shrink-0">ANNOUNCEMENT</span>
+          <p class="text-sm text-slate-200 font-medium">{{ ann.message }}</p>
         </div>
         <div class="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-end">
-          <a href="http://arena.hackerxploit.org" target="_blank" class="btn-htb text-xs py-1.5 px-4 whitespace-nowrap font-mono">
-            LAUNCH CTF ARENA &rarr;
+          <a v-if="ann.link && ann.button_label" :href="ann.link" target="_blank" class="btn-htb text-xs py-1.5 px-4 whitespace-nowrap font-mono">
+            {{ ann.button_label }} &rarr;
           </a>
-          <button @click="announcementDismissed = true" class="px-2 py-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors font-mono text-base font-bold" title="Close Banner">
+          <button @click="dismissedAnnouncementIds.add(ann.id)" class="px-2 py-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors font-mono text-base font-bold" title="Close Banner">
             &times;
           </button>
         </div>
@@ -129,6 +133,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
 import DigitalIDCard from '../components/DigitalIDCard.vue'
 import { useAuthStore } from '../stores/auth'
 import { useClubStore } from '../stores/club'
@@ -138,7 +143,18 @@ const authStore = useAuthStore()
 const clubStore = useClubStore()
 const chatStore = useChatStore()
 
-const announcementDismissed = ref(false)
+const announcements = ref([])
+const dismissedAnnouncementIds = ref(new Set())
+const visibleAnnouncements = computed(() => announcements.value.filter(a => !dismissedAnnouncementIds.value.has(a.id)))
+
+const fetchAnnouncements = async () => {
+  try {
+    const res = await axios.get('/api/announcements/active')
+    announcements.value = res.data.announcements || []
+  } catch (err) {
+    console.error('Failed to load announcements', err)
+  }
+}
 
 const ctfdUrl = computed(() => {
   if (window.location.hostname.includes('hackerxploit.org')) {
@@ -152,5 +168,6 @@ onMounted(() => {
   clubStore.fetchCourses()
   clubStore.fetchMembers()
   chatStore.initSocket()
+  fetchAnnouncements()
 })
 </script>

@@ -84,6 +84,7 @@ def create_app(config_class=Config):
     from app.routes.id_card import id_card_bp
     from app.routes.support import support_bp
     from app.routes.roadmap import roadmap_bp
+    from app.routes.announcement import announcement_bp
 
     flask_app.register_blueprint(auth_bp)
     flask_app.register_blueprint(oauth_bp)
@@ -107,6 +108,7 @@ def create_app(config_class=Config):
     flask_app.register_blueprint(id_card_bp)
     flask_app.register_blueprint(support_bp)
     flask_app.register_blueprint(roadmap_bp)
+    flask_app.register_blueprint(announcement_bp)
 
 
 
@@ -150,5 +152,25 @@ def create_app(config_class=Config):
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+
+        # One-time backfill: migrate the old single-string dashboard banner into
+        # the new multi-announcement table, preserving the previously-hardcoded
+        # "LAUNCH CTF ARENA" CTA so existing deployments don't lose it silently.
+        try:
+            from app.models import Announcement
+            from app.models.moderation import SiteFeatureToggle
+            if Announcement.query.count() == 0:
+                toggle = SiteFeatureToggle.query.first()
+                if toggle and toggle.announcement_enabled and (toggle.announcement_banner or '').strip():
+                    db.session.add(Announcement(
+                        message=toggle.announcement_banner.strip(),
+                        button_label='LAUNCH CTF ARENA',
+                        link='https://arena.hackerxploit.org',
+                        is_active=True,
+                        display_order=0
+                    ))
+                    db.session.commit()
+        except Exception:
+            db.session.rollback()
 
     return flask_app

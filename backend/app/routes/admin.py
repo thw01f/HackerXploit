@@ -117,10 +117,17 @@ def suspend_user(user_id):
         return jsonify({'error': 'Root Admin cannot be suspended'}), 403
 
     user.status = 'suspended'
-    
+
     # KILL-SWITCH: Invalidate all live device sessions immediately
     DeviceSession.query.filter_by(user_id=user_id, is_active=True).update({'is_active': False})
     db.session.commit()
+
+    # Ban in CTFd too - otherwise an already-open CTFd session survives the suspension
+    try:
+        from app.services.ctfd_sync import sync_user_to_ctfd
+        sync_user_to_ctfd(user)
+    except Exception as e:
+        print(f"[CTFd Sync Error on Suspend]: {e}")
 
     _maybe_send_status_email(user, 'suspended')
 
@@ -137,6 +144,13 @@ def reinstate_user(user_id):
 
     user.status = 'approved'
     db.session.commit()
+
+    # Un-ban in CTFd - reinstating on the platform must lift the CTFd-side ban too
+    try:
+        from app.services.ctfd_sync import sync_user_to_ctfd
+        sync_user_to_ctfd(user)
+    except Exception as e:
+        print(f"[CTFd Sync Error on Reinstate]: {e}")
 
     log_audit('reinstated', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Reinstated by {g.current_user.username}")
     return jsonify(user.to_dict()), 200
@@ -397,6 +411,13 @@ def transfer_root():
     target_user.status = 'approved'
     db.session.commit()
 
+    try:
+        from app.services.ctfd_sync import sync_user_to_ctfd
+        sync_user_to_ctfd(current_root)
+        sync_user_to_ctfd(target_user)
+    except Exception as e:
+        print(f"[CTFd Sync Error on Root Transfer]: {e}")
+
     log_audit('TRANSFER_ROOT_STATUS', target_type='User', target_id=target_user_id, target_user_id=target_user_id, notes=f"Root admin transferred to {target_user.username}")
     return jsonify({'message': f'Root admin status transferred to {target_user.username}'}), 200
 
@@ -434,6 +455,12 @@ def promote_to_teacher(user_id):
         print(f"Notification error: {e}")
 
     db.session.commit()
+
+    try:
+        from app.services.ctfd_sync import sync_user_to_ctfd
+        sync_user_to_ctfd(user)
+    except Exception as e:
+        print(f"[CTFd Sync Error on Teacher Promotion]: {e}")
 
     _maybe_send_announcement_email(
         user,
