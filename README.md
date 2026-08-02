@@ -1,4 +1,4 @@
-# HackerXploit Club Platform 🚀
+# HackerXploit Club Platform 
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/thw01f/HackerXploit)
 [![License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/thw01f/HackerXploit)
@@ -13,7 +13,7 @@
 
 > **Complete system documentation, architecture diagrams, database schemas, role matrices, API references, deployment guides, admin runbooks, and feature guides are published in the official GitHub Wiki:**
 > 
-> 👉 **[Explore the HackerXploit GitHub Wiki](https://github.com/thw01f/HackerXploit/wiki)**
+>  **[Explore the HackerXploit GitHub Wiki](https://github.com/thw01f/HackerXploit/wiki)**
 
 ### Quick Documentation Links
 - **[Home & Master Index](https://github.com/thw01f/HackerXploit/wiki/Home)**
