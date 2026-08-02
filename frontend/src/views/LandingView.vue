@@ -27,10 +27,10 @@
         <!-- CTA Buttons -->
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
           <router-link to="/dashboard" class="btn-htb text-xs sm:text-sm py-3 px-8 w-full sm:w-auto font-mono">
-            🚀 GO TO DASHBOARD
+            GO TO DASHBOARD
           </router-link>
           <a href="http://arena.hackerxploit.org" target="_blank" class="btn-ghost text-xs sm:text-sm py-3 px-8 w-full sm:w-auto font-mono text-[#00f0ff] border-[#00f0ff]/30 hover:border-[#00f0ff]">
-            ⚡ LAUNCH CTF ARENA &rarr;
+            LAUNCH CTF ARENA &rarr;
           </a>
         </div>
       </div>
@@ -125,10 +125,10 @@
         <!-- CTA Buttons -->
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
           <router-link to="/register" class="btn-htb text-xs sm:text-sm py-3 px-8 w-full sm:w-auto font-mono">
-            🚀 JOIN THE CLUB
+            JOIN THE CLUB
           </router-link>
           <a href="http://arena.hackerxploit.org" target="_blank" class="btn-ghost text-xs sm:text-sm py-3 px-8 w-full sm:w-auto font-mono text-[#00f0ff] border-[#00f0ff]/30 hover:border-[#00f0ff]">
-            ⚡ LAUNCH CTF ARENA &rarr;
+            LAUNCH CTF ARENA &rarr;
           </a>
         </div>
       </div>

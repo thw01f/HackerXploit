@@ -291,7 +291,7 @@
           </div>
         </div>
         <div v-else-if="!selectedMsg.allow_reply && currentFolder !== 'sent'" class="text-sm font-mono text-amber-400/80 italic bg-amber-950/20 p-3 rounded-lg border border-amber-500/20">
-          🔒 Direct replies are disabled by the sender for this message.
+          Direct replies are disabled by the sender for this message.
         </div>
 
       </div>

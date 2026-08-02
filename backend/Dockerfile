@@ -6,7 +6,6 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
-    magic-python \
     libmagic1 \
     clamav \
     clamav-daemon \

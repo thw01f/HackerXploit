@@ -43,7 +43,7 @@
           </div>
 
           <div v-if="settings.is_public" class="p-4 rounded-xl bg-[#151f30] border border-[#00f0ff]/40 flex items-center justify-between text-xs font-mono">
-            <span class="text-[#00f0ff]">🔗 Your public portfolio URL:</span>
+            <span class="text-[#00f0ff]">Your public portfolio URL:</span>
             <router-link :to="`/u/${currentUsername}`" target="_blank" class="btn-ghost text-xs py-1.5 px-3 text-[#00f0ff] border-[#00f0ff]/40">
               View /u/{{ currentUsername }} &rarr;
             </router-link>
@@ -57,21 +57,21 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="p-5 rounded-xl bg-[#090d16] border border-[#1f293d] flex flex-col justify-between space-y-4">
               <div>
-                <h4 class="font-mono font-bold text-sm text-[#00f0ff]">📄 Portfolio PDF Resume</h4>
+                <h4 class="font-mono font-bold text-sm text-[#00f0ff]">Portfolio PDF Resume</h4>
                 <p class="text-xs text-slate-400 mt-1 leading-relaxed">Export a formatted 2-page PDF summary of your courses, certificates, and competition awards.</p>
               </div>
               <button @click="downloadPortfolioPDF" class="btn-htb text-xs font-mono py-2 px-4 w-full">
-                📥 Export PDF Resume
+                Export PDF Resume
               </button>
             </div>
 
             <div class="p-5 rounded-xl bg-[#090d16] border border-[#1f293d] flex flex-col justify-between space-y-4">
               <div>
-                <h4 class="font-mono font-bold text-sm text-[#9fef00]">📦 Full Account Archive (.zip)</h4>
+                <h4 class="font-mono font-bold text-sm text-[#9fef00]">Full Account Archive (.zip)</h4>
                 <p class="text-xs text-slate-400 mt-1 leading-relaxed">Download a complete zip archive containing your profile JSON, activity logs, and PDF certificates.</p>
               </div>
               <button @click="downloadDataExport" class="btn-ghost text-xs font-mono text-[#9fef00] border-[#9fef00]/40 py-2 px-4 w-full">
-                📥 Export My Data (.zip)
+                Export My Data (.zip)
               </button>
             </div>
           </div>
@@ -95,7 +95,7 @@
       <!-- Deletion Request Modal -->
       <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
         <div class="w-full max-w-md glass-panel p-6 rounded-xl border border-red-500/40 bg-[#111927] space-y-4">
-          <h3 class="font-mono font-bold text-lg text-red-400">🚨 Request Account Deletion</h3>
+          <h3 class="font-mono font-bold text-lg text-red-400">Request Account Deletion</h3>
           <p class="text-xs font-mono text-slate-300">Please tell us why you wish to request account deletion. An administrator will review your request shortly.</p>
           <textarea v-model="deleteReason" rows="3" placeholder="Reason for deletion request..." class="w-full"></textarea>
           <div class="flex justify-end space-x-3 pt-2">

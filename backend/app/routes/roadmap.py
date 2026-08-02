@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, g
-from app.models import db, Roadmap, RoadmapNode, RoadmapNodeResource, UserRoadmapProgress
+from app.models import db, Roadmap, RoadmapNode, RoadmapNodeResource, RoadmapEdge, UserRoadmapProgress
 from app.services.markdown_service import render_sanitized_html
-from app.utils.decorators import require_auth, get_current_user
+from app.utils.decorators import require_auth, require_role, get_current_user, log_audit
 
 roadmap_bp = Blueprint('roadmap', __name__, url_prefix='/api/roadmaps')
 
@@ -298,6 +298,9 @@ def get_roadmap(slug):
     for nd in nodes_data:
         nd['description_html'] = render_sanitized_html(nd['description_markdown'])
 
+    edges = RoadmapEdge.query.filter_by(roadmap_id=roadmap.id).order_by(RoadmapEdge.order_index).all()
+    edges_data = [e.to_dict() for e in edges]
+
     # Calculate overall progress percent for non-section nodes
     topic_subtopic_nodes = [n for n in nodes_data if n['node_type'] != 'section']
     total_count = len(topic_subtopic_nodes)
@@ -307,6 +310,7 @@ def get_roadmap(slug):
     return jsonify({
         'roadmap': roadmap.to_dict(),
         'nodes': nodes_data,
+        'edges': edges_data,
         'progress_percent': progress_percent,
         'done_count': done_count,
         'total_count': total_count
@@ -352,3 +356,230 @@ def update_node_progress(node_id):
         'done_count': done_count,
         'total_count': total_count
     }), 200
+
+
+# -------------------------------------------------------------------
+# Admin/Teacher Authoring - Roadmap Studio
+# -------------------------------------------------------------------
+
+@roadmap_bp.route('', methods=['POST'])
+@require_role('teacher', 'admin', 'root_admin')
+def create_roadmap():
+    data = request.get_json() or {}
+    slug = (data.get('slug') or '').strip()
+    title = (data.get('title') or '').strip()
+
+    if not slug or not title:
+        return jsonify({'error': 'Slug and title are required'}), 400
+
+    if Roadmap.query.filter_by(slug=slug).first():
+        return jsonify({'error': 'A roadmap with this slug already exists'}), 409
+
+    roadmap = Roadmap(
+        slug=slug,
+        title=title,
+        description=(data.get('description') or '').strip(),
+        created_by=g.current_user.id
+    )
+    db.session.add(roadmap)
+    db.session.commit()
+
+    log_audit('ROADMAP_CREATED', target_type='Roadmap', target_id=roadmap.id, notes=f"Roadmap '{slug}' created by {g.current_user.username}")
+    return jsonify(roadmap.to_dict()), 201
+
+
+@roadmap_bp.route('/<slug>', methods=['PUT'])
+@require_role('teacher', 'admin', 'root_admin')
+def update_roadmap(slug):
+    roadmap = Roadmap.query.filter_by(slug=slug).first_or_404()
+    data = request.get_json() or {}
+
+    if 'title' in data and data['title']:
+        roadmap.title = data['title'].strip()
+    if 'description' in data:
+        roadmap.description = (data['description'] or '').strip()
+
+    db.session.commit()
+    log_audit('ROADMAP_UPDATED', target_type='Roadmap', target_id=roadmap.id, notes=f"Roadmap '{slug}' updated by {g.current_user.username}")
+    return jsonify(roadmap.to_dict()), 200
+
+
+@roadmap_bp.route('/<slug>', methods=['DELETE'])
+@require_role('teacher', 'admin', 'root_admin')
+def delete_roadmap(slug):
+    roadmap = Roadmap.query.filter_by(slug=slug).first_or_404()
+    db.session.delete(roadmap)
+    db.session.commit()
+    log_audit('ROADMAP_DELETED', target_type='Roadmap', target_id=roadmap.id, notes=f"Roadmap '{slug}' deleted by {g.current_user.username}")
+    return jsonify({'message': f"Roadmap '{slug}' deleted successfully"}), 200
+
+
+@roadmap_bp.route('/<slug>/nodes', methods=['POST'])
+@require_role('teacher', 'admin', 'root_admin')
+def create_roadmap_node(slug):
+    roadmap = Roadmap.query.filter_by(slug=slug).first_or_404()
+    data = request.get_json() or {}
+    label = (data.get('label') or '').strip()
+
+    if not label:
+        return jsonify({'error': 'Label is required'}), 400
+
+    node = RoadmapNode(
+        roadmap_id=roadmap.id,
+        parent_id=data.get('parent_id'),
+        label=label,
+        description_markdown=data.get('description_markdown') or '',
+        node_type=data.get('node_type') or 'topic',
+        importance=data.get('importance') or 'recommended',
+        order_index=data.get('order_index') or 1,
+        layout_group=data.get('layout_group'),
+        position_x=data.get('position_x') if data.get('position_x') is not None else 0,
+        position_y=data.get('position_y') if data.get('position_y') is not None else 0
+    )
+    db.session.add(node)
+    db.session.commit()
+
+    log_audit('ROADMAP_NODE_CREATED', target_type='RoadmapNode', target_id=node.id, notes=f"Node '{label}' added to roadmap '{slug}' by {g.current_user.username}")
+    return jsonify(node.to_dict()), 201
+
+
+@roadmap_bp.route('/nodes/<int:node_id>', methods=['PUT'])
+@require_role('teacher', 'admin', 'root_admin')
+def update_roadmap_node(node_id):
+    node = RoadmapNode.query.get_or_404(node_id)
+    data = request.get_json() or {}
+
+    if 'label' in data and data['label']:
+        node.label = data['label'].strip()
+    if 'description_markdown' in data:
+        node.description_markdown = data['description_markdown'] or ''
+    if 'node_type' in data and data['node_type'] in ['section', 'topic', 'subtopic']:
+        node.node_type = data['node_type']
+    if 'importance' in data and data['importance'] in ['recommended', 'alternative', 'optional']:
+        node.importance = data['importance']
+    if 'order_index' in data:
+        node.order_index = data['order_index']
+    if 'layout_group' in data:
+        node.layout_group = data['layout_group']
+    if 'parent_id' in data:
+        node.parent_id = data['parent_id']
+
+    db.session.commit()
+    log_audit('ROADMAP_NODE_UPDATED', target_type='RoadmapNode', target_id=node.id, notes=f"Node '{node.label}' updated by {g.current_user.username}")
+    return jsonify(node.to_dict()), 200
+
+
+@roadmap_bp.route('/nodes/<int:node_id>', methods=['DELETE'])
+@require_role('teacher', 'admin', 'root_admin')
+def delete_roadmap_node(node_id):
+    node = RoadmapNode.query.get_or_404(node_id)
+    label = node.label
+    db.session.delete(node)
+    db.session.commit()
+    log_audit('ROADMAP_NODE_DELETED', target_type='RoadmapNode', target_id=node_id, notes=f"Node '{label}' deleted by {g.current_user.username}")
+    return jsonify({'message': f"Node '{label}' deleted successfully"}), 200
+
+
+@roadmap_bp.route('/<slug>/layout', methods=['PUT'])
+@require_role('teacher', 'admin', 'root_admin')
+def save_roadmap_layout(slug):
+    """Bulk save: node positions + the roadmap's full edge set, in one
+    transaction. This is what the Studio's "Save Layout" button hits after
+    an admin has dragged nodes / drawn connections - saving per-field on
+    every drag would be both chatty and prone to interleaved partial state."""
+    roadmap = Roadmap.query.filter_by(slug=slug).first_or_404()
+    data = request.get_json() or {}
+    node_updates = data.get('nodes', [])
+    new_edges = data.get('edges', [])
+
+    valid_node_ids = {n.id for n in RoadmapNode.query.filter_by(roadmap_id=roadmap.id).all()}
+
+    for nu in node_updates:
+        node_id = nu.get('id')
+        if node_id not in valid_node_ids:
+            continue
+        node = RoadmapNode.query.get(node_id)
+        if 'position_x' in nu:
+            node.position_x = nu['position_x']
+        if 'position_y' in nu:
+            node.position_y = nu['position_y']
+
+    # Replace the roadmap's entire edge set - simpler and safer than diffing
+    # given edge counts here are small (tens, not thousands).
+    RoadmapEdge.query.filter_by(roadmap_id=roadmap.id).delete()
+    seen_pairs = set()
+    for idx, e in enumerate(new_edges):
+        source_id = e.get('source_node_id')
+        target_id = e.get('target_node_id')
+        if source_id not in valid_node_ids or target_id not in valid_node_ids:
+            continue
+        pair = (source_id, target_id)
+        if pair in seen_pairs:
+            continue
+        seen_pairs.add(pair)
+        db.session.add(RoadmapEdge(
+            roadmap_id=roadmap.id,
+            source_node_id=source_id,
+            target_node_id=target_id,
+            label=e.get('label'),
+            edge_type=e.get('edge_type') or 'default',
+            order_index=idx + 1
+        ))
+
+    db.session.commit()
+    log_audit('ROADMAP_LAYOUT_SAVED', target_type='Roadmap', target_id=roadmap.id,
+              notes=f"Layout saved for '{slug}' by {g.current_user.username}",
+              details={'node_count': len(node_updates), 'edge_count': len(seen_pairs)})
+
+    return jsonify({'message': 'Layout saved successfully'}), 200
+
+
+@roadmap_bp.route('/nodes/<int:node_id>/resources', methods=['POST'])
+@require_role('teacher', 'admin', 'root_admin')
+def create_node_resource(node_id):
+    node = RoadmapNode.query.get_or_404(node_id)
+    data = request.get_json() or {}
+    title = (data.get('title') or '').strip()
+    url = (data.get('url') or '').strip()
+
+    if not title or not url:
+        return jsonify({'error': 'Title and URL are required'}), 400
+
+    resource = RoadmapNodeResource(
+        node_id=node.id,
+        title=title,
+        url=url,
+        resource_type=data.get('resource_type') or 'article',
+        order_index=data.get('order_index') or (len(node.resources) + 1)
+    )
+    db.session.add(resource)
+    db.session.commit()
+    return jsonify(resource.to_dict()), 201
+
+
+@roadmap_bp.route('/resources/<int:resource_id>', methods=['PUT'])
+@require_role('teacher', 'admin', 'root_admin')
+def update_node_resource(resource_id):
+    resource = RoadmapNodeResource.query.get_or_404(resource_id)
+    data = request.get_json() or {}
+
+    if 'title' in data and data['title']:
+        resource.title = data['title'].strip()
+    if 'url' in data and data['url']:
+        resource.url = data['url'].strip()
+    if 'resource_type' in data and data['resource_type'] in ['article', 'video', 'doc']:
+        resource.resource_type = data['resource_type']
+    if 'order_index' in data:
+        resource.order_index = data['order_index']
+
+    db.session.commit()
+    return jsonify(resource.to_dict()), 200
+
+
+@roadmap_bp.route('/resources/<int:resource_id>', methods=['DELETE'])
+@require_role('teacher', 'admin', 'root_admin')
+def delete_node_resource(resource_id):
+    resource = RoadmapNodeResource.query.get_or_404(resource_id)
+    db.session.delete(resource)
+    db.session.commit()
+    return jsonify({'message': 'Resource deleted successfully'}), 200

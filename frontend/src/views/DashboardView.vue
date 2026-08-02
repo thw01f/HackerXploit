@@ -37,9 +37,9 @@
 
               <div class="flex flex-wrap items-center gap-4 mt-6">
                 <router-link to="/academy" class="btn-htb text-xs py-2.5 px-5 font-mono">Explore Academy</router-link>
-                <a :href="ctfdUrl" target="_blank" class="btn-ghost text-xs py-2.5 px-5 font-mono text-[#9fef00] border-[#9fef00]/30">⚔️ CTF Arena</a>
+                <a :href="ctfdUrl" target="_blank" class="btn-ghost text-xs py-2.5 px-5 font-mono text-[#9fef00] border-[#9fef00]/30">CTF Arena</a>
                 <router-link to="/competitions" class="btn-ghost text-xs py-2.5 px-5 font-mono">View Competitions</router-link>
-                <router-link to="/id-card" class="btn-ghost text-xs py-2.5 px-5 font-mono text-[#00f0ff] border-[#00f0ff]/30">🪪 Digital ID</router-link>
+                <router-link to="/id-card" class="btn-ghost text-xs py-2.5 px-5 font-mono text-[#00f0ff] border-[#00f0ff]/30">Digital ID</router-link>
               </div>
             </div>
           </div>

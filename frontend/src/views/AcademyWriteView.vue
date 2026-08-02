@@ -25,7 +25,7 @@
           <svg class="w-3.5 h-3.5 text-[#9fef00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
           </svg>
-          <span>+ New Module</span>
+          <span>New Module</span>
         </button>
 
         <!-- Mode Switcher -->
@@ -68,7 +68,7 @@
         <!-- Folder Tree & Files -->
         <div class="flex-1 overflow-y-auto p-2 space-y-3">
           <div v-if="folders.length === 0" class="p-4 text-center text-slate-500 text-xs italic">
-            No module folders yet. Click "+ New Module" or create a note below.
+            No module folders yet. Click "New Module" or create a note below.
           </div>
 
           <div v-for="folder in folders" :key="folder.name" class="space-y-1">
@@ -138,8 +138,11 @@
 
         <!-- Quick Add Note in Selected Module -->
         <div class="p-3 border-t border-[#21262d] bg-[#0d1420] space-y-2">
-          <button @click="createNewNote" class="w-full py-1.5 text-xs font-bold bg-[#21262d] hover:bg-[#30363d] text-slate-200 rounded border border-[#30363d] transition-all">
-            + New Note in Module
+          <button @click="createNewNote" class="w-full py-1.5 text-xs font-bold bg-[#21262d] hover:bg-[#30363d] text-slate-200 rounded border border-[#30363d] transition-all flex items-center justify-center space-x-1.5">
+            <svg class="w-3.5 h-3.5 text-[#9fef00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            <span>New Note in Module</span>
           </button>
         </div>
 
@@ -366,9 +369,9 @@ const renderedPreviewHtml = computed(() => {
   
   // 1. Callout alert boxes
   md = md.replace(/^>\s*\[!NOTE\]\s*\n?/gm, '<div class="my-4 p-4 rounded-xl bg-cyan-950/60 border-l-4 border-[#00f0ff] text-cyan-200 text-xs font-mono"><strong class="text-[#00f0ff] uppercase block mb-1">ℹ️ Note</strong>')
-  md = md.replace(/^>\s*\[!TIP\]\s*\n?/gm, '<div class="my-4 p-4 rounded-xl bg-emerald-950/60 border-l-4 border-[#9fef00] text-emerald-200 text-xs font-mono"><strong class="text-[#9fef00] uppercase block mb-1">💡 Tip</strong>')
-  md = md.replace(/^>\s*\[!WARNING\]\s*\n?/gm, '<div class="my-4 p-4 rounded-xl bg-amber-950/60 border-l-4 border-amber-400 text-amber-200 text-xs font-mono"><strong class="text-amber-400 uppercase block mb-1">⚠️ Warning</strong>')
-  md = md.replace(/^>\s*\[!IMPORTANT\]\s*\n?/gm, '<div class="my-4 p-4 rounded-xl bg-rose-950/60 border-l-4 border-rose-500 text-rose-200 text-xs font-mono"><strong class="text-rose-400 uppercase block mb-1">🚨 Important</strong>')
+  md = md.replace(/^>\s*\[!TIP\]\s*\n?/gm, '<div class="my-4 p-4 rounded-xl bg-emerald-950/60 border-l-4 border-[#9fef00] text-emerald-200 text-xs font-mono"><strong class="text-[#9fef00] uppercase block mb-1">Tip</strong>')
+  md = md.replace(/^>\s*\[!WARNING\]\s*\n?/gm, '<div class="my-4 p-4 rounded-xl bg-amber-950/60 border-l-4 border-amber-400 text-amber-200 text-xs font-mono"><strong class="text-amber-400 uppercase block mb-1">Warning</strong>')
+  md = md.replace(/^>\s*\[!IMPORTANT\]\s*\n?/gm, '<div class="my-4 p-4 rounded-xl bg-rose-950/60 border-l-4 border-rose-500 text-rose-200 text-xs font-mono"><strong class="text-rose-400 uppercase block mb-1">Important</strong>')
   
   // Close blockquote divs if open
   md = md.split('\n\n').map(block => {

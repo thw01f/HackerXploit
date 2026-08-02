@@ -9,6 +9,7 @@ import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import AcademyView from '../views/AcademyView.vue'
 import AcademyWriteView from '../views/AcademyWriteView.vue'
+import RoadmapStudioView from '../views/RoadmapStudioView.vue'
 import CourseDetailView from '../views/CourseDetailView.vue'
 import MyCoursesView from '../views/MyCoursesView.vue'
 import SearchView from '../views/SearchView.vue'
@@ -37,15 +38,18 @@ import AdminBackupsView from '../views/AdminBackupsView.vue'
 import IDCardView from '../views/IDCardView.vue'
 import VerifyIDCardView from '../views/VerifyIDCardView.vue'
 import ContactView from '../views/ContactView.vue'
+import AboutView from '../views/AboutView.vue'
 
 import OnboardingView from '../views/OnboardingView.vue'
 import RoadmapView from '../views/RoadmapView.vue'
+import CareerPathView from '../views/CareerPathView.vue'
 
 const routes = [
   { path: '/', name: 'landing', component: LandingView },
   { path: '/login', name: 'login', component: LoginView },
   { path: '/register', name: 'register', component: RegisterView },
   { path: '/contact', name: 'contact', component: ContactView, meta: { requiresAuth: true } },
+  { path: '/about', name: 'about', component: AboutView, meta: { requiresAuth: true } },
   { path: '/onboarding', name: 'onboarding', component: OnboardingView, meta: { requiresAuth: true } },
   { path: '/setup-admin', name: 'setup-admin', component: SetupAdminView, meta: { requiresAuth: true } },
   { path: '/forgot-password', name: 'forgot-password', component: ForgotPasswordView },
@@ -61,17 +65,29 @@ const routes = [
     name: 'academy-roadmap',
     component: RoadmapView
   },
+  {
+    path: '/academy/career-path/:slug?',
+    name: 'career-path',
+    component: CareerPathView,
+    meta: { requiresAuth: true }
+  },
   { 
     path: '/academy', 
     name: 'academy', 
     component: AcademyView, 
     meta: { requiresAuth: true } 
   },
-  { 
-    path: '/academy/write', 
-    name: 'academy-write', 
-    component: AcademyWriteView, 
-    meta: { requiresAuth: true, roles: ['teacher', 'admin', 'root_admin'] } 
+  {
+    path: '/academy/write',
+    name: 'academy-write',
+    component: AcademyWriteView,
+    meta: { requiresAuth: true, roles: ['teacher', 'admin', 'root_admin'] }
+  },
+  {
+    path: '/academy/roadmap-studio',
+    name: 'roadmap-studio',
+    component: RoadmapStudioView,
+    meta: { requiresAuth: true, roles: ['teacher', 'admin', 'root_admin'] }
   },
   { 
     path: '/academy/course/:slug', 

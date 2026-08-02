@@ -10,7 +10,7 @@
 
     <!-- Success Banner -->
     <div v-if="successMsg" class="p-4 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 text-xs font-mono flex items-center justify-between">
-      <span>✅ {{ successMsg }}</span>
+      <span>{{ successMsg }}</span>
       <button @click="successMsg = ''" class="text-emerald-400 hover:text-white">&times;</button>
     </div>
 

@@ -361,8 +361,8 @@ const processedHtml = computed(() => {
   
   // Transform Markdown Callouts if present
   html = html.replace(/&gt;\s*\[!NOTE\]/gi, '<div class="my-4 p-4 rounded-xl bg-cyan-950/60 border-l-4 border-[#00f0ff] text-cyan-200 text-xs font-mono"><strong class="text-[#00f0ff] uppercase block mb-1">ℹ️ Note</strong>')
-  html = html.replace(/&gt;\s*\[!TIP\]/gi, '<div class="my-4 p-4 rounded-xl bg-emerald-950/60 border-l-4 border-[#9fef00] text-emerald-200 text-xs font-mono"><strong class="text-[#9fef00] uppercase block mb-1">💡 Tip</strong>')
-  html = html.replace(/&gt;\s*\[!WARNING\]/gi, '<div class="my-4 p-4 rounded-xl bg-amber-950/60 border-l-4 border-amber-400 text-amber-200 text-xs font-mono"><strong class="text-amber-400 uppercase block mb-1">⚠️ Warning</strong>')
+  html = html.replace(/&gt;\s*\[!TIP\]/gi, '<div class="my-4 p-4 rounded-xl bg-emerald-950/60 border-l-4 border-[#9fef00] text-emerald-200 text-xs font-mono"><strong class="text-[#9fef00] uppercase block mb-1">Tip</strong>')
+  html = html.replace(/&gt;\s*\[!WARNING\]/gi, '<div class="my-4 p-4 rounded-xl bg-amber-950/60 border-l-4 border-amber-400 text-amber-200 text-xs font-mono"><strong class="text-amber-400 uppercase block mb-1">Warning</strong>')
 
   // Transform <a> tags to open in target="_blank" with neon styling
   html = html.replace(/<a /gi, '<a target="_blank" rel="noopener noreferrer" class="text-[#00f0ff] font-bold underline hover:text-[#9fef00] transition-colors" ')

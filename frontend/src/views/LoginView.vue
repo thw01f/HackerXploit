@@ -15,7 +15,7 @@
 
         <!-- Error Message Alert -->
         <div v-if="errorMessage" class="mb-5 p-3 rounded-lg bg-red-950/80 border border-red-500/50 text-red-300 text-xs font-mono">
-          🚨 {{ errorMessage }}
+          {{ errorMessage }}
         </div>
 
         <!-- Login Form -->

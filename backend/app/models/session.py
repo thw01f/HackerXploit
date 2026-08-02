@@ -19,17 +19,18 @@ class DeviceSession(db.Model):
         # Deliberately excludes session_token/session_token_hash: this is returned
         # to the session owner and to admins viewing device lists, and including
         # the live token would let either party hijack the session directly.
+        # device_label duplicates user_agent (same raw header, just truncated
+        # shorter) and is kept only as a fallback for admin session search;
+        # device_name/last_active were exact-duplicate aliases of
+        # device_label/last_active_at that no consumer ever read - removed.
         return {
             'id': self.id,
             'user_id': self.user_id,
             'ip_address': self.ip_address,
             'user_agent': self.user_agent,
             'device_label': self.device_label,
-            'device_name': self.device_label,
-            'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'last_active_at': self.last_active_at.isoformat() if self.last_active_at else None,
-            'last_active': self.last_active_at.isoformat() if self.last_active_at else None
+            'last_active_at': self.last_active_at.isoformat() if self.last_active_at else None
         }
 
 class LoginAttempt(db.Model):

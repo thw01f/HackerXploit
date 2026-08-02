@@ -18,7 +18,7 @@ from .inbox import Message, MessageRecipient
 from .portfolio_privacy_backup import PublicProfileSetting, BackupRecord, IDCardToken
 
 from .support import BugReport, ContactInquiry
-from .roadmap import Roadmap, RoadmapNode, RoadmapNodeResource, UserRoadmapProgress
+from .roadmap import Roadmap, RoadmapNode, RoadmapNodeResource, RoadmapEdge, UserRoadmapProgress
 
 __all__ = [
     'db',

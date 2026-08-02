@@ -56,8 +56,9 @@ def update_profile():
     data = request.get_json() or {}
     user = g.current_user
 
-    if 'full_name' in data:
-        user.full_name = data['full_name'].strip()
+    # full_name, username, email, and registration_number are collected once
+    # at registration and are permanently locked afterwards - members can't
+    # self-edit them here; only an admin/teacher can change them (admin.py).
     if 'bio' in data:
         user.bio = data['bio'].strip()
     if 'avatar_url' in data:
