@@ -36,6 +36,10 @@ CTFD_CONTAINER="${CTFD_CONTAINER:-hx_ctfd}"
 WEB_CONTAINER="${WEB_CONTAINER:-hx_web}"
 CELERY_CONTAINER="${CELERY_CONTAINER:-hx_celery_worker}"
 CTFD_UPLOAD_PATH="/var/uploads/ctfd"
+# Lives on the ctfd_db_data named volume (see docker-compose.yml) - not /tmp,
+# which is only the container's ephemeral writable layer.
+CTFD_DB_PATH="${CTFD_DB_PATH:-/var/ctfd_data/ctfd.db}"
+CTFD_DB_DIR="$(dirname "$CTFD_DB_PATH")"
 
 log()  { printf '\033[1;32m[hx-backup]\033[0m %s\n' "$1"; }
 warn() { printf '\033[1;33m[hx-backup]\033[0m %s\n' "$1"; }
@@ -96,7 +100,7 @@ cmd_backup() {
   log "Snapshotting CTFd SQLite database..."
   docker exec -i "$CTFD_CONTAINER" python -c "
 import sqlite3
-src = sqlite3.connect('/tmp/ctfd.db')
+src = sqlite3.connect('$CTFD_DB_PATH')
 dst = sqlite3.connect('/tmp/hx_backup_snapshot.db')
 with dst:
     src.backup(dst)
@@ -233,14 +237,17 @@ cmd_restore() {
     psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 < "$workdir/platform_db.sql"
 
   log "Restoring CTFd SQLite database..."
-  docker cp "$workdir/ctfd_db.sqlite" "$CTFD_CONTAINER:/tmp/ctfd.db"
-  # docker cp preserves the host file's numeric UID, which the container's
-  # own ctfd user doesn't own - CTFd would boot, serve a few requests, then
+  docker cp "$workdir/ctfd_db.sqlite" "$CTFD_CONTAINER:$CTFD_DB_PATH"
+  # docker cp preserves the host file's numeric UID, which the container's own
+  # ctfd user doesn't own - CTFd would boot, serve a few requests, then
   # crash-loop on its first database write ("attempt to write a readonly
-  # database"). Fix ownership before restarting, while the (still-running,
-  # pre-restart) container lets us exec as root.
-  docker exec -u root "$CTFD_CONTAINER" chown ctfd:ctfd /tmp/ctfd.db
-  docker exec -u root "$CTFD_CONTAINER" chmod 644 /tmp/ctfd.db
+  # database"). SQLite also needs write access to the *directory* (for its
+  # journal/WAL sidecar files), not just the .db file itself, so both need
+  # fixing - while the (still-running, pre-restart) container lets us exec as
+  # root.
+  docker exec -u root "$CTFD_CONTAINER" chown ctfd:ctfd "$CTFD_DB_DIR" "$CTFD_DB_PATH"
+  docker exec -u root "$CTFD_CONTAINER" chmod 755 "$CTFD_DB_DIR"
+  docker exec -u root "$CTFD_CONTAINER" chmod 644 "$CTFD_DB_PATH"
   docker restart "$CTFD_CONTAINER" >/dev/null
 
   log "Restoring platform uploads..."
