@@ -405,8 +405,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
+import { usePreferences } from '@/stores/preferences'
 
 const authStore = useAuthStore()
+const prefs = usePreferences()
 const loading = ref(true)
 const cardData = ref(null)
 const regenerating = ref(false)
@@ -830,7 +832,7 @@ const formatKolkataTime = (isoStr) => {
       timeZone: 'Asia/Kolkata',
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: prefs.is12h.value
     })
   } catch (e) {
     return isoStr

@@ -107,6 +107,88 @@ def test_competition_lifecycle_and_certificates(client, app):
     cert = Certificate.query.filter_by(source_id=comp_id, type='competition').first()
     assert cert is not None
 
+def test_competition_completion_report_flow(client, app):
+    headers_teacher = {'Authorization': 'Bearer token_teacher'}
+    headers_student = {'Authorization': 'Bearer token_student'}
+
+    starts = (datetime.utcnow() - timedelta(days=2)).isoformat()
+    ends = (datetime.utcnow() - timedelta(days=1)).isoformat()
+
+    res_create = client.post('/api/competitions', json={
+        'title': 'Regional Hackathon',
+        'description': 'Build something in 24 hours',
+        'category': 'hackathon',
+        'starts_at': starts,
+        'ends_at': ends,
+    }, headers=headers_teacher)
+    assert res_create.status_code == 201
+    comp_id = res_create.json['id']
+
+    # More than 3 registration screenshots must be rejected
+    res_too_many = client.post(f'/api/competitions/{comp_id}/apply', json={
+        'application_screenshots': ['/uploads/competitions/a.webp', '/uploads/competitions/b.webp',
+                                     '/uploads/competitions/c.webp', '/uploads/competitions/d.webp']
+    }, headers=headers_student)
+    assert res_too_many.status_code == 400
+
+    # Apply with 3 screenshots (max allowed)
+    res_apply = client.post(f'/api/competitions/{comp_id}/apply', json={
+        'application_screenshots': ['/uploads/competitions/a.webp', '/uploads/competitions/b.webp',
+                                     '/uploads/competitions/c.webp']
+    }, headers=headers_student)
+    assert res_apply.status_code == 201
+    app_id = res_apply.json['id']
+    assert len(res_apply.json['application_screenshots']) == 3
+
+    # Completion report blocked before staff verifies registration
+    res_early = client.post(f'/api/competitions/{comp_id}/complete', json={
+        'event_photos': ['/uploads/competitions/event1.webp'],
+        'summary_notes': 'Too early',
+    }, headers=headers_student)
+    assert res_early.status_code == 403
+
+    # Staff verifies the registration
+    res_verify = client.post(f'/api/competitions/{comp_id}/applications/{app_id}/verify', json={
+        'status': 'verified'
+    }, headers=headers_teacher)
+    assert res_verify.status_code == 200
+
+    # Now the student can file their post-event completion report
+    res_complete = client.post(f'/api/competitions/{comp_id}/complete', json={
+        'event_photos': ['/uploads/competitions/event1.webp', '/uploads/competitions/event2.webp'],
+        'summary_notes': 'Built a phishing detector, learned about DNS.',
+        'github_link': 'https://github.com/student/phish-detector',
+        'prize_money': '₹5,000',
+        'self_reported_result': 'winner',
+    }, headers=headers_student)
+    assert res_complete.status_code == 200
+    assert res_complete.json['completion_status'] == 'pending_review'
+    assert res_complete.json['github_link'] == 'https://github.com/student/phish-detector'
+    # Registration proof is superseded and cleared once completion is filed
+    assert res_complete.json['application_screenshots'] == []
+
+    # More than 5 event photos must be rejected
+    res_too_many_photos = client.post(f'/api/competitions/{comp_id}/complete', json={
+        'event_photos': ['/uploads/competitions/e1.webp'] * 6,
+    }, headers=headers_student)
+    assert res_too_many_photos.status_code == 400
+
+    # Staff finalizes via wrap-up, which should promote completion_status to 'verified'
+    # and honor the student's self-reported result as a default when staff doesn't override it.
+    res_wrapup = client.post(f'/api/competitions/{comp_id}/wrapup', json={
+        'participants': [
+            {'participation_id': app_id, 'placement_label': '1st Place'}
+        ]
+    }, headers=headers_teacher)
+    assert res_wrapup.status_code == 200
+
+    part = CompetitionParticipation.query.get(app_id)
+    assert part.completion_status == 'verified'
+    assert part.result == 'winner'
+    # Staff didn't submit event_photos in wrapup - the student's own photos must survive untouched
+    assert len(part.event_photos) == 2
+
+
 def test_retention_celery_beat_task(client, app):
     headers_admin = {'Authorization': 'Bearer token_admin'}
 

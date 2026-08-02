@@ -200,9 +200,17 @@
                   <p class="text-[11px] text-slate-500 font-mono mt-0.5">Applied {{ formatDate(item.applied_at) }}</p>
                 </div>
 
-                <span :class="getStatusBadgeClass(item.application_status)" class="text-xs font-mono px-3 py-1 rounded-lg border font-bold uppercase shrink-0">
-                  {{ formatStatus(item.application_status) }}
-                </span>
+                <div class="flex flex-col items-end gap-1 shrink-0">
+                  <span :class="getStatusBadgeClass(item.application_status)" class="text-xs font-mono px-3 py-1 rounded-lg border font-bold uppercase">
+                    {{ formatStatus(item.application_status) }}
+                  </span>
+                  <span v-if="item.completion_status === 'pending_review'" class="text-[10px] font-mono px-2 py-0.5 rounded border border-violet-500/40 bg-violet-950/30 text-violet-300 font-bold uppercase">
+                    Report Pending Review
+                  </span>
+                  <span v-else-if="item.completion_status === 'verified'" class="text-[10px] font-mono px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-950/30 text-cyan-300 font-bold uppercase">
+                    Event Completed
+                  </span>
+                </div>
               </div>
 
               <!-- Result, once the event has actually been scored/wrapped up -->
@@ -212,12 +220,20 @@
                 </span>
                 <span v-if="item.placement_label" class="text-xs font-mono text-amber-300 font-bold">{{ item.placement_label }}</span>
               </div>
+              <div v-else-if="item.self_reported_result && item.self_reported_result !== 'participated'" class="flex items-center gap-2">
+                <span class="text-xs font-mono px-3 py-1 rounded-lg border border-slate-700 bg-slate-900 text-slate-300 font-bold uppercase">
+                  Claimed: {{ item.self_reported_result }}
+                </span>
+                <span class="text-[10px] font-mono text-slate-500">(awaiting staff confirmation)</span>
+              </div>
 
-              <div v-if="item.application_screenshot" class="pt-2">
+              <div v-if="item.application_screenshots && item.application_screenshots.length > 0" class="pt-2">
                 <p class="text-[11px] font-mono text-slate-400 mb-1">Uploaded Registration Proof:</p>
-                <a :href="item.application_screenshot" target="_blank">
-                  <img :src="item.application_screenshot" class="w-full h-36 object-cover rounded-xl border border-slate-800 hover:border-cyan-500/50 transition-colors" />
-                </a>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <a v-for="(shot, idx) in item.application_screenshots" :key="idx" :href="shot" target="_blank">
+                    <img :src="shot" class="w-full h-24 object-cover rounded-xl border border-slate-800 hover:border-cyan-500/50 transition-colors" />
+                  </a>
+                </div>
               </div>
 
               <div v-if="item.event_photos && item.event_photos.length > 0" class="pt-1">
@@ -229,9 +245,24 @@
                 </div>
               </div>
 
+              <div v-if="item.user_certificate_file" class="pt-1">
+                <p class="text-[11px] font-mono text-slate-400 mb-1">Student-Submitted Certificate:</p>
+                <a :href="item.user_certificate_file" target="_blank">
+                  <img :src="item.user_certificate_file" class="w-32 h-20 object-cover rounded-lg border border-slate-800 hover:border-cyan-500/50 transition-colors" />
+                </a>
+              </div>
+
               <p v-if="item.summary_notes" class="text-xs text-slate-300 bg-slate-900/60 p-3 rounded-lg border border-slate-800">
                 "{{ item.summary_notes }}"
               </p>
+
+              <div class="flex flex-wrap gap-3 text-xs font-mono">
+                <a v-if="item.github_link" :href="item.github_link" target="_blank" class="text-cyan-400 hover:underline flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                  {{ item.github_link }}
+                </a>
+                <span v-if="item.prize_money" class="text-amber-400 font-bold">💰 {{ item.prize_money }}</span>
+              </div>
 
               <!-- Verification trail -->
               <p v-if="item.verified_by_name" class="text-[11px] font-mono text-slate-500">
@@ -266,10 +297,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { usePreferences } from '../stores/preferences'
 
 import axios from 'axios'
 
 const route = useRoute()
+const prefs = usePreferences()
 const activeTab = ref('overview')
 const profile = ref(null)
 const loading = ref(true)
@@ -318,7 +351,7 @@ const formatStatus = (status) => {
 const formatDate = (isoStr) => {
   if (!isoStr) return 'N/A'
   try {
-    return new Date(isoStr).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    return new Date(isoStr).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: prefs.is12h.value })
   } catch (e) {
     return isoStr
   }

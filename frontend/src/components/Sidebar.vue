@@ -93,6 +93,10 @@
         Digital ID Card
       </NavItem>
 
+      <NavItem to="/settings" :collapsed="collapsed && !mobileOpen" icon="settings">
+        Settings
+      </NavItem>
+
       <!-- Faculty / Staff Section for Teachers -->
       <template v-if="authStore.isTeacher && !authStore.isAdmin">
         <div v-if="!collapsed || mobileOpen" class="px-2 mt-5 mb-2">

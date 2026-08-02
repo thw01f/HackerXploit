@@ -712,11 +712,13 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useClubStore } from '../stores/club'
+import { usePreferences } from '../stores/preferences'
 import InteractiveRoadmapGraph from '../components/InteractiveRoadmapGraph.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const clubStore = useClubStore()
+const prefs = usePreferences()
 
 const activeTab = ref('paths')
 const pathSearch = ref('')
@@ -1427,7 +1429,7 @@ const deleteLiveClass = async (id) => {
 
 const formatDate = (isoStr) => {
   if (!isoStr) return ''
-  return new Date(isoStr).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return new Date(isoStr).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: prefs.is12h.value })
 }
 
 onMounted(() => {

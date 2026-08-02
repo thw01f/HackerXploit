@@ -26,6 +26,35 @@ class SiteFeatureToggle(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
+class Announcement(db.Model):
+    __tablename__ = 'announcements'
+
+    id = db.Column(db.Integer, primary_key=True)
+    message = db.Column(db.String(512), nullable=False)
+    # Optional CTA button, e.g. button_label="LAUNCH CTF ARENA", link="https://arena.hackerxploit.org"
+    # Rendered as plain banner text when link is empty, as a clickable CTA when both are set.
+    button_label = db.Column(db.String(64), nullable=True)
+    link = db.Column(db.String(512), nullable=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    display_order = db.Column(db.Integer, default=0, nullable=False)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'message': self.message,
+            'button_label': self.button_label,
+            'link': self.link,
+            'is_active': self.is_active,
+            'display_order': self.display_order,
+            'created_by_id': self.created_by_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
 class Report(db.Model):
     __tablename__ = 'reports'
 

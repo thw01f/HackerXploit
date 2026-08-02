@@ -5,8 +5,12 @@ from flask import Blueprint, request, jsonify, g, make_response
 from app.models import db, Competition, CompetitionParticipation, User, Certificate, EventAttendance, IDCardToken
 from app.utils.decorators import require_auth, require_role, log_audit
 from app.services.pdf_service import generate_completion_certificate
+from app.services.upload_service import UploadPipeline
 
 from sqlalchemy import func
+
+MAX_APPLICATION_SCREENSHOTS = 3
+MAX_EVENT_PHOTOS = 5
 
 competition_bp = Blueprint('competition', __name__, url_prefix='/api/competitions')
 
@@ -39,16 +43,30 @@ def get_competitions():
     results = []
     for c in competitions:
         p = user_participations.get(c.id)
-        user_involvement = 'not_applied'
-        if p:
-            user_involvement = p.application_status  # pending_verification, verified, rejected
+        # Filter matching stays keyed off the base registration status so
+        # 'applied'/'verified' filters keep working the same regardless of
+        # whether the student has since filed a post-event completion report.
+        base_status = p.application_status if p else 'not_applied'
+
+        # Display label is richer: once a completion report is filed it takes
+        # precedence, since it's the more advanced/current state of involvement.
+        if p and p.completion_status == 'verified':
+            user_involvement = 'completed'
+        elif p and p.completion_status == 'pending_review':
+            user_involvement = 'completion_pending'
+        else:
+            user_involvement = base_status
 
         if involvement_filter != 'all':
-            if involvement_filter == 'applied' and user_involvement == 'not_applied':
+            if involvement_filter == 'applied' and base_status == 'not_applied':
                 continue
-            if involvement_filter == 'verified' and user_involvement != 'verified':
+            if involvement_filter == 'verified' and base_status != 'verified':
                 continue
-            if involvement_filter == 'not_applied' and user_involvement != 'not_applied':
+            if involvement_filter == 'not_applied' and base_status != 'not_applied':
+                continue
+            if involvement_filter == 'completion_pending' and user_involvement != 'completion_pending':
+                continue
+            if involvement_filter == 'completed' and user_involvement != 'completed':
                 continue
 
         c_dict = c.to_dict()
@@ -73,6 +91,19 @@ def get_kolkata_now():
     return datetime.utcnow() + timedelta(hours=5, minutes=30)
 
 
+def parse_naive_datetime(iso_str):
+    """
+    Parses a client-supplied ISO datetime string, stripping any timezone offset.
+    All datetimes in this system are naive wall-clock values (see get_kolkata_now) -
+    a client sending an offset/'Z'-suffixed string must not crash the comparison
+    below with a naive-vs-aware TypeError.
+    """
+    dt = datetime.fromisoformat(iso_str)
+    if dt.tzinfo is not None:
+        dt = dt.replace(tzinfo=None)
+    return dt
+
+
 @competition_bp.route('', methods=['POST'])
 @require_role('teacher', 'admin', 'root_admin')
 def announce_competition():
@@ -85,9 +116,9 @@ def announce_competition():
     if not title or not starts_at_str or not ends_at_str:
         return jsonify({'error': 'Title, starts_at, and ends_at dates are required'}), 400
 
-    starts_at = datetime.fromisoformat(starts_at_str)
-    ends_at = datetime.fromisoformat(ends_at_str)
-    deadline = datetime.fromisoformat(data['application_deadline']) if data.get('application_deadline') else None
+    starts_at = parse_naive_datetime(starts_at_str)
+    ends_at = parse_naive_datetime(ends_at_str)
+    deadline = parse_naive_datetime(data['application_deadline']) if data.get('application_deadline') else None
 
     if ends_at <= starts_at:
         return jsonify({'error': 'Ends At must be after Starts At'}), 400
@@ -140,10 +171,10 @@ def update_competition(comp_id):
         comp.poster_image = data['poster_image']
     if 'external_link' in data:
         comp.external_link = data['external_link']
-    new_starts_at = datetime.fromisoformat(data['starts_at']) if data.get('starts_at') else comp.starts_at
-    new_ends_at = datetime.fromisoformat(data['ends_at']) if data.get('ends_at') else comp.ends_at
+    new_starts_at = parse_naive_datetime(data['starts_at']) if data.get('starts_at') else comp.starts_at
+    new_ends_at = parse_naive_datetime(data['ends_at']) if data.get('ends_at') else comp.ends_at
     if 'application_deadline' in data:
-        new_deadline = datetime.fromisoformat(data['application_deadline']) if data['application_deadline'] else None
+        new_deadline = parse_naive_datetime(data['application_deadline']) if data['application_deadline'] else None
     else:
         new_deadline = comp.application_deadline
 
@@ -190,14 +221,24 @@ def delete_competition(comp_id):
 def apply_competition(comp_id):
     comp = Competition.query.get_or_404(comp_id)
     data = request.get_json() or {}
-    screenshot_url = data.get('application_screenshot')
+    screenshots = data.get('application_screenshots')
+    if screenshots is None:
+        # Back-compat with any older single-URL callers
+        single = data.get('application_screenshot')
+        screenshots = [single] if single else []
 
-    if not screenshot_url:
+    if not isinstance(screenshots, list) or not screenshots:
         return jsonify({'error': 'Application registration screenshot proof is required'}), 400
+    if len(screenshots) > MAX_APPLICATION_SCREENSHOTS:
+        return jsonify({'error': f'Maximum {MAX_APPLICATION_SCREENSHOTS} registration screenshots allowed'}), 400
+
+    # Club events don't require any registration proof - reject stray applications against them.
+    if (comp.category or '').lower() == 'club':
+        return jsonify({'error': 'Club events do not require registration proof. Use the event feedback form instead.'}), 400
 
     existing = CompetitionParticipation.query.filter_by(competition_id=comp_id, user_id=g.current_user.id).first()
     if existing:
-        existing.application_screenshot = screenshot_url
+        existing.application_screenshots = screenshots
         existing.application_status = 'pending_verification'
         existing.applied_at = datetime.utcnow()
         db.session.commit()
@@ -206,7 +247,7 @@ def apply_competition(comp_id):
     part = CompetitionParticipation(
         competition_id=comp_id,
         user_id=g.current_user.id,
-        application_screenshot=screenshot_url,
+        application_screenshots=screenshots,
         application_status='pending_verification',
         applied_at=datetime.utcnow()
     )
@@ -215,6 +256,58 @@ def apply_competition(comp_id):
 
     log_audit('COMPETITION_APPLY', target_type='CompetitionParticipation', target_id=part.id)
     return jsonify(part.to_dict()), 201
+
+
+@competition_bp.route('/<int:comp_id>/complete', methods=['POST'])
+@require_auth
+def submit_completion_report(comp_id):
+    """
+    Student self-service post-event report, filed once the competition has
+    ended and their registration was staff-verified. Feeds into the staff
+    Wrap-up queue as pending_review; staff finalization there (file_wrapup)
+    is what promotes it to 'verified'. On successful submission, the now
+    superseded registration-proof screenshots are deleted from disk.
+    """
+    comp = Competition.query.get_or_404(comp_id)
+    part = CompetitionParticipation.query.filter_by(competition_id=comp_id, user_id=g.current_user.id).first()
+
+    if not part:
+        return jsonify({'error': 'You have not applied to this competition'}), 404
+    if part.application_status != 'verified':
+        return jsonify({'error': 'Your registration must be staff-verified before filing an event completion report'}), 403
+    if comp.status != 'ended':
+        return jsonify({'error': 'This competition has not ended yet'}), 400
+
+    data = request.get_json() or {}
+    event_photos = data.get('event_photos') or []
+    if not isinstance(event_photos, list):
+        return jsonify({'error': 'event_photos must be a list'}), 400
+    if len(event_photos) > MAX_EVENT_PHOTOS:
+        return jsonify({'error': f'Maximum {MAX_EVENT_PHOTOS} event photos allowed'}), 400
+
+    self_reported_result = data.get('self_reported_result', 'participated')
+    if self_reported_result not in ('participated', 'winner', 'runner_up', 'not_selected'):
+        self_reported_result = 'participated'
+
+    part.event_photos = event_photos
+    part.summary_notes = (data.get('summary_notes') or '').strip() or None
+    part.github_link = (data.get('github_link') or '').strip() or None
+    part.prize_money = (data.get('prize_money') or '').strip() or None
+    part.user_certificate_file = data.get('user_certificate_file') or None
+    part.self_reported_result = self_reported_result
+    part.completion_status = 'pending_review'
+    part.completion_submitted_at = datetime.utcnow()
+
+    # Space-saving cleanup: the registration proof is now superseded by the
+    # completion report's own evidence (photos/certificate/result).
+    for old_url in (part.application_screenshots or []):
+        UploadPipeline.delete_uploaded_file(old_url)
+    part.application_screenshots = []
+
+    db.session.commit()
+
+    log_audit('COMPETITION_COMPLETION_SUBMIT', target_type='CompetitionParticipation', target_id=part.id)
+    return jsonify(part.to_dict()), 200
 
 @competition_bp.route('/<int:comp_id>/applications', methods=['GET'])
 @require_role('teacher', 'admin', 'root_admin')
@@ -232,6 +325,51 @@ def get_applications_queue(comp_id):
         queue.append(p_dict)
 
     return jsonify({'competition': comp.to_dict(), 'applications': queue}), 200
+
+@competition_bp.route('/<int:comp_id>/applications/export', methods=['GET'])
+@require_role('teacher', 'admin', 'root_admin')
+def export_applications(comp_id):
+    comp = Competition.query.get_or_404(comp_id)
+    participations = CompetitionParticipation.query.filter_by(competition_id=comp_id).order_by(CompetitionParticipation.applied_at.asc()).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        'Badge ID', 'Student ID', 'Full Name', 'Username', 'Email', 'Academic Year', 'Department',
+        'Application Status', 'Applied At', 'Verified By', 'Verified At',
+        'Result', 'Placement Label', 'Completion Status', 'GitHub Link', 'Prize Money'
+    ])
+
+    for p in participations:
+        u = User.query.get(p.user_id)
+        verifier = User.query.get(p.verified_by_id) if p.verified_by_id else None
+        writer.writerow([
+            u.get_badge_id() if u else 'N/A',
+            u.student_id if u and u.student_id else 'N/A',
+            u.full_name if u else (u.username if u else 'Unknown'),
+            u.username if u else 'Unknown',
+            u.email if u else 'N/A',
+            u.academic_year if u else 'N/A',
+            u.department if u else 'N/A',
+            p.application_status.upper(),
+            p.applied_at.isoformat() if p.applied_at else '',
+            verifier.full_name or verifier.username if verifier else '',
+            p.verified_at.isoformat() if p.verified_at else '',
+            p.result or '',
+            p.placement_label or '',
+            p.completion_status.upper(),
+            p.github_link or '',
+            p.prize_money or ''
+        ])
+
+    csv_data = output.getvalue()
+    response = make_response(csv_data)
+    filename = f"competition_applications_{comp_id}_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+    response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+    return response
+
 
 @competition_bp.route('/<int:comp_id>/applications/<int:app_id>/verify', methods=['POST'])
 @require_role('teacher', 'admin', 'root_admin')
@@ -267,13 +405,25 @@ def file_wrapup(comp_id):
         if not part:
             continue
 
-        result_type = item.get('result', 'participated')
+        result_type = item.get('result') or part.self_reported_result or 'participated'
         part.result = result_type
         part.placement_label = item.get('placement_label')
-        part.summary_notes = item.get('summary_notes') or summary_notes
-        part.event_photos = item.get('event_photos') or event_photos
+        # Only overwrite the student's own submitted photos/notes if staff explicitly
+        # supplied a replacement - an empty global default must never wipe them out.
+        if item.get('summary_notes'):
+            part.summary_notes = item.get('summary_notes')
+        elif not part.summary_notes and summary_notes:
+            part.summary_notes = summary_notes
+        if item.get('event_photos'):
+            part.event_photos = item.get('event_photos')
+        elif not part.event_photos and event_photos:
+            part.event_photos = event_photos
         part.submitted_by_id = g.current_user.id
         part.submitted_at = datetime.utcnow()
+
+        # Finalizing wrap-up is the staff sign-off step for any completion report the student filed.
+        if part.completion_status == 'pending_review':
+            part.completion_status = 'verified'
 
         # If winner or runner_up, generate official platform certificate
         if result_type in ('winner', 'runner_up'):
@@ -455,7 +605,7 @@ def export_event_attendance(comp_id):
 
     # CSV Header
     writer.writerow([
-        'Member ID', 'Full Name', 'Username', 'Email', 
+        'Badge ID', 'Full Name', 'Username', 'Email',
         'Academic Year', 'Department', 'Status', 'Scanned At', 'Approved By', 'Remark'
     ])
 
@@ -463,7 +613,7 @@ def export_event_attendance(comp_id):
         u = User.query.get(r.user_id)
         scanned_by = User.query.get(r.scanned_by_id) if r.scanned_by_id else None
         writer.writerow([
-            u.member_id if u else 'N/A',
+            u.get_badge_id() if u else 'N/A',
             u.full_name if u else (u.username if u else 'Unknown'),
             u.username if u else 'Unknown',
             u.email if u else 'N/A',

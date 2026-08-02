@@ -297,10 +297,12 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { usePreferences } from '../stores/preferences'
 import axios from 'axios'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const prefs = usePreferences()
 const course = ref({})
 const enrollment = ref(null)
 const activeChapterIndex = ref(0)
@@ -466,7 +468,7 @@ const reportComment = async (commentId) => {
 
 const formatDate = (isoStr) => {
   if (!isoStr) return ''
-  return new Date(isoStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return new Date(isoStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: prefs.is12h.value })
 }
 
 watch(activeChapterIndex, async (newIdx) => {

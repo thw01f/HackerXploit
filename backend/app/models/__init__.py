@@ -13,7 +13,7 @@ from .opportunity import Opportunity, OpportunityApplication, Skill, member_skil
 from .chat import ChatMessage, Notification, NotificationPreference
 from .oauth import OAuth2Client, OAuth2AuthorizationCode, OAuth2Token
 from .activity import ActivitySession, ActivityHeartbeat
-from .moderation import SiteFeatureToggle, Report, EmailLog
+from .moderation import SiteFeatureToggle, Report, EmailLog, Announcement
 from .inbox import Message, MessageRecipient
 from .portfolio_privacy_backup import PublicProfileSetting, BackupRecord, IDCardToken
 
@@ -57,6 +57,7 @@ __all__ = [
     'SiteFeatureToggle',
     'Report',
     'EmailLog',
+    'Announcement',
     'Message',
     'MessageRecipient',
     'PublicProfileSetting',

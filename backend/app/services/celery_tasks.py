@@ -12,18 +12,33 @@ def make_celery(app_name=__name__):
 celery = make_celery()
 
 @celery.task
-def cleanup_expired_lockouts():
+def cleanup_expired_lockouts(app=None):
     from app import create_app
-    from app.models import db, User
-    app = create_app()
-    with app.app_context():
+    from app.models import db, User, AuditLog
+
+    def _run():
         now = datetime.utcnow()
-        users = User.query.filter(User.locked_until <= now).all()
+        users = User.query.filter(User.locked_until.isnot(None), User.locked_until <= now).all()
         for u in users:
             u.locked_until = None
             u.failed_login_count = 0
+            db.session.add(AuditLog(
+                actor_id=None,
+                actor_name='Celery Beat',
+                actor_role='system',
+                target_user_id=u.id,
+                action='auto_unlocked',
+                notes=f"Account @{u.username} auto-unlocked after 30-minute lockout period expired"
+            ))
         db.session.commit()
         return f"Unlocked {len(users)} accounts"
+
+    if has_app_context():
+        return _run()
+    else:
+        app_inst = app if app else create_app()
+        with app_inst.app_context():
+            return _run()
 
 @celery.task
 def clean_expired_competitions(app=None):

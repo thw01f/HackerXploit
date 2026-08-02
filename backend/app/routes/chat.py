@@ -67,7 +67,9 @@ def post_message():
 
     try:
         from app import socketio
+        from app.services.socket_events import _notify_mentions
         socketio.emit('new_message', payload, room=channel)
+        _notify_mentions(msg, g.current_user, channel)
     except Exception as e:
         pass
 

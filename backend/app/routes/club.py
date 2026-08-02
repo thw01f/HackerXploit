@@ -10,19 +10,12 @@ def get_stats():
     total_members = User.query.filter_by(status='approved').count()
     active_courses = CourseEnrollment.query.count()
     completed_courses = CourseEnrollment.query.filter(CourseEnrollment.progress_percent >= 100.0).count()
-    from app.models.moderation import SiteFeatureToggle
-    toggle = SiteFeatureToggle.query.first()
-    announcement_text = None
-    if toggle and getattr(toggle, 'announcement_enabled', True):
-        banner = (toggle.announcement_banner or '').strip()
-        announcement_text = banner if banner else None
 
     return jsonify({
         'total_members': total_members,
         'active_courses': active_courses,
         'completed_courses': completed_courses,
-        'ctf_rank': 12,
-        'announcement': announcement_text
+        'ctf_rank': 12
     }), 200
 
 @club_bp.route('/members', methods=['GET'])

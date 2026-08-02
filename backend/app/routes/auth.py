@@ -200,7 +200,7 @@ def login():
         )
         db.session.add(attempt)
         db.session.commit()
-        return jsonify({'error': 'Account is temporarily locked. Try again in 15 minutes.'}), 423
+        return jsonify({'error': 'Account locked due to multiple failed login attempts. Try again after 60 minutes or contact an administrator.'}), 423
 
     # Validate password
     was_locked_before = user.is_locked()
