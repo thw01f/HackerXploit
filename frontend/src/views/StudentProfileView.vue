@@ -12,7 +12,7 @@
         <!-- Header Banner -->
         <div class="glass-panel p-8 flex flex-col md:flex-row items-center justify-between gap-6 border-l-4 border-cyan-500">
           <div class="flex items-center space-x-6">
-            <img :src="profile.overview.avatar_url || '/uploads/avatars/default.png'" class="w-28 h-28 rounded-2xl object-cover border-2 border-cyan-500/40 shadow-lg shadow-cyan-500/10" />
+            <img :src="profile.overview.avatar_url || '/uploads/avatars/default.png'" @error="$event.target.src='/uploads/avatars/default.png'" class="w-28 h-28 rounded-2xl object-cover border-2 border-cyan-500/40 shadow-lg shadow-cyan-500/10" />
             <div>
               <div class="flex items-center gap-3">
                 <h1 class="text-3xl font-bold text-white">{{ profile.overview.full_name || profile.overview.username }}</h1>
@@ -22,7 +22,7 @@
               </div>
               <p class="text-sm font-mono text-cyan-400 mt-0.5">@{{ profile.overview.username }} | {{ profile.overview.email }}</p>
               <div class="flex items-center gap-2 text-sm font-mono text-slate-400 mt-1">
-                <span class="px-2 py-0.5 rounded bg-[#9fef00]/10 border border-[#9fef00]/40 text-[#9fef00] font-bold">BADGE ID: {{ profile.overview.badge_id || ('HX-STU-' + (profile.overview.student_id || profile.overview.id)) }}</span>
+                <span class="px-2 py-0.5 rounded bg-[#9fef00]/10 border border-[#9fef00]/40 text-[#9fef00] font-bold">BADGE ID: {{ profile.overview.badge_id || ('HX-STU-' + String(profile.overview.id).padStart(4, '0')) }}</span>
                 <span v-if="profile.overview.student_id">Student ID: {{ profile.overview.student_id }}</span>
               </div>
             </div>

@@ -35,9 +35,12 @@
 
           <!-- Member Details -->
           <div class="flex items-center space-x-4">
-            <div class="w-16 h-16 rounded-xl bg-[#090d16] border-2 border-[#9fef00]/60 flex items-center justify-center text-[#9fef00] font-mono font-bold text-2xl shadow-lg">
-              {{ verification.member.username.charAt(0).toUpperCase() }}
-            </div>
+            <img
+              :src="verification.member.avatar_url || '/uploads/avatars/default.png'"
+              @error="$event.target.src='/uploads/avatars/default.png'"
+              alt="Member photo"
+              class="w-16 h-16 rounded-xl object-cover border-2 border-[#9fef00]/60 shadow-lg"
+            />
             <div>
               <h3 class="font-mono font-bold text-lg text-white uppercase">{{ verification.member.username }}</h3>
               <span class="text-[10px] font-mono font-bold uppercase bg-[#151f30] text-[#00f0ff] px-2 py-0.5 rounded border border-[#00f0ff]/30">

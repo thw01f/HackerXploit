@@ -1,4 +1,5 @@
 import os
+import shutil
 from flask import Flask
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -172,5 +173,23 @@ def create_app(config_class=Config):
                     db.session.commit()
         except Exception:
             db.session.rollback()
+
+        # Every avatar_url fallback across the app (and the users.avatar_url
+        # column default) points at /uploads/avatars/default.png, but that
+        # path lives on the uploads_data volume, which starts out empty on a
+        # fresh install or after a volume recreation - so it 404s until
+        # something actually puts a file there. Self-heal it here rather than
+        # relying on a manual step, from the bundled asset shipped in the repo.
+        try:
+            bundled_default_avatar = os.path.join(
+                os.path.dirname(__file__), 'static', 'defaults', 'default_avatar.png'
+            )
+            avatars_dir = os.path.join(flask_app.config['UPLOAD_FOLDER'], 'avatars')
+            live_default_avatar = os.path.join(avatars_dir, 'default.png')
+            if os.path.exists(bundled_default_avatar) and not os.path.exists(live_default_avatar):
+                os.makedirs(avatars_dir, exist_ok=True)
+                shutil.copyfile(bundled_default_avatar, live_default_avatar)
+        except Exception:
+            pass
 
     return flask_app

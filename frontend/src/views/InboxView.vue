@@ -173,7 +173,7 @@
                 <!-- Avatar Preview -->
                 <img 
                   :src="msg.sender_avatar || '/uploads/avatars/default.png'" 
-                  @error="$event.target.src='https://api.dicebear.com/7.x/bottts/svg?seed=' + (msg.sender_username || 'user')"
+                  @error="$event.target.src='/uploads/avatars/default.png'"
                   class="w-10 h-10 rounded-xl object-cover border border-[#1f293d] flex-shrink-0 mt-0.5" 
                 />
 

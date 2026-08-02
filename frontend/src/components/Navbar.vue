@@ -105,7 +105,7 @@
 
           <!-- User Profile & Avatar -->
           <router-link to="/settings" class="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-[#151f30] transition-colors border border-transparent hover:border-[#1f293d]">
-            <img :src="authStore.user?.avatar_url || '/uploads/avatars/default.png'" class="w-8 h-8 rounded-lg border border-[#9fef00]/50 object-cover" />
+            <img :src="authStore.user?.avatar_url || '/uploads/avatars/default.png'" @error="$event.target.src='/uploads/avatars/default.png'" class="w-8 h-8 rounded-lg border border-[#9fef00]/50 object-cover" />
             <div class="hidden sm:block text-left font-mono">
               <div class="flex items-center space-x-1.5">
                 <span class="block text-xs font-bold text-white leading-tight font-mono">{{ authStore.user?.username }}</span>

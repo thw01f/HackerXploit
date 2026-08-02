@@ -57,18 +57,45 @@ class User(db.Model):
     last_login_at = db.Column(db.DateTime, nullable=True)
     last_seen_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    def _badge_prefix(self):
+        if self.is_root_admin or self.role == 'root_admin':
+            return 'HX-ROOT-'
+        elif self.role == 'admin':
+            return 'HX-ADM-'
+        elif self.role in ['teacher', 'faculty', 'teacher_admin']:
+            return 'HX-FAC-'
+        else:
+            return 'HX-STU-'
+
     def get_badge_id(self):
         if self.badge_id and self.badge_id.startswith(('HX-ROOT-', 'HX-ADM-', 'HX-FAC-', 'HX-STU-')):
             return self.badge_id
-        if self.is_root_admin or self.role == 'root_admin':
-            return f"HX-ROOT-{self.id:04d}"
-        elif self.role == 'admin':
-            return f"HX-ADM-{self.id:04d}"
-        elif self.role in ['teacher', 'faculty', 'teacher_admin']:
-            return f"HX-FAC-{self.id:04d}"
-        else:
-            std_str = self.student_id if self.student_id else f"{self.id:04d}"
-            return f"HX-STU-{std_str}"
+        # Not yet permanently assigned (e.g. still pending approval) - a
+        # temporary, id-based placeholder that can never collide with another
+        # user, shown only until assign_badge_id() locks in the real one.
+        return f"{self._badge_prefix()}{self.id:04d}"
+
+    def assign_badge_id(self, force=False):
+        """Permanently mint and lock in this user's sequential Badge ID for
+        their current role. Call once at approval, and again whenever a role
+        change moves someone into a different badge prefix category - never
+        on every read. Badge IDs used to be derived from the user-editable
+        student_id field (HX-STU-<student_id>), which had no uniqueness
+        constraint and could collide between members or shift if they edited
+        it later; this assigns a stable, collision-free sequential number
+        instead, matching how staff badges already worked."""
+        if self.badge_id and not force:
+            return self.badge_id
+        prefix = self._badge_prefix()
+        existing = db.session.query(User.badge_id).filter(User.badge_id.like(f"{prefix}%")).all()
+        max_num = 0
+        for (bid,) in existing:
+            suffix = bid[len(prefix):] if bid else ''
+            if suffix.isdigit():
+                max_num = max(max_num, int(suffix))
+        width = max(4, len(str(max_num + 1)))
+        self.badge_id = f"{prefix}{max_num + 1:0{width}d}"
+        return self.badge_id
 
 
     def set_password(self, password):

@@ -75,7 +75,7 @@
                 />
                 <img 
                   :src="user.avatar_url || '/uploads/avatars/default.png'" 
-                  @error="$event.target.src='https://api.dicebear.com/7.x/bottts/svg?seed=' + user.username"
+                  @error="$event.target.src='/uploads/avatars/default.png'"
                   class="w-7 h-7 rounded-lg object-cover border border-[#1f293d]" 
                 />
                 <div>

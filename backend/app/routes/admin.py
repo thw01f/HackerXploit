@@ -72,6 +72,7 @@ def approve_user(user_id):
     user.onboarding_completed = False
     user.approved_by = g.current_user.id
     user.approved_at = datetime.utcnow()
+    user.assign_badge_id()
     db.session.commit()
 
     # Auto-provision user into CTFd database
@@ -221,23 +222,30 @@ def update_user_details(user_id):
         except (ValueError, TypeError):
             pass
 
+    role_changed = False
     if 'role' in data:
         new_role = data['role']
         if is_admin:
-            if new_role in ['student', 'member', 'teacher', 'admin']:
+            if new_role in ['student', 'member', 'teacher', 'admin'] and new_role != user.role:
                 user.role = new_role
-                user.badge_id = None # Forces recalculation of Badge ID with new role prefix (e.g. HX-FAC-0001 or HX-ADM-0001)
+                role_changed = True
         else:
-            if new_role in ['student', 'member']:
+            if new_role in ['student', 'member'] and new_role != user.role:
                 user.role = new_role
-                user.badge_id = None
+                role_changed = True
 
     if 'status' in data:
         if is_admin or user.role in ['student', 'member']:
             user.status = data['status']
 
-    # Recalculate badge_id for response
-    user.badge_id = user.get_badge_id()
+    # A role change moves the user into a new badge-prefix category (e.g.
+    # HX-STU- -> HX-FAC-), so mint a fresh permanent one; otherwise leave
+    # the existing locked badge_id alone, or assign one for the first time
+    # if this user was somehow approved without one yet.
+    if role_changed:
+        user.assign_badge_id(force=True)
+    elif not user.badge_id and user.status == 'approved':
+        user.assign_badge_id()
     db.session.commit()
 
     # Instant CTFd role & badge sync
@@ -389,6 +397,8 @@ def change_user_role(user_id):
 
     old_role = user.role
     user.role = new_role
+    if new_role != old_role:
+        user.assign_badge_id(force=True)
     db.session.commit()
 
     log_audit('role_changed', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Role changed from {old_role} to {new_role}")
@@ -405,10 +415,12 @@ def transfer_root():
 
     current_root.is_root_admin = False
     current_root.role = 'admin'
+    current_root.assign_badge_id(force=True)
 
     target_user.is_root_admin = True
     target_user.role = 'admin'
     target_user.status = 'approved'
+    target_user.assign_badge_id(force=True)
     db.session.commit()
 
     try:
@@ -432,9 +444,12 @@ def promote_to_teacher(user_id):
     staff_id = data.get('staff_id', '').strip()
     notes = data.get('notes', '').strip()
 
+    was_teacher = user.role in ['teacher', 'faculty', 'teacher_admin']
     user.role = 'teacher'
     user.status = 'approved'
-    
+    if not was_teacher:
+        user.assign_badge_id(force=True)
+
     if department:
         user.bio = f"Department: {department} | Designation: {designation or 'Faculty Member'}"
     if staff_id:

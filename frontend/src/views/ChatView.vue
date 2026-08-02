@@ -50,12 +50,13 @@
             v-else
             v-for="(msg, idx) in groupedMessages"
             :key="msg.id || msg.timestamp"
-            class="group flex items-start space-x-3 hover:bg-white/[0.02] rounded-lg px-2 -mx-2"
-            :class="msg.showHeader ? 'mt-4' : 'mt-0.5'"
+            class="group flex items-start hover:bg-white/[0.02] rounded-lg px-2 -mx-2"
+            :class="[msg.showHeader ? 'mt-4' : 'mt-0.5', isOwnMessage(msg) ? 'flex-row-reverse space-x-reverse space-x-3' : 'space-x-3']"
           >
             <img
               v-if="msg.showHeader"
               :src="msg.sender_avatar || '/uploads/avatars/default.png'"
+              @error="$event.target.src='/uploads/avatars/default.png'"
               class="w-9 h-9 rounded-full object-cover border shrink-0"
               :class="isOwnMessage(msg) ? 'border-[#9fef00]/50' : 'border-slate-700'"
             />
@@ -64,7 +65,7 @@
             </div>
 
             <div class="flex-1 min-w-0">
-              <div v-if="msg.showHeader" class="flex items-center space-x-2">
+              <div v-if="msg.showHeader" class="flex items-center space-x-2" :class="isOwnMessage(msg) ? 'justify-end' : ''">
                 <span class="text-sm font-bold" :class="isOwnMessage(msg) ? 'text-[#9fef00]' : 'text-white'">{{ msg.sender_username }}</span>
                 <span :class="getRoleColor(msg.sender_role)" class="text-xs font-semibold uppercase px-1.5 py-0.2 bg-slate-800 rounded">
                   {{ msg.sender_role }}
@@ -72,7 +73,7 @@
                 <span class="text-xs text-slate-500">{{ formatTimestamp(msg.timestamp) }}</span>
 
                 <!-- Message Actions -->
-                <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-2 ml-auto">
+                <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-2" :class="isOwnMessage(msg) ? '' : 'ml-auto'">
                   <button v-if="!msg.is_deleted" @click="openReportModal(msg)" class="text-sm text-slate-500 hover:text-amber-400">
                     Report
                   </button>
@@ -82,7 +83,7 @@
                 </div>
               </div>
               <!-- Content Rendering -->
-              <div class="flex items-start gap-2" :class="msg.showHeader ? 'mt-1' : ''">
+              <div class="flex items-start gap-2" :class="[msg.showHeader ? 'mt-1' : '', isOwnMessage(msg) ? 'justify-end' : '']">
                 <div v-if="msg.is_deleted" class="text-sm text-rose-400/80 italic font-mono bg-rose-500/5 px-3 py-1.5 rounded-lg border border-rose-500/10 inline-block">
                   {{ msg.content }}
                 </div>
@@ -146,7 +147,7 @@
                   class="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors"
                   :class="i === activeMentionIndex ? 'bg-[#9fef00]/10' : 'hover:bg-slate-800'"
                 >
-                  <img :src="u.avatar_url || '/uploads/avatars/default.png'" class="w-6 h-6 rounded-full object-cover border border-slate-700 shrink-0" />
+                  <img :src="u.avatar_url || '/uploads/avatars/default.png'" @error="$event.target.src='/uploads/avatars/default.png'" class="w-6 h-6 rounded-full object-cover border border-slate-700 shrink-0" />
                   <span class="min-w-0 flex-1">
                     <span class="text-sm font-semibold text-white block truncate">{{ u.full_name || u.username }}</span>
                     <span class="text-xs text-slate-500 block truncate">@{{ u.username }}</span>
@@ -186,7 +187,7 @@
         <div class="space-y-2.5 max-h-[calc(100vh-360px)] overflow-y-auto pr-1">
           <div v-for="u in chatStore.onlineUsers" :key="u.id" class="flex items-center gap-2.5">
             <div class="relative shrink-0">
-              <img :src="u.avatar_url || '/uploads/avatars/default.png'" class="w-8 h-8 rounded-full object-cover border border-slate-700" />
+              <img :src="u.avatar_url || '/uploads/avatars/default.png'" @error="$event.target.src='/uploads/avatars/default.png'" class="w-8 h-8 rounded-full object-cover border border-slate-700" />
               <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#111927]"></span>
             </div>
             <div class="min-w-0 flex-1">
