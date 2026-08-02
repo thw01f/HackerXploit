@@ -176,13 +176,23 @@
         </h3>
         <form @submit.prevent="submitUserUpdate" class="space-y-3 font-mono text-xs">
           <div>
+            <label class="block text-slate-400 uppercase mb-1">Username</label>
+            <input v-model="editUserForm.username" type="text" class="input-field w-full py-2" required />
+          </div>
+
+          <div>
             <label class="block text-slate-400 uppercase mb-1">Full Name</label>
             <input v-model="editUserForm.full_name" type="text" class="input-field w-full py-2" required />
           </div>
 
           <div>
-            <label class="block text-slate-400 uppercase mb-1">Email Address</label>
+            <label class="block text-slate-400 uppercase mb-1">SRM Email Address</label>
             <input v-model="editUserForm.email" type="email" class="input-field w-full py-2" required />
+          </div>
+
+          <div>
+            <label class="block text-slate-400 uppercase mb-1">Registration Number</label>
+            <input v-model="editUserForm.registration_number" type="text" placeholder="e.g. RA2311030050008" class="input-field w-full py-2" />
           </div>
 
           <div>
@@ -267,7 +277,7 @@ const showEditUserModal = ref(false)
 const savingUser = ref(false)
 const targetUser = ref(null)
 const newPasswordInput = ref('')
-const editUserForm = ref({ full_name: '', email: '', student_id: '', specialization_role: 'Penetration Tester', role: 'member', status: 'approved' })
+const editUserForm = ref({ username: '', full_name: '', email: '', registration_number: '', student_id: '', specialization_role: 'Penetration Tester', role: 'member', status: 'approved' })
 
 const pendingUsers = computed(() => users.value.filter(u => u.status === 'pending'))
 
@@ -354,8 +364,10 @@ const openResetPasswordModal = (user) => {
 const openEditUserModal = (user) => {
   targetUser.value = user
   editUserForm.value = {
+    username: user.username || '',
     full_name: user.full_name || '',
     email: user.email || '',
+    registration_number: user.registration_number || '',
     student_id: user.student_id || '',
     specialization_role: user.specialization_role || 'Penetration Tester',
     role: user.role || 'member',

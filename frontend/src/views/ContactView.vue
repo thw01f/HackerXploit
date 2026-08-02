@@ -127,7 +127,7 @@
         </div>
 
         <div class="glass-panel p-6 bg-[#0c131e]">
-          <h3 class="text-xs font-bold text-amber-400 font-mono uppercase mb-2">⚡ Urgent Support?</h3>
+          <h3 class="text-xs font-bold text-amber-400 font-mono uppercase mb-2">Urgent Support?</h3>
           <p class="text-xs text-slate-400 leading-relaxed font-mono">
             For urgent event questions during live competition rounds, ping the leadership team on the live <router-link to="/chat" class="text-[#9fef00] underline">General Chat channel</router-link>.
           </p>

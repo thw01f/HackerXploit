@@ -1,6 +1,6 @@
 import os
 import shutil
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -122,6 +122,14 @@ def create_app(config_class=Config):
     def health_check():
         return {'status': 'healthy', 'service': 'HackerXploit Auth & Core API'}, 200
 
+    # In production, nginx's `location /uploads/ { alias /var/uploads/; }`
+    # serves this directly and requests never reach Flask. This route only
+    # matters for local dev (Vite dev server + `python run.py`, no nginx in
+    # front) - without it, avatar_url/resume_url/etc. never resolve at all.
+    @flask_app.route('/uploads/<path:filename>')
+    def serve_uploads(filename):
+        return send_from_directory(flask_app.config['UPLOAD_FOLDER'], filename)
+
     with flask_app.app_context():
         # Ensure database tables exist
         db.create_all()
@@ -139,6 +147,8 @@ def create_app(config_class=Config):
             "ALTER TABLE users ADD COLUMN student_gmail VARCHAR(255)",
             "ALTER TABLE users ADD COLUMN resume_url VARCHAR(255)",
             "ALTER TABLE users ADD COLUMN badge_id VARCHAR(64)",
+            "ALTER TABLE users ADD COLUMN registration_number VARCHAR(64)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_registration_number_unique ON users (registration_number)",
             "ALTER TABLE competition_participation ADD COLUMN application_screenshots JSON DEFAULT '[]'",
             "ALTER TABLE competition_participation ADD COLUMN github_link VARCHAR(512)",
             "ALTER TABLE competition_participation ADD COLUMN prize_money VARCHAR(128)",
@@ -146,7 +156,9 @@ def create_app(config_class=Config):
             "ALTER TABLE competition_participation ADD COLUMN self_reported_result VARCHAR(32)",
             "ALTER TABLE competition_participation ADD COLUMN completion_status VARCHAR(32) DEFAULT 'not_submitted'",
             "ALTER TABLE competition_participation ADD COLUMN completion_submitted_at TIMESTAMP",
-            "UPDATE competition_participation SET application_screenshots = to_json(ARRAY[application_screenshot]) WHERE application_screenshot IS NOT NULL AND (application_screenshots IS NULL OR application_screenshots::text = '[]')"
+            "UPDATE competition_participation SET application_screenshots = to_json(ARRAY[application_screenshot]) WHERE application_screenshot IS NOT NULL AND (application_screenshots IS NULL OR application_screenshots::text = '[]')",
+            "ALTER TABLE roadmap_nodes ADD COLUMN position_x FLOAT",
+            "ALTER TABLE roadmap_nodes ADD COLUMN position_y FLOAT"
         ]:
             try:
                 db.session.execute(text(stmt))
@@ -191,5 +203,59 @@ def create_app(config_class=Config):
                 shutil.copyfile(bundled_default_avatar, live_default_avatar)
         except Exception:
             pass
+
+        # One-time backfill: the cyber-security roadmap was seeded before the
+        # Roadmap Studio existed, so its nodes have no position_x/position_y
+        # and no RoadmapEdge rows - without this they'd render via the
+        # viewer's fallback grid layout instead of a real graph. Reconstructs
+        # a sensible layout (sections stacked vertically, each section's
+        # nodes in a row beneath it) and synthesizes edges from the existing
+        # parent_id chain (section -> first topic -> next topic -> ...) plus
+        # section-to-section edges, matching what the old hardcoded viewer
+        # used to draw. Guarded so it only ever runs once.
+        try:
+            from app.models import Roadmap, RoadmapNode, RoadmapEdge
+            roadmap = Roadmap.query.filter_by(slug='cyber-security').first()
+            if roadmap:
+                nodes = RoadmapNode.query.filter_by(roadmap_id=roadmap.id).order_by(RoadmapNode.order_index).all()
+                already_positioned = any(n.position_x is not None for n in nodes)
+                has_edges = RoadmapEdge.query.filter_by(roadmap_id=roadmap.id).first() is not None
+
+                if nodes and not already_positioned and not has_edges:
+                    section_y = 0
+                    prev_section_node = None
+                    idx_within_section = 0
+
+                    for node in nodes:
+                        if node.node_type == 'section':
+                            if prev_section_node:
+                                section_y += 400
+                            node.position_x = 260
+                            node.position_y = section_y
+                            if prev_section_node:
+                                db.session.add(RoadmapEdge(
+                                    roadmap_id=roadmap.id,
+                                    source_node_id=prev_section_node.id,
+                                    target_node_id=node.id,
+                                    edge_type='default'
+                                ))
+                            prev_section_node = node
+                            idx_within_section = 0
+                        else:
+                            node.position_x = idx_within_section * 280
+                            node.position_y = section_y + 180
+                            idx_within_section += 1
+
+                        if node.parent_id:
+                            db.session.add(RoadmapEdge(
+                                roadmap_id=roadmap.id,
+                                source_node_id=node.parent_id,
+                                target_node_id=node.id,
+                                edge_type='default'
+                            ))
+
+                    db.session.commit()
+        except Exception:
+            db.session.rollback()
 
     return flask_app

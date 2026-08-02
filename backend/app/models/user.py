@@ -28,6 +28,7 @@ class User(db.Model):
     approved_at = db.Column(db.DateTime, nullable=True)
     
     student_id = db.Column(db.String(64), nullable=True)
+    registration_number = db.Column(db.String(64), nullable=True, unique=True, index=True)
     academic_year = db.Column(db.String(16), nullable=True) # 'I', 'II', 'III', 'IV'
     department = db.Column(db.String(128), nullable=True)
     graduation_year = db.Column(db.Integer, nullable=True)
@@ -141,6 +142,7 @@ class User(db.Model):
             'approved_by': self.approved_by,
             'approved_at': self.approved_at.isoformat() if self.approved_at else None,
             'student_id': self.student_id,
+            'registration_number': self.registration_number,
             'badge_id': self.get_badge_id(),
             'academic_year': self.academic_year,
             'department': self.department,

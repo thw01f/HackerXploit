@@ -68,7 +68,7 @@
 
           <div class="pt-4 border-t border-slate-800/80 flex items-center justify-between gap-2">
             <button @click="openEditStudentModal(student)" class="btn-ghost text-xs py-1.5 px-3 text-[#00f0ff] border border-[#00f0ff]/40 hover:bg-[#00f0ff]/10 font-mono font-bold">
-              ✏️ Edit Details
+              Edit Details
             </button>
             <router-link :to="`/teacher/students/${student.id}`" class="btn-neon-cyan text-xs py-1.5 px-4 font-mono font-bold">
               View Profile →
@@ -81,18 +81,28 @@
       <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm font-mono">
         <div class="w-full max-w-md glass-panel p-6 rounded-2xl border border-slate-800 bg-[#0d1420] space-y-4">
           <h3 class="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-            <span class="text-[#00f0ff]">✏️ Edit Student Details</span>
+            <span class="text-[#00f0ff]">Edit Student Details</span>
           </h3>
 
           <form @submit.prevent="saveStudentDetails" class="space-y-3 text-xs">
+            <div>
+              <label class="block text-slate-400 uppercase mb-1">Username</label>
+              <input v-model="editForm.username" type="text" class="input-field w-full py-2" required />
+            </div>
+
             <div>
               <label class="block text-slate-400 uppercase mb-1">Full Name</label>
               <input v-model="editForm.full_name" type="text" class="input-field w-full py-2" required />
             </div>
 
             <div>
-              <label class="block text-slate-400 uppercase mb-1">Email Address</label>
+              <label class="block text-slate-400 uppercase mb-1">SRM Email Address</label>
               <input v-model="editForm.email" type="email" class="input-field w-full py-2" required />
+            </div>
+
+            <div>
+              <label class="block text-slate-400 uppercase mb-1">Registration Number</label>
+              <input v-model="editForm.registration_number" type="text" placeholder="e.g. RA2311030050008" class="input-field w-full py-2" />
             </div>
 
             <div>
@@ -147,15 +157,17 @@ const loading = ref(true)
 const showEditModal = ref(false)
 const saving = ref(false)
 const editingStudentId = ref(null)
-const editForm = ref({ full_name: '', email: '', student_id: '', specialization_role: 'Penetration Tester', role: 'member' })
+const editForm = ref({ username: '', full_name: '', email: '', registration_number: '', student_id: '', specialization_role: 'Penetration Tester', role: 'member' })
 
 const defaultAvatarSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230b0e14'/><circle cx='50' cy='38' r='20' fill='%231f293d' stroke='%239fef00' stroke-width='2'/><path d='M20,85 C20,62 35,55 50,55 C65,55 80,62 80,85 Z' fill='%231f293d' stroke='%239fef00' stroke-width='2'/></svg>"
 
 const openEditStudentModal = (student) => {
   editingStudentId.value = student.id
   editForm.value = {
+    username: student.username || '',
     full_name: student.full_name || '',
     email: student.email || '',
+    registration_number: student.registration_number || '',
     student_id: student.student_id || '',
     specialization_role: student.specialization_role || 'Penetration Tester',
     role: student.role || 'member'

@@ -96,7 +96,9 @@ html.light .bg-\[\#161b22\]\/70,
 html.light .bg-\[\#161b22\]\/60,
 html.light .bg-\[\#161b22\]\/50,
 html.light .bg-\[\#152338\],
-html.light .bg-\[\#1a2332\] {
+html.light .bg-\[\#1a2332\],
+html.light .bg-\[\#21262d\],
+html.light .bg-\[\#30363d\] {
   background-color: #ffffff !important;
 }
 
@@ -244,6 +246,49 @@ html.light .absolute.left-0 {
   background-color: #ffffff !important;
   border-color: #cbd5e1 !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Light Mode Hover States (profile drawer, Explore menu, and anywhere else
+   using the same text-slate-200/hover:bg-[#151f30]-style pattern):
+   text-slate-200/300/400/white/500/600 are pinned to a dark navy color above
+   via !important so they're readable on a white background. But Tailwind's
+   own hover:text-[accent] utilities don't carry !important, so an !important
+   rule ALWAYS beats them regardless of source order - meaning the pinned
+   dark-navy base color never actually changes on hover, no matter which
+   accent hover:text-* class is present. Meanwhile hover:bg-[#151f30] (and
+   its dark-hex siblings) had no light-mode override at all, so it stayed
+   dark navy on hover. Net result: dark navy text pinned on top of a now-dark
+   navy hover background - invisible. Fix both halves: give these hover
+   backgrounds a light color, and let the hover text actually show an accent
+   (reusing the same darkened shades already used for the non-hover accents). */
+html.light .hover\:bg-\[\#151f30\]:hover,
+html.light .hover\:bg-\[\#151f30\]\/60:hover,
+html.light .hover\:bg-\[\#1f293d\]:hover,
+html.light .hover\:bg-\[\#21262d\]:hover,
+html.light .hover\:bg-\[\#30363d\]:hover {
+  background-color: #e2e8f0 !important;
+}
+
+html.light .hover\:text-\[\#9fef00\]:hover {
+  color: #65a30d !important;
+}
+
+html.light .hover\:text-\[\#00f0ff\]:hover {
+  color: #0284c7 !important;
+}
+
+html.light .hover\:text-white:hover {
+  color: #0f172a !important;
+}
+
+html.light .hover\:text-amber-300:hover,
+html.light .hover\:text-amber-400:hover {
+  color: #b45309 !important;
+}
+
+html.light .hover\:text-rose-300:hover,
+html.light .hover\:text-rose-400:hover {
+  color: #be123c !important;
 }
 
 /* Light Mode Glass Panels & Cards */

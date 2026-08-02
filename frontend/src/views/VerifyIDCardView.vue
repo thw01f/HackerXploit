@@ -65,7 +65,7 @@
           </div>
 
           <div v-if="verification.live_status.is_actively_participating" class="p-3 bg-[#9fef00]/10 border border-[#9fef00]/40 rounded-lg text-xs font-mono text-[#9fef00]">
-            ⚡ Currently in: <strong>{{ verification.live_status.active_event_name }}</strong>
+            Currently in: <strong>{{ verification.live_status.active_event_name }}</strong>
           </div>
 
           <div class="text-[10px] font-mono text-center text-slate-500 border-t border-[#1f293d] pt-3">

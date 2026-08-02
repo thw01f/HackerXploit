@@ -39,20 +39,33 @@
             </div>
           </div>
 
-          <form @submit.prevent="updateProfile" class="space-y-4 pt-4">
+          <!-- Locked Registration Details - collected once at signup, immutable
+               afterwards; only an admin/teacher can correct these. -->
+          <div class="pt-2 space-y-3">
+            <h4 class="text-xs font-mono font-bold uppercase text-slate-400 tracking-wider">Registration Details (Locked)</h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-mono text-slate-300 uppercase mb-1">
-                  Full Name <span class="text-red-500 font-bold">*</span>
-                </label>
-                <input v-model="form.full_name" type="text" required placeholder="e.g. GOWTHAMAN GS" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" />
+                <label class="block text-xs font-mono text-slate-500 uppercase mb-1">Full Name</label>
+                <input :value="authStore.user?.full_name" type="text" disabled class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-slate-400 text-sm cursor-not-allowed" />
               </div>
               <div>
-                <label class="block text-xs font-mono text-slate-300 uppercase mb-1">
-                  Student ID <span class="text-red-500 font-bold">*</span>
-                </label>
-                <input v-model="form.student_id" type="text" required placeholder="e.g. RA2311030050008" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" />
+                <label class="block text-xs font-mono text-slate-500 uppercase mb-1">Username</label>
+                <input :value="authStore.user?.username" type="text" disabled class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-slate-400 text-sm cursor-not-allowed" />
               </div>
+              <div>
+                <label class="block text-xs font-mono text-slate-500 uppercase mb-1">SRM Email Address</label>
+                <input :value="authStore.user?.email" type="text" disabled class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-slate-400 text-sm cursor-not-allowed" />
+              </div>
+              <div>
+                <label class="block text-xs font-mono text-slate-500 uppercase mb-1">Registration Number</label>
+                <input :value="authStore.user?.registration_number" type="text" disabled class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-slate-400 text-sm cursor-not-allowed" />
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-500 font-mono">Locked after registration - contact an admin if any of these need correcting.</p>
+          </div>
+
+          <form @submit.prevent="updateProfile" class="space-y-4 pt-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-xs font-mono text-slate-300 uppercase mb-1">
                   Academic Year <span class="text-red-500 font-bold">*</span>
@@ -139,12 +152,6 @@
                   <input v-model="form.personal_gmail" type="email" required placeholder="yourname@gmail.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
                 </div>
                 <div>
-                  <label class="block text-xs font-mono text-slate-300 uppercase mb-1">
-                    Student Gmail Address <span class="text-red-500 font-bold">*</span>
-                  </label>
-                  <input v-model="form.student_gmail" type="email" required placeholder="student@srmist.edu.in" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-mono" />
-                </div>
-                <div class="sm:col-span-2">
                   <label class="block text-xs font-mono text-slate-300 uppercase mb-1">
                     Phone Number / WhatsApp <span class="text-red-500 font-bold">*</span>
                   </label>
@@ -475,12 +482,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useTheme } from '../stores/theme'
 import { usePreferences } from '../stores/preferences'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const theme = useTheme()
 const prefs = usePreferences()
 
@@ -511,13 +520,10 @@ const fontScaleOptions = [
 ]
 
 const form = ref({
-  full_name: authStore.user?.full_name || '',
-  student_id: authStore.user?.student_id || '',
   academic_year: authStore.user?.academic_year || 'I',
   department: authStore.user?.department || '',
   bio: authStore.user?.bio || '',
   personal_gmail: authStore.user?.personal_gmail || authStore.user?.gmail || '',
-  student_gmail: authStore.user?.student_gmail || authStore.user?.email || '',
   phone_number: authStore.user?.phone_number || '',
   resume_url: authStore.user?.resume_url || '',
   website_url: authStore.user?.website_url || '',
@@ -557,13 +563,20 @@ const submitChangePassword = async () => {
   }
   passwordSubmitting.value = true
   try {
-    const res = await axios.post('/api/auth/change-password', {
+    await axios.post('/api/auth/change-password', {
       current_password: passwordForm.value.current_password,
       new_password: passwordForm.value.new_password
     })
-    passwordSuccess.value = res.data.message
     passwordForm.value = { current_password: '', new_password: '', confirm_password: '' }
-    await fetchDevices()
+    // A password change is a credential event - log the user out of this
+    // session too (the backend already revokes every OTHER session/CTFd SSO
+    // token), so they consciously re-authenticate with the new password
+    // rather than keep working under a session tied to the old one.
+    passwordSuccess.value = 'Password changed successfully. Logging you out for security - please sign in again with your new password.'
+    setTimeout(async () => {
+      await authStore.logout()
+      router.push('/login')
+    }, 2000)
   } catch (err) {
     passwordError.value = err.response?.data?.error || 'Failed to change password'
   } finally {

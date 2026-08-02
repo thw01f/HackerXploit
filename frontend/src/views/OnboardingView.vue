@@ -143,19 +143,6 @@
               />
             </div>
 
-            <div>
-              <label class="block text-xs text-slate-400 font-mono mb-1">
-                {{ isTeacher ? 'Staff / Employee ID' : 'Student Roll Number / ID' }} <span class="text-rose-400">*</span>
-              </label>
-              <input 
-                v-model="form.student_id" 
-                type="text" 
-                :placeholder="isTeacher ? 'e.g. TCH-2026-08' : 'e.g. RA2311030050008'" 
-                class="input-field text-xs py-2 w-full"
-                required
-              />
-            </div>
-
             <div v-if="!isTeacher">
               <label class="block text-xs text-slate-400 font-mono mb-1">Academic Year <span class="text-rose-400">*</span></label>
               <select 
@@ -284,7 +271,7 @@
         <div class="pt-4 border-t border-slate-800 flex justify-end">
           <button 
             @click="submitOnboarding" 
-            :disabled="submitting || !selectedRole || !form.full_name.trim() || !form.student_id.trim()" 
+            :disabled="submitting || !selectedRole || !form.full_name.trim()"
             class="btn-neon-cyan py-3 px-8 text-xs font-bold font-mono uppercase tracking-wider w-full sm:w-auto"
           >
             {{ submitting ? 'Saving Credentials...' : 'Complete Initialization & Enter Platform' }}
@@ -317,7 +304,6 @@ const customForm = ref({})
 
 const form = ref({
   full_name: authStore.user?.full_name || '',
-  student_id: authStore.user?.student_id || '',
   academic_year: authStore.user?.academic_year || 'I',
   department: authStore.user?.department || 'Cyber Security',
   graduation_year: authStore.user?.graduation_year || 2026,
@@ -351,7 +337,7 @@ const fetchCustomFields = async () => {
 }
 
 const submitOnboarding = async () => {
-  if (!selectedRole.value || !form.value.full_name.trim() || !form.value.student_id.trim()) {
+  if (!selectedRole.value || !form.value.full_name.trim()) {
     alert('Please fill in all required fields.')
     return
   }
@@ -361,7 +347,6 @@ const submitOnboarding = async () => {
     const payload = {
       specialization_role: selectedRole.value,
       full_name: form.value.full_name.trim(),
-      student_id: form.value.student_id.trim(),
       academic_year: form.value.academic_year,
       department: form.value.department.trim(),
       graduation_year: form.value.graduation_year,

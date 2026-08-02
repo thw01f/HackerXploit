@@ -172,7 +172,7 @@
                       {{ cardData.user.role?.replace('_', ' ') }}
                     </span>
                     <span :class="['text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border shadow', cardData.live_status?.is_active_event ? 'bg-emerald-950 text-[#9fef00] border-[#9fef00]' : 'bg-slate-900 text-slate-400 border-slate-700']">
-                      {{ cardData.live_status?.is_active_event ? '⚡ LIVE EVENT' : 'STANDBY' }}
+                      {{ cardData.live_status?.is_active_event ? 'LIVE EVENT' : 'STANDBY' }}
                     </span>
                   </template>
                 </div>
@@ -260,7 +260,7 @@
                 <option v-if="clubEventsLoading" value="" disabled>Loading active club events...</option>
                 <option v-else-if="clubEvents.length === 0" value="" disabled>No Club Events currently scheduled</option>
                 <option v-for="ev in clubEvents" :key="ev.id" :value="ev.id">
-                  {{ ev.title }} ({{ formatKolkataTime(ev.starts_at) }} IST) - {{ ev.is_scan_allowed ? '⚡ SCAN READY' : '🔒 LOCKED' }}
+                  {{ ev.title }} ({{ formatKolkataTime(ev.starts_at) }} IST) - {{ ev.is_scan_allowed ? 'SCAN READY' : 'LOCKED' }}
                 </option>
               </select>
             </div>
@@ -366,11 +366,9 @@
 
                 <!-- Feedback Toasts -->
                 <div v-if="scanResultSuccess" class="p-3 bg-emerald-950/90 border border-emerald-500 text-emerald-300 rounded-lg text-xs font-mono font-bold flex items-center gap-2">
-                  <span>✅</span>
                   <span>{{ scanResultSuccess }}</span>
                 </div>
                 <div v-if="scanResultError" class="p-3 bg-rose-950/90 border border-rose-500 text-rose-300 rounded-lg text-xs font-mono font-bold flex items-center gap-2">
-                  <span>⚠️</span>
                   <span>{{ scanResultError }}</span>
                 </div>
               </div>

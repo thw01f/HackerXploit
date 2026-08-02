@@ -8,41 +8,47 @@
         <!-- Header -->
         <div class="text-center mb-6">
           <img src="/logo.png" class="w-24 h-24 object-contain mx-auto mb-3" alt="HackerXploit Logo" />
-          <h2 class="text-2xl font-bold text-white font-mono">Join HackerXploit</h2>
+          <h2 class="text-2xl font-bold font-mono">Join <span class="text-white">Hacker</span><span class="text-red-500">Xploit</span></h2>
           <p class="text-xs text-slate-400 font-mono mt-1">Collegiate Cybersecurity Registration Queue</p>
         </div>
 
 
         <!-- Success Message -->
         <div v-if="successMessage" class="mb-5 p-3.5 rounded-lg bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 text-xs font-mono">
-          ✅ {{ successMessage }}
+          {{ successMessage }}
         </div>
 
         <!-- Error Message -->
         <div v-if="errorMessage" class="mb-5 p-3.5 rounded-lg bg-red-950/80 border border-red-500/50 text-red-300 text-xs font-mono">
-          🚨 {{ errorMessage }}
+          {{ errorMessage }}
         </div>
 
         <!-- Registration Form -->
         <form @submit.prevent="handleRegister" class="space-y-4">
+          <p class="text-[11px] text-slate-500 font-mono -mt-1">
+            The details below are collected once at registration and cannot be changed later - double-check them before submitting.
+          </p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-mono text-slate-400 uppercase mb-1">Full Name</label>
-              <input v-model="form.full_name" type="text" required placeholder="Alex Mercer" class="w-full" />
+              <input v-model="form.full_name" type="text" required placeholder="GOWTHAMAN GS" class="w-full" />
             </div>
             <div>
               <label class="block text-xs font-mono text-slate-400 uppercase mb-1">Username</label>
-              <input v-model="form.username" type="text" required placeholder="amercer" class="w-full" />
+              <input v-model="form.username" type="text" required placeholder="w01f" class="w-full" />
+            </div>
+            <div>
+              <label class="block text-xs font-mono text-slate-400 uppercase mb-1">Registration Number</label>
+              <input v-model="form.registration_number" type="text" required placeholder="e.g. RA2311030050008" class="w-full" />
+            </div>
+            <div>
+              <label class="block text-xs font-mono text-slate-400 uppercase mb-1">SRM Email Address</label>
+              <input v-model="form.email" type="email" required placeholder="w01f@srmist.edu.in" class="w-full" />
             </div>
           </div>
-
-          <div>
-            <label class="block text-xs font-mono text-slate-400 uppercase mb-1">Email Address</label>
-            <input v-model="form.email" type="email" required placeholder="alex@gmail.com" class="w-full" />
-            <p v-if="allowedDomainsHint" class="text-[11px] text-cyan-400 font-mono mt-1">
-              🌐 Allowed email domains: {{ allowedDomainsHint }}
-            </p>
-          </div>
+          <p v-if="allowedDomainsHint" class="text-[11px] text-cyan-400 font-mono -mt-2">
+            Allowed email domains: {{ allowedDomainsHint }}
+          </p>
 
           <!-- Dynamic Custom Profile Fields -->
           <div v-for="field in customFields" :key="field.id">
@@ -69,13 +75,13 @@
             <!-- CTFd-style Password Requirement & Validation Hint -->
             <div class="mt-1.5 font-mono text-[11px]">
               <span v-if="!form.password" class="text-slate-500">
-                🔒 Password must be at least {{ minPasswordLength }} characters long.
+                Password must be at least {{ minPasswordLength }} characters long.
               </span>
               <span v-else-if="form.password.length < minPasswordLength" class="text-amber-400 font-semibold">
-                ⚠️ Password must be at least {{ minPasswordLength }} characters (currently {{ form.password.length }}).
+                Password must be at least {{ minPasswordLength }} characters (currently {{ form.password.length }}).
               </span>
               <span v-else class="text-emerald-400 font-semibold">
-                ✅ Password length requirement satisfied ({{ form.password.length }} characters).
+                Password length requirement satisfied ({{ form.password.length }} characters).
               </span>
             </div>
           </div>
@@ -119,6 +125,7 @@ const authStore = useAuthStore()
 const form = ref({
   full_name: '',
   username: '',
+  registration_number: '',
   email: '',
   password: '',
   custom_fields: {}

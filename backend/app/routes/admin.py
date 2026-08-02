@@ -208,10 +208,28 @@ def update_user_details(user_id):
     if not is_admin and user.role not in ['student', 'member']:
         return jsonify({'error': 'Teachers can only edit student accounts'}), 403
 
+    # Username, SRM Email, and Registration Number are locked for the member
+    # themselves (see club.py's update_profile), but an admin/teacher can
+    # still correct them here - just re-validated for uniqueness first, so a
+    # collision comes back as a clean error instead of a raw DB crash on commit.
+    if 'username' in data and data['username']:
+        new_username = data['username'].strip()
+        if new_username != user.username and User.query.filter(User.username == new_username, User.id != user.id).first():
+            return jsonify({'error': 'Username already exists'}), 409
+        user.username = new_username
+    if 'email' in data and data['email']:
+        new_email = data['email'].strip().lower()
+        if new_email != user.email and User.query.filter(User.email == new_email, User.id != user.id).first():
+            return jsonify({'error': 'SRM Email Address already exists'}), 409
+        user.email = new_email
+    if 'registration_number' in data and data['registration_number']:
+        new_regno = data['registration_number'].strip()
+        if new_regno != user.registration_number and User.query.filter(User.registration_number == new_regno, User.id != user.id).first():
+            return jsonify({'error': 'Registration Number already exists'}), 409
+        user.registration_number = new_regno
+
     if 'full_name' in data and data['full_name']:
         user.full_name = data['full_name'].strip()
-    if 'email' in data and data['email']:
-        user.email = data['email'].strip()
     if 'student_id' in data:
         user.student_id = data['student_id'].strip() if data['student_id'] else None
     if 'specialization_role' in data:

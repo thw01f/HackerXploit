@@ -45,14 +45,15 @@ def register():
     username = data.get('username', '').strip()
     password = data.get('password', '')
     full_name = data.get('full_name', '').strip()
+    registration_number = data.get('registration_number', '').strip()
     captcha_token = data.get('captcha_token', '')
     custom_field_values = data.get('custom_fields', {}) # dict of {field_key_or_id: value}
 
     if not verify_turnstile(captcha_token, request.remote_addr):
         return jsonify({'error': 'CAPTCHA verification failed'}), 400
 
-    if not email or not username or not password:
-        return jsonify({'error': 'Email, Username, and Password are required'}), 400
+    if not email or not username or not password or not registration_number:
+        return jsonify({'error': 'Registration Number, SRM Email Address, Username, and Password are required'}), 400
 
     # 1. Enforce Allowed Email Domains Restriction
     toggle = SiteFeatureToggle.query.first()
@@ -72,8 +73,14 @@ def register():
     if len(password) < min_len:
         return jsonify({'error': f'Password must be at least {min_len} characters long'}), 400
 
-    if User.query.filter((User.email == email) | (User.username == username)).first():
-        return jsonify({'error': 'Email or Username already registered'}), 409
+    # Check each unique identity field separately so the error names exactly
+    # which one is already registered, instead of a single ambiguous message.
+    if User.query.filter_by(username=username).first():
+        return jsonify({'error': 'Username already exists'}), 409
+    if User.query.filter_by(email=email).first():
+        return jsonify({'error': 'SRM Email Address already exists'}), 409
+    if User.query.filter_by(registration_number=registration_number).first():
+        return jsonify({'error': 'Registration Number already exists'}), 409
 
     # Determine if this is the first user ever (Root Admin creation)
     user_count = User.query.count()
@@ -97,6 +104,7 @@ def register():
         status=status,
         is_first_login=is_first_login,
         student_id=data.get('student_id'),
+        registration_number=registration_number,
         graduation_year=data.get('graduation_year')
     )
     user.set_password(password)

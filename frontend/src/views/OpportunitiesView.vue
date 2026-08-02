@@ -19,7 +19,7 @@
             @click="openMySkillsModal" 
             class="bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-cyan-500/30 text-xs font-mono py-2.5 px-4 rounded-lg flex items-center gap-2"
           >
-            ⚡ Manage My Skills Profile
+            Manage My Skills Profile
           </button>
 
           <button 
@@ -91,7 +91,6 @@
                 :class="opp.matched_skills_count > 0 ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40' : 'bg-slate-900 text-slate-400 border-slate-800'"
                 class="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full border flex items-center gap-1.5"
               >
-                <span>⚡</span>
                 <span>{{ opp.matched_skills_count }} of {{ opp.total_skills_count }} skills match</span>
               </span>
             </div>

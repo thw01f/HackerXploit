@@ -25,9 +25,22 @@
 set -euo pipefail
 
 CONTAINER="${CTFD_CONTAINER:-hx_ctfd}"
+# CTFd's database now lives on the ctfd_db_data named volume (see
+# docker-compose.yml) rather than /tmp, which only survives a container
+# restart, not a recreation - keep this in sync with hx-backup.sh.
+CTFD_DB_PATH="${CTFD_DB_PATH:-/var/ctfd_data/ctfd.db}"
 FAVICON_PATH_IN_CONTAINER="/opt/CTFd/CTFd/themes/core/static/img/favicon.ico"
 FAVICON_BACKUP_PATH="/opt/CTFd/CTFd/themes/core/static/img/favicon.ico.hx-original-backup"
 CSS_TMP_IN_CONTAINER="/tmp/hackerxploit-ctfd-theme.css"
+# CTFd memoizes every config value it reads (CTFd/utils/__init__.py's
+# _get_config, @cache.memoize()) and only busts that cache when its own
+# Python set_config() writes it - not when the row is changed directly in
+# SQLite, which is all this script (and init_ctfd.py) can do from outside
+# the container. Without this, a value written here can sit invisible,
+# served stale from cache, until CTFd's cache entry happens to expire on
+# its own - flush it explicitly so the change is live immediately.
+REDIS_CONTAINER="${REDIS_CONTAINER:-hx_redis}"
+REDIS_CACHE_DB="${REDIS_CACHE_DB:-1}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_FAVICON="${HX_FAVICON_PATH:-$SCRIPT_DIR/../frontend/public/favicon.ico}"
@@ -35,6 +48,16 @@ LOCAL_FAVICON="${HX_FAVICON_PATH:-$SCRIPT_DIR/../frontend/public/favicon.ico}"
 log()  { printf '\033[1;32m[hx-theme]\033[0m %s\n' "$1"; }
 warn() { printf '\033[1;33m[hx-theme]\033[0m %s\n' "$1"; }
 die()  { printf '\033[1;31m[hx-theme]\033[0m %s\n' "$1" >&2; exit 1; }
+
+flush_ctfd_config_cache() {
+  if docker ps --format '{{.Names}}' | grep -qx "$REDIS_CONTAINER"; then
+    docker exec "$REDIS_CONTAINER" redis-cli -n "$REDIS_CACHE_DB" FLUSHDB >/dev/null 2>&1 \
+      && log "CTFd config cache flushed (change is live immediately)" \
+      || warn "Could not flush CTFd's config cache - the change may take a moment to appear (set REDIS_CONTAINER if it's not '$REDIS_CONTAINER')."
+  else
+    warn "Redis container '$REDIS_CONTAINER' not found - could not flush CTFd's config cache. The change may take a moment to appear."
+  fi
+}
 
 require_container() {
   if ! command -v docker >/dev/null 2>&1; then
@@ -47,16 +70,17 @@ require_container() {
 
 uninstall() {
   require_container
-  log "Reverting theme_header config in CTFd..."
+  log "Reverting theme_header/theme_footer config in CTFd..."
   docker exec -i "$CONTAINER" python -c "
 import sqlite3
-conn = sqlite3.connect('/tmp/ctfd.db')
+conn = sqlite3.connect('$CTFD_DB_PATH')
 cur = conn.cursor()
-cur.execute(\"DELETE FROM config WHERE key = 'theme_header'\")
+cur.execute(\"DELETE FROM config WHERE key IN ('theme_header', 'theme_footer')\")
 conn.commit()
 conn.close()
-print('[CTFd Theme] theme_header cleared')
+print('[CTFd Theme] theme_header/theme_footer cleared')
 "
+  flush_ctfd_config_cache
   log "Restoring original favicon (if a backup exists)..."
   # Run as root: the currently-installed favicon may be owned by a host UID
   # (from `docker cp` during install) that the container's own user can't overwrite.
@@ -294,7 +318,7 @@ docker exec -u root -i "$CONTAINER" chmod 644 "$CSS_TMP_IN_CONTAINER"
 
 docker exec -i "$CONTAINER" python -c "
 import sqlite3
-conn = sqlite3.connect('/tmp/ctfd.db')
+conn = sqlite3.connect('$CTFD_DB_PATH')
 cur = conn.cursor()
 with open('$CSS_TMP_IN_CONTAINER', 'r') as f:
     css = f.read()
@@ -323,6 +347,57 @@ docker exec -i "$CONTAINER" sh -c "
   fi
 "
 docker cp "$LOCAL_FAVICON" "$CONTAINER:$FAVICON_PATH_IN_CONTAINER"
+
+# ---------------------------------------------------------------------------
+# 3. SSO Button Label -> Configs.theme_footer
+#    CTFd's login page hardcodes the SSO button text as "Login with Major
+#    League Cyber" (its OAuth feature was originally built for that specific
+#    provider) - there's no config option for it, so the only way to change
+#    it without touching CTFd's template files is a tiny bit of JS that
+#    relabels the button after the page loads.
+# ---------------------------------------------------------------------------
+log "Relabeling the SSO login button..."
+JS_TMP_LOCAL="$(mktemp)"
+trap 'rm -f "$CSS_TMP_LOCAL" "$JS_TMP_LOCAL"' EXIT
+
+# Single-quoted heredoc - bash does zero expansion/escaping inside it, so the
+# JS's own double quotes pass through untouched (this bit it the hard way
+# the first time around: escaping this same content inline through bash's
+# python -c "..." string mangled the quotes across the bash/python/JS layers).
+cat > "$JS_TMP_LOCAL" <<'HX_JS_EOF'
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll('a[href="/oauth"]').forEach(function (el) {
+    el.textContent = "Login with HackerXploit";
+  });
+});
+</script>
+HX_JS_EOF
+
+JS_TMP_IN_CONTAINER="/tmp/hackerxploit-ctfd-sso-label.js.html"
+docker cp "$JS_TMP_LOCAL" "$CONTAINER:$JS_TMP_IN_CONTAINER"
+docker exec -u root -i "$CONTAINER" chmod 644 "$JS_TMP_IN_CONTAINER"
+
+docker exec -i "$CONTAINER" python -c "
+import sqlite3
+conn = sqlite3.connect('$CTFD_DB_PATH')
+cur = conn.cursor()
+with open('$JS_TMP_IN_CONTAINER', 'r') as f:
+    footer_js = f.read()
+
+cur.execute(\"SELECT id FROM config WHERE key = 'theme_footer'\")
+row = cur.fetchone()
+if row:
+    cur.execute('UPDATE config SET value = ? WHERE key = ?', (footer_js, 'theme_footer'))
+else:
+    cur.execute('INSERT INTO config (key, value) VALUES (?, ?)', ('theme_footer', footer_js))
+conn.commit()
+conn.close()
+print('[CTFd Theme] theme_footer updated (SSO button relabeled)')
+"
+docker exec -u root -i "$CONTAINER" rm -f "$JS_TMP_IN_CONTAINER"
+
+flush_ctfd_config_cache
 
 log "Done. Hard-refresh CTFd in your browser to see the new theme."
 log "To undo everything: $0 --uninstall"

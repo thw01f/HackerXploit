@@ -39,6 +39,8 @@ class RoadmapNode(db.Model):
     importance = db.Column(db.String(32), default='recommended')  # 'recommended', 'alternative', 'optional'
     order_index = db.Column(db.Integer, default=1)
     layout_group = db.Column(db.String(64), nullable=True)  # 'fundamentals', 'red_team', 'blue_team', 'cloud', etc.
+    position_x = db.Column(db.Float, nullable=True)
+    position_y = db.Column(db.Float, nullable=True)
 
     # Relationships
     resources = db.relationship('RoadmapNodeResource', backref='node', cascade='all, delete-orphan', order_by='RoadmapNodeResource.order_index')
@@ -59,6 +61,8 @@ class RoadmapNode(db.Model):
             'importance': self.importance or 'recommended',
             'order_index': self.order_index,
             'layout_group': self.layout_group,
+            'position_x': self.position_x,
+            'position_y': self.position_y,
             'resources': [r.to_dict() for r in self.resources],
             'user_status': status
         }
@@ -80,6 +84,32 @@ class RoadmapNodeResource(db.Model):
             'title': self.title,
             'url': self.url,
             'resource_type': self.resource_type or 'article',
+            'order_index': self.order_index
+        }
+
+class RoadmapEdge(db.Model):
+    __tablename__ = 'roadmap_edges'
+
+    id = db.Column(db.Integer, primary_key=True)
+    roadmap_id = db.Column(db.Integer, db.ForeignKey('roadmaps.id', ondelete='CASCADE'), nullable=False)
+    source_node_id = db.Column(db.Integer, db.ForeignKey('roadmap_nodes.id', ondelete='CASCADE'), nullable=False)
+    target_node_id = db.Column(db.Integer, db.ForeignKey('roadmap_nodes.id', ondelete='CASCADE'), nullable=False)
+    label = db.Column(db.String(128), nullable=True)
+    edge_type = db.Column(db.String(32), default='default')  # 'default', 'prerequisite', 'alternative'
+    order_index = db.Column(db.Integer, default=1)
+
+    __table_args__ = (
+        db.UniqueConstraint('source_node_id', 'target_node_id', name='_edge_source_target_uc'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'roadmap_id': self.roadmap_id,
+            'source_node_id': self.source_node_id,
+            'target_node_id': self.target_node_id,
+            'label': self.label,
+            'edge_type': self.edge_type or 'default',
             'order_index': self.order_index
         }
 
