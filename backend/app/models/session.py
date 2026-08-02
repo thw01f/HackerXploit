@@ -16,11 +16,12 @@ class DeviceSession(db.Model):
     last_active_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
+        # Deliberately excludes session_token/session_token_hash: this is returned
+        # to the session owner and to admins viewing device lists, and including
+        # the live token would let either party hijack the session directly.
         return {
             'id': self.id,
             'user_id': self.user_id,
-            'session_token': self.session_token,
-            'session_token_hash': self.session_token_hash,
             'ip_address': self.ip_address,
             'user_agent': self.user_agent,
             'device_label': self.device_label,

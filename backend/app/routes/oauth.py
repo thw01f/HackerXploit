@@ -1,6 +1,6 @@
 import secrets
 import time
-from flask import Blueprint, request, jsonify, redirect, url_for, g, render_template_string
+from flask import Blueprint, request, jsonify, redirect, url_for, g, render_template_string, current_app
 from app.models import db, User, OAuth2Client, OAuth2AuthorizationCode, OAuth2Token
 from app.utils.decorators import require_auth
 
@@ -16,17 +16,29 @@ def authorize():
 
     client = OAuth2Client.query.filter_by(client_id=client_id).first()
     if not client:
-        # Fallback if default CTFd client not registered yet
+        # One-time bootstrap for the pre-configured CTFd client only. Never derive
+        # secret/redirect_uri from request input, and only when nothing is registered yet.
+        configured_client_id = current_app.config.get('CTFD_OAUTH_CLIENT_ID')
+        if client_id != configured_client_id:
+            return jsonify({'error': 'invalid_client', 'error_description': 'Unknown client_id'}), 400
+
         client = OAuth2Client(
-            client_id=client_id or 'ctfd-client-id-hx99',
-            client_secret='ctfd-client-secret-sec88',
+            client_id=configured_client_id,
+            client_secret=current_app.config.get('CTFD_OAUTH_CLIENT_SECRET'),
             client_name='CTFd Platform',
-            redirect_uris=redirect_uri or 'http://arena.hackerxploit.org/redirect',
+            redirect_uris=current_app.config.get('CTFD_OAUTH_REDIRECT_URI', 'https://arena.hackerxploit.org/redirect'),
             grant_types='authorization_code',
             response_types='code'
         )
         db.session.add(client)
         db.session.commit()
+
+    if not client.check_response_type(response_type):
+        return jsonify({'error': 'unsupported_response_type'}), 400
+
+    target_redirect_uri = redirect_uri or client.get_default_redirect_uri()
+    if not client.check_redirect_uri(target_redirect_uri):
+        return jsonify({'error': 'invalid_request', 'error_description': 'redirect_uri does not match a registered URI for this client'}), 400
 
     if request.method == 'GET':
         # Simple consent auto-approve for logged in user on CTFd SSO
@@ -34,13 +46,13 @@ def authorize():
         auth_code = OAuth2AuthorizationCode(
             code=code_val,
             client_id=client.client_id,
-            redirect_uri=redirect_uri or client.get_default_redirect_uri(),
+            redirect_uri=target_redirect_uri,
             user_id=g.current_user.id
         )
         db.session.add(auth_code)
         db.session.commit()
 
-        target = f"{redirect_uri or client.get_default_redirect_uri()}?code={code_val}"
+        target = f"{target_redirect_uri}?code={code_val}"
         if state:
             target += f"&state={state}"
         return redirect(target)
@@ -53,9 +65,28 @@ def token():
     client_secret = request.form.get('client_secret')
     redirect_uri = request.form.get('redirect_uri')
 
+    if grant_type != 'authorization_code':
+        return jsonify({'error': 'unsupported_grant_type'}), 400
+
+    if not client_id or not client_secret:
+        return jsonify({'error': 'invalid_client', 'error_description': 'client_id and client_secret are required'}), 401
+
+    client = OAuth2Client.query.filter_by(client_id=client_id).first()
+    if not client or not client.check_client_secret(client_secret):
+        return jsonify({'error': 'invalid_client', 'error_description': 'Client authentication failed'}), 401
+
+    if not client.check_grant_type(grant_type):
+        return jsonify({'error': 'unauthorized_client'}), 400
+
     auth_code = OAuth2AuthorizationCode.query.filter_by(code=code).first()
     if not auth_code or auth_code.is_expired():
         return jsonify({'error': 'invalid_grant', 'error_description': 'Invalid or expired authorization code'}), 400
+
+    if auth_code.client_id != client.client_id:
+        return jsonify({'error': 'invalid_grant', 'error_description': 'Authorization code was not issued to this client'}), 400
+
+    if not redirect_uri or redirect_uri != auth_code.redirect_uri:
+        return jsonify({'error': 'invalid_grant', 'error_description': 'redirect_uri does not match the authorization request'}), 400
 
     access_token = secrets.token_hex(32)
     refresh_token = secrets.token_hex(32)

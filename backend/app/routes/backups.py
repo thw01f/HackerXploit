@@ -16,14 +16,18 @@ def compute_sha256(file_path):
             sha256_hash.update(byte_block)
     return sha256_hash.hexdigest()
 
-def create_backup_archive(created_by_id=None, backup_type='manual'):
-    base_upload = current_app.config.get('UPLOAD_FOLDER', '/var/uploads') if current_app else '/var/uploads'
-    backup_dir = os.path.join(base_upload, 'backups')
+def get_backup_dir():
+    backup_dir = current_app.config.get('BACKUP_FOLDER', '/var/backups') if current_app else '/var/backups'
     try:
         os.makedirs(backup_dir, exist_ok=True)
     except (PermissionError, OSError):
-        backup_dir = "/tmp/uploads/backups"
+        backup_dir = "/tmp/hx_backups"
         os.makedirs(backup_dir, exist_ok=True)
+    return backup_dir
+
+def create_backup_archive(created_by_id=None, backup_type='manual'):
+    base_upload = current_app.config.get('UPLOAD_FOLDER', '/var/uploads') if current_app else '/var/uploads'
+    backup_dir = get_backup_dir()
 
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     filename = f"hackerxploit_backup_{timestamp}.zip"
@@ -101,8 +105,7 @@ def trigger_manual_backup():
 def delete_backup(backup_id):
     record = BackupRecord.query.get_or_404(backup_id)
 
-    base_upload = current_app.config.get('UPLOAD_FOLDER', '/var/uploads') if current_app else '/var/uploads'
-    zip_path = os.path.join(base_upload, 'backups', record.filename)
+    zip_path = os.path.join(get_backup_dir(), record.filename)
     if os.path.exists(zip_path):
         try:
             os.remove(zip_path)
@@ -119,8 +122,7 @@ def delete_backup(backup_id):
 def download_backup(backup_id):
     record = BackupRecord.query.get_or_404(backup_id)
 
-    base_upload = current_app.config.get('UPLOAD_FOLDER', '/var/uploads') if current_app else '/var/uploads'
-    zip_path = os.path.join(base_upload, 'backups', record.filename)
+    zip_path = os.path.join(get_backup_dir(), record.filename)
     if not os.path.exists(zip_path):
         return jsonify({'error': 'Backup archive file not found on disk'}), 404
 
@@ -137,8 +139,7 @@ def restore_backup():
         return jsonify({'error': 'Invalid confirmation! You must type exact site name "HackerXploit" to restore.'}), 400
 
     record = BackupRecord.query.get_or_404(backup_id)
-    base_upload = current_app.config.get('UPLOAD_FOLDER', '/var/uploads') if current_app else '/var/uploads'
-    zip_path = os.path.join(base_upload, 'backups', record.filename)
+    zip_path = os.path.join(get_backup_dir(), record.filename)
 
     if not os.path.exists(zip_path):
         return jsonify({'error': 'Backup file missing on server'}), 404
@@ -150,10 +151,26 @@ def restore_backup():
     except Exception as e:
         return jsonify({'error': f'Corrupted backup archive: {e}'}), 400
 
-    log_audit('BACKUP_RESTORED', target_type='BackupRecord', target_id=record.id, notes=f"Restored from {record.filename}")
+    log_audit(
+        'BACKUP_RESTORE_ATTEMPTED_NOT_IMPLEMENTED',
+        target_type='BackupRecord',
+        target_id=record.id,
+        notes=f"Root admin requested restore of {record.filename}; automated restore is not implemented, manual procedure required."
+    )
 
+    # Automated restore is intentionally NOT implemented: this archive only snapshots
+    # User/AuditLog/BackupRecord as a JSON manifest, not a full database dump, so an
+    # automated restore here would silently leave every other table (courses,
+    # competitions, chat, etc.) out of sync with the "restored" users - worse than doing
+    # nothing during a real incident. Follow the manual pg_dump/psql procedure in
+    # BACKUPS.md instead, which restores the full database consistently.
     return jsonify({
-        'message': 'System backup restored successfully. Maintenance mode completed.',
-        'manifest': manifest_data,
-        'restored_at': datetime.utcnow().isoformat()
-    }), 200
+        'error': 'not_implemented',
+        'message': (
+            'Automated restore is not implemented. This archive only contains a partial '
+            'JSON snapshot, not a full database dump, so restoring it here would leave '
+            'other tables inconsistent. Follow the manual PostgreSQL restore procedure '
+            'in BACKUPS.md (pg_dump/psql) to perform a full, consistent restore.'
+        ),
+        'manifest': manifest_data
+    }), 501

@@ -18,7 +18,7 @@
       <!-- Admin Actions -->
       <div v-if="authStore.isAdmin" class="flex items-center space-x-3">
         <button @click="showResetModal = true" class="btn-ghost text-xs py-1.5 px-3 border-rose-500/30 text-rose-400 hover:bg-rose-500/10">
-          ⚠️ Reset Chat Room
+          Reset Chat Room
         </button>
       </div>
     </div>
@@ -28,7 +28,11 @@
       <!-- Messages Scroll Area -->
       <div ref="chatContainer" class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-950/40">
         <div v-if="!chatEnabled" class="text-center py-20 space-y-3">
-          <div class="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-2xl flex items-center justify-center mx-auto">🔒</div>
+          <div class="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-2xl flex items-center justify-center mx-auto">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+          </div>
           <h3 class="text-lg font-bold text-white">General Text Chat Channel Disabled</h3>
           <p class="text-xs text-slate-400 max-w-md mx-auto">Real-time text chat has been temporarily paused site-wide by an administrator.</p>
         </div>
@@ -42,17 +46,17 @@
           <div class="flex-1 min-w-0">
             <div class="flex items-center space-x-2">
               <span class="text-xs font-bold text-white">{{ msg.sender_username }}</span>
-              <span :class="getRoleColor(msg.sender_role)" class="text-[10px] font-semibold uppercase px-1.5 py-0.2 bg-slate-800 rounded">
+              <span :class="getRoleColor(msg.sender_role)" class="text-[11px] font-semibold uppercase px-1.5 py-0.2 bg-slate-800 rounded">
                 {{ msg.sender_role }}
               </span>
-              <span class="text-[10px] text-slate-500">{{ formatTimestamp(msg.timestamp) }}</span>
+              <span class="text-[11px] text-slate-500">{{ formatTimestamp(msg.timestamp) }}</span>
 
               <!-- Message Actions -->
               <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-2 ml-auto">
-                <button v-if="!msg.is_deleted" @click="openReportModal(msg)" class="text-[11px] text-slate-500 hover:text-amber-400">
+                <button v-if="!msg.is_deleted" @click="openReportModal(msg)" class="text-xs text-slate-500 hover:text-amber-400">
                   Report
                 </button>
-                <button v-if="authStore.isTeacher && !msg.is_deleted" @click="softDeleteMessage(msg.id)" class="text-[11px] text-slate-500 hover:text-rose-400">
+                <button v-if="authStore.isTeacher && !msg.is_deleted" @click="softDeleteMessage(msg.id)" class="text-xs text-slate-500 hover:text-rose-400">
                   Delete
                 </button>
               </div>
@@ -92,7 +96,7 @@
     <!-- Hard Reset Confirmation Modal (ADMIN ONLY) -->
     <div v-if="showResetModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div class="bg-slate-900 border border-rose-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-        <h3 class="text-lg font-bold text-rose-400">⚠️ Confirm Room Hard-Reset</h3>
+        <h3 class="text-lg font-bold text-rose-400">Confirm Room Hard-Reset</h3>
         <p class="text-xs text-slate-300 mt-2">Are you sure you want to hard-reset the general chat room? This will permanently delete ALL message history for all members.</p>
         <div class="flex justify-end space-x-3 mt-6">
           <button @click="showResetModal = false" class="btn-ghost text-xs py-2 px-4">Cancel</button>

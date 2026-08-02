@@ -9,6 +9,8 @@ class SiteFeatureToggle(db.Model):
     general_chat_enabled = db.Column(db.Boolean, default=True, nullable=False)
     allowed_email_domains = db.Column(db.String(512), default="gmail.com,srm.edu.in,hackerxploit.org", nullable=True)
     password_min_length = db.Column(db.Integer, default=8, nullable=False)
+    announcement_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    announcement_banner = db.Column(db.String(512), default="Welcome to HackerXploit Club Platform! Next CTF competition is scheduled for Saturday.", nullable=True)
     updated_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -18,6 +20,8 @@ class SiteFeatureToggle(db.Model):
             'general_chat_enabled': self.general_chat_enabled,
             'allowed_email_domains': self.allowed_email_domains or "gmail.com,srm.edu.in,hackerxploit.org",
             'password_min_length': self.password_min_length or 8,
+            'announcement_enabled': self.announcement_enabled if self.announcement_enabled is not None else True,
+            'announcement_banner': self.announcement_banner if self.announcement_banner is not None else "Welcome to HackerXploit Club Platform! Next CTF competition is scheduled for Saturday.",
             'updated_by_id': self.updated_by_id,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

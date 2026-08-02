@@ -54,29 +54,116 @@ html.light body {
   color: #0f172a !important;
 }
 
-/* Light Mode Background Overrides */
+/* Light Mode Background Overrides
+   NOTE: this app hardcodes literal hex Tailwind arbitrary-value classes
+   (e.g. bg-[#151f30]) instead of referencing the CSS variables above, so
+   every distinct hex actually used anywhere in the app must be listed here
+   explicitly or it silently stays dark in light mode. This list is generated
+   from an exhaustive grep of every .vue file under frontend/src - if a new
+   hardcoded background/border/text hex is introduced, it must be added here
+   too. CAUTION: never write the substring "star-slash" inside this comment
+   (e.g. as part of a glob pattern) - it prematurely closes a CSS comment and
+   silently corrupts every rule that follows until the next recovery point. */
 html.light .bg-\[\#0b0e14\],
+html.light .bg-\[\#0b0e14\]\/90,
+html.light .bg-\[\#0b0e14\]\/80,
+html.light .bg-\[\#0b0e14\]\/50,
 html.light .bg-\[\#0c1117\],
 html.light .bg-\[\#0c1117\]\/95,
+html.light .bg-\[\#0c1117\]\/80,
 html.light .bg-\[\#090d16\],
+html.light .bg-\[\#090d16\]\/95,
 html.light .bg-\[\#070a10\],
-html.light .bg-\[\#080c13\] {
+html.light .bg-\[\#080c14\],
+html.light .bg-\[\#080c14\]\/90,
+html.light .bg-\[\#0c131e\] {
   background-color: #f8fafc !important;
 }
 
 html.light .bg-\[\#111927\],
 html.light .bg-\[\#151f30\],
 html.light .bg-\[\#151f30\]\/80,
-html.light .bg-\[\#0d1420\] {
+html.light .bg-\[\#151f30\]\/60,
+html.light .bg-\[\#151f30\]\/90,
+html.light .bg-\[\#0d1420\],
+html.light .bg-\[\#0d1420\]\/90,
+html.light .bg-\[\#0d1420\]\/80,
+html.light .bg-\[\#161b22\],
+html.light .bg-\[\#161b22\]\/90,
+html.light .bg-\[\#161b22\]\/95,
+html.light .bg-\[\#161b22\]\/80,
+html.light .bg-\[\#161b22\]\/70,
+html.light .bg-\[\#161b22\]\/60,
+html.light .bg-\[\#161b22\]\/50,
+html.light .bg-\[\#152338\],
+html.light .bg-\[\#1a2332\] {
   background-color: #ffffff !important;
 }
 
 /* Light Mode Border Overrides */
 html.light .border-\[\#1f293d\],
+html.light .border-\[\#1f293d\]\/80,
+html.light .border-\[\#1f293d\]\/60,
 html.light .border-\[\#1a2332\],
+html.light .border-\[\#21262d\],
+html.light .border-\[\#30363d\],
+html.light .divide-\[\#1f293d\] > :not([hidden]) ~ :not([hidden]),
+html.light .divide-\[\#1f293d\]\/80 > :not([hidden]) ~ :not([hidden]),
+html.light .border-slate-600,
+html.light .border-slate-700,
+html.light .border-slate-700\/80,
+html.light .border-slate-700\/70,
 html.light .border-slate-800,
-html.light .border-slate-700 {
+html.light .border-slate-800\/80,
+html.light .border-slate-800\/60,
+html.light .divide-slate-800 > :not([hidden]) ~ :not([hidden]),
+html.light .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) {
   border-color: #e2e8f0 !important;
+}
+
+html.light .border-\[\#283548\] {
+  border-color: #cbd5e1 !important;
+}
+
+/* Light Mode Tailwind-Palette Dark Backgrounds
+   These are standard bg-slate-700/800/900/950 utility classes used as real
+   content-panel backgrounds throughout the app (stat boxes, table rows,
+   list items, filter pills) - a much larger and previously-untouched source
+   of "dark text on dark background" invisibility than the arbitrary bg-[#..]
+   hex classes above. Deliberately NOT included: bg-slate-950 at 80/85 percent
+   opacity, and any bg-black opacity variant - these are exclusively used as
+   modal backdrop dimming scrims (fixed inset-0 bg-slate-950/80 backdrop-blur-sm)
+   and are correct to keep dark in both themes - that's how modal backdrops
+   normally work. */
+html.light .bg-slate-700,
+html.light .bg-slate-800,
+html.light .bg-slate-800\/50,
+html.light .bg-slate-800\/40,
+html.light .bg-slate-800\/30 {
+  background-color: #ffffff !important;
+}
+
+html.light .bg-slate-900,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-900\/90,
+html.light .bg-slate-900\/60,
+html.light .bg-slate-900\/40,
+html.light .bg-slate-950,
+html.light .bg-slate-950\/40,
+html.light .bg-slate-950\/50 {
+  background-color: #f8fafc !important;
+}
+
+html.light .hover\:bg-slate-700:hover,
+html.light .hover\:bg-slate-800:hover,
+html.light .hover\:bg-slate-900:hover {
+  background-color: #e2e8f0 !important;
+}
+
+html.light .badge-member {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border-color: #cbd5e1 !important;
 }
 
 /* Light Mode Text Overrides for 100% High Contrast Visibility */
@@ -94,6 +181,23 @@ html.light .text-slate-400 {
 html.light .text-slate-500,
 html.light .text-slate-600 {
   color: #475569 !important;
+}
+
+/* Light Mode Brand Accent Text: the two neon brand accents (bright cyan and
+   neon green) are used ~250 times app-wide for headings/labels/icons and are
+   nearly invisible against a white background at full saturation - darken
+   them to the same accessible shades already defined for --cyber-cyan /
+   --htb-green in html.light above. */
+html.light .text-\[\#00f0ff\] {
+  color: #0284c7 !important;
+}
+
+html.light .text-\[\#9fef00\] {
+  color: #65a30d !important;
+}
+
+html.light .text-\[\#ffb700\] {
+  color: #b45309 !important;
 }
 
 /* Light Mode Navigation Items */
@@ -118,21 +222,20 @@ html.light nav a.router-link-active * {
   color: #9fef00 !important;
 }
 
-/* Light Mode Top Bar Header & Controls */
+/* Light Mode Top Bar Header
+   NOTE: deliberately does NOT blanket-style "header button"/"header input"
+   the way earlier versions of this file did. The header contains dropdowns
+   (Explore menu, notifications, profile drawer) with buttons that need their
+   OWN distinct colors (the theme toggle switch, the rose Sign Out button, the
+   green-tinted "Mark all read" button) - a blanket descendant selector with
+   !important silently overwrote all of them to the same off-white/dark-text
+   pair. Buttons needing a light-mode fix get it via their own bg-[#hex]/text
+   classes above instead. There is also no literal <input> left in the header
+   (the global header search box was removed - see git history) so that half
+   of the old rule was dead weight. */
 html.light header {
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
-}
-
-html.light header button,
-html.light header input {
-  background-color: #f8fafc !important;
-  border-color: #cbd5e1 !important;
-  color: #0f172a !important;
-}
-
-html.light header input::placeholder {
-  color: #64748b !important;
 }
 
 /* Light Mode Flyout Profile Drawer */

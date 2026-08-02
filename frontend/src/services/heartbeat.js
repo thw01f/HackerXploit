@@ -7,7 +7,7 @@ export const initHeartbeat = (authStore) => {
 
   const sendPing = async () => {
     // Only send ping if tab is active/focused and user is logged in
-    if (document.visibilityState !== 'visible' || !authStore.token) return
+    if (document.visibilityState !== 'visible' || !authStore.isAuthenticated) return
 
     const hostname = window.location.hostname
     let subdomain = 'club'

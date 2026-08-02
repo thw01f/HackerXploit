@@ -21,29 +21,43 @@
                 </span>
               </div>
               <p class="text-xs font-mono text-cyan-400 mt-0.5">@{{ profile.overview.username }} | {{ profile.overview.email }}</p>
-              <p v-if="profile.overview.student_id" class="text-xs font-mono text-slate-400 mt-1">Student ID: {{ profile.overview.student_id }}</p>
+              <div class="flex items-center gap-2 text-xs font-mono text-slate-400 mt-1">
+                <span class="px-2 py-0.5 rounded bg-[#9fef00]/10 border border-[#9fef00]/40 text-[#9fef00] font-bold">BADGE ID: {{ profile.overview.badge_id || ('HX-STU-' + (profile.overview.student_id || profile.overview.id)) }}</span>
+                <span v-if="profile.overview.student_id">Student ID: {{ profile.overview.student_id }}</span>
+              </div>
             </div>
           </div>
 
           <div class="flex flex-wrap gap-4 text-center">
             <div class="bg-slate-900/80 px-4 py-2.5 rounded-xl border border-slate-800">
               <p class="text-[10px] font-mono text-slate-400 uppercase">Active Hours</p>
-              <p class="text-lg font-mono font-bold text-cyan-400">⚡ {{ profile.activity.total_hours }}h</p>
+              <p class="text-lg font-mono font-bold text-cyan-400">{{ profile.activity.total_hours }}h</p>
             </div>
             <div class="bg-slate-900/80 px-4 py-2.5 rounded-xl border border-slate-800">
               <p class="text-[10px] font-mono text-slate-400 uppercase">Leaderboard Score</p>
-              <p class="text-lg font-mono font-bold text-amber-400">⭐ {{ profile.overview.leaderboard_score || 0 }}</p>
+              <p class="text-lg font-mono font-bold text-amber-400">{{ profile.overview.leaderboard_score || 0 }}</p>
             </div>
           </div>
         </div>
 
         <!-- Navigation Tabs -->
-        <div class="flex border-b border-slate-800 space-x-6 text-sm font-mono">
-          <button v-for="tab in ['overview', 'activity', 'academy', 'trophy_case']" :key="tab" @click="activeTab = tab" :class="activeTab === tab ? 'text-cyan-400 border-b-2 border-cyan-400 font-bold pb-3' : 'text-slate-400 hover:text-slate-200 pb-3'" class="uppercase transition-colors flex items-center gap-2">
-            <span v-if="tab === 'overview'">👤 Overview</span>
-            <span v-else-if="tab === 'activity'">📊 Activity</span>
-            <span v-else-if="tab === 'academy'">📚 Academy</span>
-            <span v-else-if="tab === 'trophy_case'">🏆 Trophy Case</span>
+        <div class="flex border-b border-slate-800 space-x-1 text-sm font-mono">
+          <button @click="activeTab = 'overview'" :class="activeTab === 'overview' ? 'text-cyan-400 border-b-2 border-cyan-400 font-bold' : 'text-slate-400 hover:text-slate-200'" class="uppercase transition-colors flex items-center gap-1.5 pb-3 px-4">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            Overview
+          </button>
+          <button @click="activeTab = 'activity'" :class="activeTab === 'activity' ? 'text-cyan-400 border-b-2 border-cyan-400 font-bold' : 'text-slate-400 hover:text-slate-200'" class="uppercase transition-colors flex items-center gap-1.5 pb-3 px-4">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            Activity
+          </button>
+          <button @click="activeTab = 'academy'" :class="activeTab === 'academy' ? 'text-cyan-400 border-b-2 border-cyan-400 font-bold' : 'text-slate-400 hover:text-slate-200'" class="uppercase transition-colors flex items-center gap-1.5 pb-3 px-4">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            Academy
+          </button>
+          <button @click="activeTab = 'trophy_case'" :class="activeTab === 'trophy_case' ? 'text-amber-400 border-b-2 border-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'" class="uppercase transition-colors flex items-center gap-1.5 pb-3 px-4">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+            Competitions & Trophy Case
+            <span v-if="pendingCount > 0" class="bg-amber-400 text-black text-[10px] font-extrabold px-1.5 py-0.5 rounded-full leading-none">{{ pendingCount }}</span>
           </button>
         </div>
 
@@ -75,10 +89,21 @@
                 <span class="text-slate-500 block">Department:</span>
                 <span class="text-white">{{ profile.overview.department || 'Cyber Security' }}</span>
               </div>
-              <div class="pt-2 border-t border-slate-800/80">
-                <span class="text-amber-400 font-bold block mb-1">🔒 Private Contact Info (Admins/Teachers)</span>
-                <p class="text-slate-300">📧 Gmail: <span class="text-white font-semibold">{{ profile.overview.gmail || profile.overview.email }}</span></p>
-                <p class="text-slate-300 mt-1">📱 Phone: <span class="text-white font-semibold">{{ profile.overview.phone_number || 'Not provided' }}</span></p>
+              <div class="pt-2 border-t border-slate-800/80 space-y-2">
+                <span class="text-amber-400 font-bold block mb-2 flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                  Private Contact (Admins/Teachers)
+                </span>
+                <p class="text-slate-300">Personal Gmail: <span class="text-white font-semibold">{{ profile.overview.personal_gmail || profile.overview.gmail || '—' }}</span></p>
+                <p class="text-slate-300">Student Gmail: <span class="text-white font-semibold">{{ profile.overview.student_gmail || profile.overview.email || '—' }}</span></p>
+                <p class="text-slate-300">Phone: <span class="text-white font-semibold">{{ profile.overview.phone_number || 'Not provided' }}</span></p>
+                <div v-if="profile.overview.resume_url" class="pt-1">
+                  <a :href="profile.overview.resume_url" target="_blank" class="text-xs text-cyan-400 hover:underline font-mono font-bold flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    View / Download Resume
+                  </a>
+                </div>
+                <p v-else class="text-xs text-slate-500 font-mono">No resume uploaded.</p>
               </div>
               <div class="pt-2 border-t border-slate-800/80">
                 <span class="text-slate-500 block">Status:</span>
@@ -148,8 +173,11 @@
               </div>
 
               <div v-if="course.certificate" class="pt-3 border-t border-slate-800 flex justify-between items-center text-xs font-mono">
-                <span class="text-slate-400">📜 Course Certificate</span>
-                <a :href="course.certificate.file_path" target="_blank" class="text-cyan-400 hover:underline">Download PDF →</a>
+                <span class="text-slate-400 flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  Course Certificate
+                </span>
+                <a :href="course.certificate.file_path" target="_blank" class="text-cyan-400 hover:underline">Download PDF</a>
               </div>
             </div>
           </div>
@@ -158,35 +186,73 @@
         <!-- TAB 4: TROPHY CASE -->
         <div v-if="activeTab === 'trophy_case'" class="space-y-6">
           <div v-if="profile.trophy_case.length === 0" class="glass-panel p-12 text-center text-slate-400">
-            No competition records or trophies found.
+            No competition applications or trophies found for this student.
           </div>
 
           <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div v-for="item in profile.trophy_case" :key="item.participation_id" class="glass-panel p-6 space-y-4 border-l-4" :class="getTrophyBorderClass(item.result)">
-              <div class="flex justify-between items-start">
-                <div>
-                  <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded border border-slate-700 bg-slate-900 text-slate-300">
+              <div class="flex justify-between items-start gap-2">
+                <div class="min-w-0">
+                  <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded border border-slate-700 bg-slate-900 text-slate-300">
                     {{ item.category }}
                   </span>
-                  <h4 class="font-bold text-white text-lg mt-1">{{ item.competition_title }}</h4>
+                  <h4 class="font-bold text-white text-lg mt-1 truncate">{{ item.competition_title }}</h4>
+                  <p class="text-[11px] text-slate-500 font-mono mt-0.5">Applied {{ formatDate(item.applied_at) }}</p>
                 </div>
 
-                <span :class="getResultBadgeClass(item.result)" class="text-xs font-mono px-3 py-1 rounded-lg border font-bold uppercase">
-                  🏆 {{ item.result }}
+                <span :class="getStatusBadgeClass(item.application_status)" class="text-xs font-mono px-3 py-1 rounded-lg border font-bold uppercase shrink-0">
+                  {{ formatStatus(item.application_status) }}
                 </span>
               </div>
 
+              <!-- Result, once the event has actually been scored/wrapped up -->
+              <div v-if="item.result && item.result !== 'participated'" class="flex items-center gap-2">
+                <span :class="getResultBadgeClass(item.result)" class="text-xs font-mono px-3 py-1 rounded-lg border font-bold uppercase">
+                  {{ item.result }}
+                </span>
+                <span v-if="item.placement_label" class="text-xs font-mono text-amber-300 font-bold">{{ item.placement_label }}</span>
+              </div>
+
               <div v-if="item.application_screenshot" class="pt-2">
-                <p class="text-[11px] font-mono text-slate-400 mb-1">Verification Screenshot:</p>
-                <img :src="item.application_screenshot" class="w-full h-36 object-cover rounded-xl border border-slate-800" />
+                <p class="text-[11px] font-mono text-slate-400 mb-1">Uploaded Registration Proof:</p>
+                <a :href="item.application_screenshot" target="_blank">
+                  <img :src="item.application_screenshot" class="w-full h-36 object-cover rounded-xl border border-slate-800 hover:border-cyan-500/50 transition-colors" />
+                </a>
+              </div>
+
+              <div v-if="item.event_photos && item.event_photos.length > 0" class="pt-1">
+                <p class="text-[11px] font-mono text-slate-400 mb-1">Event Photos:</p>
+                <div class="grid grid-cols-4 gap-1.5">
+                  <a v-for="(photo, idx) in item.event_photos" :key="idx" :href="photo" target="_blank">
+                    <img :src="photo" class="w-full h-14 object-cover rounded-lg border border-slate-800 hover:border-cyan-500/50 transition-colors" />
+                  </a>
+                </div>
               </div>
 
               <p v-if="item.summary_notes" class="text-xs text-slate-300 bg-slate-900/60 p-3 rounded-lg border border-slate-800">
                 "{{ item.summary_notes }}"
               </p>
 
+              <!-- Verification trail -->
+              <p v-if="item.verified_by_name" class="text-[11px] font-mono text-slate-500">
+                {{ item.application_status === 'rejected' ? 'Rejected' : 'Verified' }} by <span class="text-slate-300">{{ item.verified_by_name }}</span> on {{ formatDate(item.verified_at) }}
+              </p>
+
+              <!-- Reviewer actions: only while a decision is still pending -->
+              <div v-if="item.application_status === 'pending_verification'" class="pt-3 border-t border-slate-800/80 flex gap-2">
+                <button @click="reviewApplication(item, 'verified')" class="btn-neon-cyan text-[11px] px-3 py-1.5 font-bold flex-1">
+                  ✓ Verify Application
+                </button>
+                <button @click="reviewApplication(item, 'rejected')" class="bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-600/40 text-[11px] px-3 py-1.5 rounded font-mono font-bold flex-1">
+                  ✕ Reject
+                </button>
+              </div>
+
               <div v-if="item.certificate" class="pt-3 border-t border-slate-800/80 flex justify-between items-center text-xs font-mono">
-                <span class="text-amber-400 font-bold">📜 Winner Certificate</span>
+                <span class="text-amber-400 font-bold flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  Winner Certificate
+                </span>
                 <a :href="item.certificate.file_path" target="_blank" class="btn-neon-cyan text-[11px] px-3 py-1">Download PDF</a>
               </div>
             </div>
@@ -198,7 +264,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 import axios from 'axios'
@@ -207,6 +273,11 @@ const route = useRoute()
 const activeTab = ref('overview')
 const profile = ref(null)
 const loading = ref(true)
+
+const pendingCount = computed(() => {
+  if (!profile.value) return 0
+  return profile.value.trophy_case.filter(t => t.application_status === 'pending_verification').length
+})
 
 const fetchProfile = async () => {
   loading.value = true
@@ -231,6 +302,37 @@ const getTrophyBorderClass = (res) => {
   if (res === 'winner') return 'border-amber-500'
   if (res === 'runner_up') return 'border-slate-400'
   return 'border-cyan-500'
+}
+
+const getStatusBadgeClass = (status) => {
+  if (status === 'verified') return 'border-emerald-500/50 bg-emerald-950/40 text-emerald-300'
+  if (status === 'rejected') return 'border-rose-500/50 bg-rose-950/40 text-rose-300'
+  return 'border-amber-500/50 bg-amber-950/40 text-amber-300 animate-pulse'
+}
+
+const formatStatus = (status) => {
+  if (status === 'pending_verification') return 'Pending Review'
+  return status || 'Unknown'
+}
+
+const formatDate = (isoStr) => {
+  if (!isoStr) return 'N/A'
+  try {
+    return new Date(isoStr).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } catch (e) {
+    return isoStr
+  }
+}
+
+const reviewApplication = async (item, status) => {
+  const verb = status === 'verified' ? 'verify' : 'reject'
+  if (!confirm(`Are you sure you want to ${verb} this application?`)) return
+  try {
+    await axios.post(`/api/competitions/${item.competition_id}/applications/${item.participation_id}/verify`, { status })
+    await fetchProfile()
+  } catch (err) {
+    alert(err.response?.data?.error || `Failed to ${verb} application`)
+  }
 }
 
 onMounted(() => {

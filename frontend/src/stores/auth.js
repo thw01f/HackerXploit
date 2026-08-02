@@ -3,15 +3,17 @@ import axios from 'axios'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    user: JSON.parse(localStorage.getItem('hx_user')) || null,
-    token: localStorage.getItem('hx_token') || null,
+    // Session identity lives entirely in an HttpOnly cookie set by the backend;
+    // the SPA never reads or stores the raw session token (avoids XSS session theft).
+    user: null,
+    authChecked: false,
     sessions: [],
     publicSettings: { general_chat_enabled: true },
     loading: false,
     error: null
   }),
   getters: {
-    isAuthenticated: (state) => !!state.user && !!state.token,
+    isAuthenticated: (state) => !!state.user,
     isRootAdmin: (state) => state.user?.role === 'root_admin',
     isAdmin: (state) => ['root_admin', 'admin'].includes(state.user?.role),
     isTeacher: (state) => ['root_admin', 'admin', 'teacher'].includes(state.user?.role),
@@ -26,11 +28,8 @@ export const useAuthStore = defineStore('auth', {
           email_or_username: emailOrUsername,
           password
         })
-        this.token = res.data.token
         this.user = res.data.user
-        localStorage.setItem('hx_token', this.token)
-        localStorage.setItem('hx_user', JSON.stringify(this.user))
-        axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
+        this.authChecked = true
         return res.data
       } catch (err) {
         this.error = err.response?.data?.error || 'Login failed'
@@ -55,21 +54,20 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async fetchMe() {
-      if (!this.token) return null
-      axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
       try {
         const res = await axios.get('/api/auth/me')
         this.user = res.data.user
-        localStorage.setItem('hx_user', JSON.stringify(this.user))
         return this.user
       } catch (err) {
-        this.logout()
+        this.user = null
         return null
+      } finally {
+        this.authChecked = true
       }
     },
 
     async fetchSessions() {
-      if (!this.token) return
+      if (!this.user) return
       try {
         const res = await axios.get('/api/auth/sessions')
         this.sessions = res.data.sessions
@@ -89,18 +87,14 @@ export const useAuthStore = defineStore('auth', {
 
     async logout() {
       try {
-        if (this.token) {
+        if (this.user) {
           await axios.post('/api/auth/logout')
         }
       } catch (e) {
         // ignore
       } finally {
         this.user = null
-        this.token = null
         this.sessions = []
-        localStorage.removeItem('hx_token')
-        localStorage.removeItem('hx_user')
-        delete axios.defaults.headers.common['Authorization']
       }
     },
 

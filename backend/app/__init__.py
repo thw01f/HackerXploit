@@ -82,6 +82,8 @@ def create_app(config_class=Config):
     from app.routes.privacy import privacy_bp
     from app.routes.backups import backups_bp
     from app.routes.id_card import id_card_bp
+    from app.routes.support import support_bp
+    from app.routes.roadmap import roadmap_bp
 
     flask_app.register_blueprint(auth_bp)
     flask_app.register_blueprint(oauth_bp)
@@ -103,6 +105,8 @@ def create_app(config_class=Config):
     flask_app.register_blueprint(privacy_bp)
     flask_app.register_blueprint(backups_bp)
     flask_app.register_blueprint(id_card_bp)
+    flask_app.register_blueprint(support_bp)
+    flask_app.register_blueprint(roadmap_bp)
 
 
 
@@ -126,7 +130,12 @@ def create_app(config_class=Config):
             "ALTER TABLE site_feature_toggles ADD COLUMN password_require_uppercase BOOLEAN DEFAULT TRUE",
             "ALTER TABLE site_feature_toggles ADD COLUMN password_require_lowercase BOOLEAN DEFAULT TRUE",
             "ALTER TABLE site_feature_toggles ADD COLUMN password_require_number BOOLEAN DEFAULT TRUE",
-            "ALTER TABLE site_feature_toggles ADD COLUMN password_require_special BOOLEAN DEFAULT TRUE"
+            "ALTER TABLE site_feature_toggles ADD COLUMN password_require_special BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE site_feature_toggles ADD COLUMN announcement_banner VARCHAR(512)",
+            "ALTER TABLE users ADD COLUMN personal_gmail VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN student_gmail VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN resume_url VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN badge_id VARCHAR(64)"
         ]:
             try:
                 db.session.execute(text(stmt))

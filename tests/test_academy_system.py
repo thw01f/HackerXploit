@@ -1,3 +1,4 @@
+import hashlib
 import os
 import pytest
 from app.config import Config
@@ -35,12 +36,13 @@ def auth_teacher_token(app):
             password_hash='dummy_hash',
             role='teacher',
             status='approved',
-            is_first_login=False
+            is_first_login=False,
+            onboarding_completed=True
         )
         db.session.add(user)
         db.session.commit()
 
-        sess = DeviceSession(user_id=user.id, session_token='token_teacher_123', ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
+        sess = DeviceSession(user_id=user.id, session_token='token_teacher_123', session_token_hash=hashlib.sha256(b'token_teacher_123').hexdigest(), ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
         db.session.add(sess)
         db.session.commit()
         return 'token_teacher_123'
@@ -54,12 +56,13 @@ def auth_student_token(app):
             password_hash='dummy_hash',
             role='member',
             status='approved',
-            is_first_login=False
+            is_first_login=False,
+            onboarding_completed=True
         )
         db.session.add(user)
         db.session.commit()
 
-        sess = DeviceSession(user_id=user.id, session_token='token_student_456', ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
+        sess = DeviceSession(user_id=user.id, session_token='token_student_456', session_token_hash=hashlib.sha256(b'token_student_456').hexdigest(), ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
         db.session.add(sess)
         db.session.commit()
         return 'token_student_456'
@@ -79,7 +82,7 @@ This is markdown content.
     assert meta['title'] == "Advanced Exploitation"
     assert meta['description'] == "Kernel vulnerability analysis"
     assert meta['cover_image'] == "/uploads/cover.png"
-    assert meta['order_index'] == "2"
+    assert str(meta['order_index']) == "2"
     assert body.startswith("# Chapter Content")
 
 def test_xss_html_sanitizer():

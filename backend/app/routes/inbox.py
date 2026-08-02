@@ -1,6 +1,6 @@
 from datetime import datetime
 from flask import Blueprint, request, jsonify, g
-from app.models import db, Message, MessageRecipient, User, Notification
+from app.models import db, Message, MessageRecipient, User, Notification, NotificationPreference
 from app.utils.decorators import require_auth, require_role, log_audit
 from app.services.socket_events import emit_user_notification
 from app.services.email_service import send_offline_inbox_email
@@ -101,7 +101,8 @@ def compose_message():
                 pass
 
 
-        if not is_online:
+        wants_email = NotificationPreference.get_or_create(u.id).email_inbox_messages
+        if not is_online and wants_email:
             snippet = body[:200] + ('...' if len(body) > 200 else '')
             from flask import current_app
             if current_app.config.get('TESTING'):

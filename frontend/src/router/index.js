@@ -6,7 +6,6 @@ import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import SetupAdminView from '../views/SetupAdminView.vue'
 import ForgotPasswordView from '../views/ForgotPasswordView.vue'
-import ResetPasswordView from '../views/ResetPasswordView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import AcademyView from '../views/AcademyView.vue'
 import AcademyWriteView from '../views/AcademyWriteView.vue'
@@ -37,23 +36,30 @@ import PrivacySettingsView from '../views/PrivacySettingsView.vue'
 import AdminBackupsView from '../views/AdminBackupsView.vue'
 import IDCardView from '../views/IDCardView.vue'
 import VerifyIDCardView from '../views/VerifyIDCardView.vue'
-
+import ContactView from '../views/ContactView.vue'
 
 import OnboardingView from '../views/OnboardingView.vue'
+import RoadmapView from '../views/RoadmapView.vue'
 
 const routes = [
   { path: '/', name: 'landing', component: LandingView },
   { path: '/login', name: 'login', component: LoginView },
   { path: '/register', name: 'register', component: RegisterView },
+  { path: '/contact', name: 'contact', component: ContactView, meta: { requiresAuth: true } },
   { path: '/onboarding', name: 'onboarding', component: OnboardingView, meta: { requiresAuth: true } },
   { path: '/setup-admin', name: 'setup-admin', component: SetupAdminView, meta: { requiresAuth: true } },
   { path: '/forgot-password', name: 'forgot-password', component: ForgotPasswordView },
-  { path: '/reset-password', name: 'reset-password', component: ResetPasswordView },
+  { path: '/reset-password', name: 'reset-password', component: ForgotPasswordView },
   { 
     path: '/dashboard', 
     name: 'dashboard', 
     component: DashboardView, 
     meta: { requiresAuth: true } 
+  },
+  {
+    path: '/academy/roadmap/:slug',
+    name: 'academy-roadmap',
+    component: RoadmapView
   },
   { 
     path: '/academy', 
@@ -98,8 +104,9 @@ const routes = [
     meta: { requiresAuth: true } 
   },
   { 
-    path: '/profile', 
-    name: 'profile', 
+    path: '/account-settings', 
+    alias: '/profile',
+    name: 'account-settings', 
     component: ProfileView, 
     meta: { requiresAuth: true } 
   },
@@ -168,7 +175,7 @@ const routes = [
     path: '/admin', 
     name: 'admin', 
     component: AdminView, 
-    meta: { requiresAuth: true, roles: ['admin', 'root_admin', 'teacher'] } 
+    meta: { requiresAuth: true, roles: ['admin', 'root_admin'] } 
   },
   { 
     path: '/admin/security', 
@@ -210,9 +217,7 @@ const routes = [
   },
   {
     path: '/profile/privacy',
-    name: 'privacy-settings',
-    component: PrivacySettingsView,
-    meta: { requiresAuth: true }
+    redirect: '/account-settings'
   },
   {
     path: '/admin/backups',
@@ -241,7 +246,9 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
-  if (authStore.token && !authStore.user) {
+  if (!authStore.authChecked) {
+    // Session identity lives in an HttpOnly cookie the SPA can't read directly,
+    // so ask the server once per page load whether it's actually valid.
     await authStore.fetchMe()
   }
 

@@ -1,3 +1,4 @@
+import hashlib
 import pytest
 from datetime import datetime
 from app.config import Config
@@ -23,21 +24,21 @@ def app():
     with app.app_context():
         db.create_all()
 
-        admin = User(username='admin', email='admin@test.org', role='admin', status='approved', is_root_admin=True, is_first_login=False)
+        admin = User(username='admin', email='admin@test.org', role='admin', status='approved', is_root_admin=True, is_first_login=False, onboarding_completed=True)
         admin.set_password('AdminPass123!')
 
-        teacher = User(username='teacher', email='teacher@test.org', role='teacher', status='approved', is_first_login=False)
+        teacher = User(username='teacher', email='teacher@test.org', role='teacher', status='approved', is_first_login=False, onboarding_completed=True)
         teacher.set_password('TeacherPass123!')
 
-        student = User(username='student', email='student@test.org', role='member', status='approved', is_first_login=False)
+        student = User(username='student', email='student@test.org', role='member', status='approved', is_first_login=False, onboarding_completed=True)
         student.set_password('StudentPass123!')
 
         db.session.add_all([admin, teacher, student])
         db.session.commit()
 
-        s_admin = DeviceSession(user_id=admin.id, session_token='token_admin', ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
-        s_teacher = DeviceSession(user_id=teacher.id, session_token='token_teacher', ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
-        s_student = DeviceSession(user_id=student.id, session_token='token_student', ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
+        s_admin = DeviceSession(user_id=admin.id, session_token='token_admin', session_token_hash=hashlib.sha256(b'token_admin').hexdigest(), ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
+        s_teacher = DeviceSession(user_id=teacher.id, session_token='token_teacher', session_token_hash=hashlib.sha256(b'token_teacher').hexdigest(), ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
+        s_student = DeviceSession(user_id=student.id, session_token='token_student', session_token_hash=hashlib.sha256(b'token_student').hexdigest(), ip_address='127.0.0.1', user_agent='TestAgent', is_active=True)
 
         db.session.add_all([s_admin, s_teacher, s_student])
         db.session.commit()

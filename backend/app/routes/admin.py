@@ -1,11 +1,33 @@
 import secrets
 from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify, g
-from app.models import db, User, DeviceSession, LoginAttempt, AuditLog, PasswordResetRequest, PasswordResetCode, ProfileFieldDefinition
+from flask import Blueprint, request, jsonify, g, current_app
+from app.models import db, User, DeviceSession, LoginAttempt, AuditLog, PasswordResetRequest, PasswordResetCode, ProfileFieldDefinition, NotificationPreference
 from app.utils.decorators import require_auth, require_role, require_root, log_audit
 from app.services.ctfd_sync import sync_user_to_ctfd, delete_user_from_ctfd
+from app.services.email_service import send_account_status_email, send_announcement_email
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
+
+
+def _dispatch_email_task(task, *args):
+    """Runs a celery-decorated email task synchronously in tests, async otherwise."""
+    try:
+        if current_app.config.get('TESTING'):
+            task(*args)
+        else:
+            task.delay(*args)
+    except Exception as e:
+        print(f"Email dispatch note: {e}")
+
+
+def _maybe_send_status_email(user, status):
+    if NotificationPreference.get_or_create(user.id).email_account_updates:
+        _dispatch_email_task(send_account_status_email, user.id, status)
+
+
+def _maybe_send_announcement_email(user, title, message):
+    if NotificationPreference.get_or_create(user.id).email_announcements:
+        _dispatch_email_task(send_announcement_email, user.id, title, message)
 
 # -------------------------------------------------------------------
 # 1. Approval Workflow (/admin/users) - Admin & Teacher allowed
@@ -14,11 +36,20 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 @require_role('teacher', 'admin')
 def list_users():
     status = request.args.get('status')
+    search = (request.args.get('search') or '').strip()
     query = User.query
     if status:
         query = query.filter_by(status=status)
+    if search:
+        like = f"%{search}%"
+        query = query.filter(db.or_(User.username.ilike(like), User.full_name.ilike(like), User.email.ilike(like)))
+
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+    if not is_admin:
+        query = query.filter(User.role.in_(['student', 'member']))
+
     users = query.order_by(User.created_at.desc()).all()
-    return jsonify({'users': [u.to_dict() for u in users]}), 200
+    return jsonify({'users': [u.to_dict(include_security=is_admin) for u in users]}), 200
 
 @admin_bp.route('/users/<int:user_id>/approve', methods=['POST'])
 @require_role('teacher', 'admin')
@@ -26,9 +57,15 @@ def approve_user(user_id):
     data = request.get_json(silent=True) or {}
     user = User.query.get_or_404(user_id)
     
-    assigned_role = data.get('assigned_role')
-    if assigned_role in ['member', 'teacher']:
-        user.role = assigned_role
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+    
+    # Teachers can only approve students
+    if not is_admin:
+        user.role = 'member'
+    else:
+        assigned_role = data.get('assigned_role')
+        if assigned_role in ['member', 'teacher', 'admin']:
+            user.role = assigned_role
 
     user.status = 'approved'
     user.is_first_login = True
@@ -44,6 +81,8 @@ def approve_user(user_id):
     except Exception as e:
         print(f"CTFd auto-provision note: {e}")
 
+    _maybe_send_status_email(user, 'approved')
+
     log_audit('approved', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Approved as {user.role} by {g.current_user.username}")
     return jsonify(user.to_dict()), 200
 
@@ -51,11 +90,17 @@ def approve_user(user_id):
 @require_role('teacher', 'admin')
 def reject_user(user_id):
     user = User.query.get_or_404(user_id)
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+    if not is_admin and user.role not in ['student', 'member']:
+        return jsonify({'error': 'Teachers can only manage student accounts'}), 403
+
     if user.is_root_admin:
         return jsonify({'error': 'Root admin cannot be rejected'}), 403
 
     user.status = 'rejected'
     db.session.commit()
+
+    _maybe_send_status_email(user, 'rejected')
 
     log_audit('rejected', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Rejected by {g.current_user.username}")
     return jsonify(user.to_dict()), 200
@@ -64,6 +109,10 @@ def reject_user(user_id):
 @require_role('teacher', 'admin')
 def suspend_user(user_id):
     user = User.query.get_or_404(user_id)
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+    if not is_admin and user.role not in ['student', 'member']:
+        return jsonify({'error': 'Teachers can only manage student accounts'}), 403
+
     if user.is_root_admin:
         return jsonify({'error': 'Root Admin cannot be suspended'}), 403
 
@@ -73,6 +122,8 @@ def suspend_user(user_id):
     DeviceSession.query.filter_by(user_id=user_id, is_active=True).update({'is_active': False})
     db.session.commit()
 
+    _maybe_send_status_email(user, 'suspended')
+
     log_audit('suspended', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Suspended by {g.current_user.username}")
     return jsonify(user.to_dict()), 200
 
@@ -80,6 +131,10 @@ def suspend_user(user_id):
 @require_role('teacher', 'admin')
 def reinstate_user(user_id):
     user = User.query.get_or_404(user_id)
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+    if not is_admin and user.role not in ['student', 'member']:
+        return jsonify({'error': 'Teachers can only manage student accounts'}), 403
+
     user.status = 'approved'
     db.session.commit()
 
@@ -126,11 +181,66 @@ def admin_force_reset_password(user_id):
     log_audit('ADMIN_PASSWORD_RESET', target_type='User', target_id=user_id, notes=f"Password for @{user.username} reset by Admin {g.current_user.username}")
     return jsonify({'message': f'Password for @{user.username} has been reset successfully'}), 200
 
+@admin_bp.route('/users/<int:user_id>/update', methods=['PUT'])
+@require_role('teacher', 'admin')
+def update_user_details(user_id):
+    user = User.query.get_or_404(user_id)
+    data = request.get_json() or {}
+
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+
+    # Non-admin teachers can only edit student / member accounts
+    if not is_admin and user.role not in ['student', 'member']:
+        return jsonify({'error': 'Teachers can only edit student accounts'}), 403
+
+    if 'full_name' in data and data['full_name']:
+        user.full_name = data['full_name'].strip()
+    if 'email' in data and data['email']:
+        user.email = data['email'].strip()
+    if 'student_id' in data:
+        user.student_id = data['student_id'].strip() if data['student_id'] else None
+    if 'specialization_role' in data:
+        user.specialization_role = data['specialization_role'].strip() if data['specialization_role'] else 'Penetration Tester'
+    if 'total_points' in data:
+        try:
+            user.total_points = int(data['total_points'])
+        except (ValueError, TypeError):
+            pass
+
+    if 'role' in data:
+        new_role = data['role']
+        if is_admin:
+            if new_role in ['student', 'member', 'teacher', 'admin']:
+                user.role = new_role
+                user.badge_id = None # Forces recalculation of Badge ID with new role prefix (e.g. HX-FAC-0001 or HX-ADM-0001)
+        else:
+            if new_role in ['student', 'member']:
+                user.role = new_role
+                user.badge_id = None
+
+    if 'status' in data:
+        if is_admin or user.role in ['student', 'member']:
+            user.status = data['status']
+
+    # Recalculate badge_id for response
+    user.badge_id = user.get_badge_id()
+    db.session.commit()
+
+    # Instant CTFd role & badge sync
+    try:
+        from app.services.ctfd_sync import sync_user_to_ctfd
+        sync_user_to_ctfd(user)
+    except Exception as e:
+        print(f"[CTFd Sync Error on Role Update]: {e}")
+
+    log_audit('USER_DETAILS_UPDATED', target_type='User', target_id=user_id, notes=f"Updated details for @{user.username} (Role: {user.role}, Badge: {user.badge_id}) by {g.current_user.username}")
+    return jsonify(user.to_dict()), 200
+
 # -------------------------------------------------------------------
-# 2. Site-wide Audit Log (/admin/audit-log) - Admin only
+# 2. Site-wide Audit Log (/admin/audit-log) - View: teacher+; Delete: admin only
 # -------------------------------------------------------------------
 @admin_bp.route('/audit-log', methods=['GET'])
-@require_role('admin')
+@require_role('teacher', 'admin')
 def get_audit_log():
     actor_id = request.args.get('actor_id')
     action = request.args.get('action')
@@ -190,7 +300,7 @@ def manual_unlock_user(user_id):
     db.session.commit()
 
     log_audit('manual_unlock', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Manually unlocked by {g.current_user.username}")
-    return jsonify({'message': f'User {user.username} unlocked successfully', 'user': user.to_dict()}), 200
+    return jsonify({'message': f'User {user.username} unlocked successfully', 'user': user.to_dict(include_security=True)}), 200
 
 # -------------------------------------------------------------------
 # 4. Admin-Issued Password Reset (/admin/password-requests) - Admin only
@@ -220,7 +330,7 @@ def generate_password_reset_code():
 
     # Generate random 8-character uppercase alphanumeric code
     code = secrets.token_hex(4).upper()
-    expires_at = datetime.utcnow() + timedelta(minutes=30)
+    expires_at = datetime.utcnow() + timedelta(minutes=3)
 
     reset_code = PasswordResetCode(
         user_id=user.id,
@@ -231,7 +341,7 @@ def generate_password_reset_code():
     db.session.add(reset_code)
     db.session.commit()
 
-    log_audit('PASSWORD_RESET_CODE_ISSUED', target_type='User', target_id=user.id, target_user_id=user.id, notes=f"Issued code {code} expiring in 30m")
+    log_audit('PASSWORD_RESET_CODE_ISSUED', target_type='User', target_id=user.id, target_user_id=user.id, notes=f"Issued code {code} expiring in 3m")
 
     return jsonify({
         'message': 'Password reset code generated successfully',
@@ -325,6 +435,12 @@ def promote_to_teacher(user_id):
 
     db.session.commit()
 
+    _maybe_send_announcement_email(
+        user,
+        'Faculty Role Assigned',
+        f'An administrator promoted you to Faculty/Teacher status. Department: {department or "General"}. Welcome to the Faculty team!'
+    )
+
     log_audit('PROMOTE_TEACHER', target_type='User', target_id=user.id, target_user_id=user.id, notes=f"Promoted {user.username} to teacher. Dept: {department}, Staff ID: {staff_id}")
     return jsonify({
         'message': f'User {user.username} promoted to Teacher successfully',
@@ -397,6 +513,13 @@ def create_profile_field():
             notified_count += 1
 
         db.session.commit()
+
+        for u in target_users:
+            _maybe_send_announcement_email(
+                u,
+                'New Profile Field Added',
+                f'A new profile field ({label}) was added for {target_label}. Please update your Profile Settings.'
+            )
     except Exception as e:
         print(f"Notification dispatch warning: {e}")
 
@@ -686,11 +809,15 @@ def update_site_settings():
         toggle.allowed_email_domains = str(data['allowed_email_domains']).strip()
     if 'password_min_length' in data:
         toggle.password_min_length = int(data['password_min_length'])
+    if 'announcement_enabled' in data:
+        toggle.announcement_enabled = bool(data['announcement_enabled'])
+    if 'announcement_banner' in data:
+        toggle.announcement_banner = str(data['announcement_banner']).strip()
 
     toggle.updated_by_id = g.current_user.id
     db.session.commit()
 
-    log_audit('SITE_SETTINGS_UPDATED', notes=f"Updated site settings. Allowed domains: {toggle.allowed_email_domains}, Min pass length: {toggle.password_min_length}")
+    log_audit('SITE_SETTINGS_UPDATED', notes=f"Updated site settings. Announcement enabled: {toggle.announcement_enabled}, Banner: {toggle.announcement_banner}")
     return jsonify(toggle.to_dict()), 200
 
 

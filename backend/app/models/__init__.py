@@ -7,15 +7,18 @@ from .session import DeviceSession, LoginAttempt, LoginActivity
 from .audit import AuditLog
 from .academy import Course, CourseChapter, Enrollment, CourseEnrollment, CourseComment
 from .certificate import Certificate
-from .competition import Competition, CompetitionParticipation, CompetitionApplication
+from .competition import Competition, CompetitionParticipation, CompetitionApplication, EventAttendance, ClubEventFeedback
 from .retention import RetentionSettings
 from .opportunity import Opportunity, OpportunityApplication, Skill, member_skills, opportunity_skills
-from .chat import ChatMessage, Notification
+from .chat import ChatMessage, Notification, NotificationPreference
 from .oauth import OAuth2Client, OAuth2AuthorizationCode, OAuth2Token
 from .activity import ActivitySession, ActivityHeartbeat
 from .moderation import SiteFeatureToggle, Report, EmailLog
 from .inbox import Message, MessageRecipient
 from .portfolio_privacy_backup import PublicProfileSetting, BackupRecord, IDCardToken
+
+from .support import BugReport, ContactInquiry
+from .roadmap import Roadmap, RoadmapNode, RoadmapNodeResource, UserRoadmapProgress
 
 __all__ = [
     'db',
@@ -45,6 +48,7 @@ __all__ = [
     'opportunity_skills',
     'ChatMessage',
     'Notification',
+    'NotificationPreference',
     'OAuth2Client',
     'OAuth2AuthorizationCode',
     'OAuth2Token',
@@ -57,7 +61,9 @@ __all__ = [
     'MessageRecipient',
     'PublicProfileSetting',
     'BackupRecord',
-    'IDCardToken'
+    'IDCardToken',
+    'BugReport',
+    'ContactInquiry'
 ]
 
 

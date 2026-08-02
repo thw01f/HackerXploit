@@ -1,8 +1,27 @@
 from flask import Blueprint, request, jsonify, g
-from app.models import db, Notification
+from app.models import db, Notification, NotificationPreference
 from app.utils.decorators import require_auth
 
 notifications_bp = Blueprint('notifications', __name__, url_prefix='/api/notifications')
+
+@notifications_bp.route('/preferences', methods=['GET'])
+@require_auth
+def get_notification_preferences():
+    pref = NotificationPreference.get_or_create(g.current_user.id)
+    return jsonify(pref.to_dict()), 200
+
+@notifications_bp.route('/preferences', methods=['PUT'])
+@require_auth
+def update_notification_preferences():
+    data = request.get_json() or {}
+    pref = NotificationPreference.get_or_create(g.current_user.id)
+
+    for field in ('email_inbox_messages', 'email_announcements', 'email_account_updates'):
+        if field in data:
+            setattr(pref, field, bool(data[field]))
+
+    db.session.commit()
+    return jsonify(pref.to_dict()), 200
 
 @notifications_bp.route('', methods=['GET'])
 @require_auth

@@ -10,7 +10,7 @@
 
       <!-- Success Alert Banner -->
       <div v-if="successMsg" class="p-4 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 text-xs font-mono flex items-center justify-between">
-        <span>✅ {{ successMsg }}</span>
+        <span>{{ successMsg }}</span>
         <button @click="successMsg = ''" class="text-emerald-400 hover:text-white">&times;</button>
       </div>
 
@@ -30,9 +30,9 @@
             <div>
               <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Target Audience</label>
               <select v-model="newField.target_role" class="w-full bg-slate-900 border border-cyan-500/40 rounded-lg px-3 py-2 text-cyan-300 text-xs font-bold">
-                <option value="all">👥 All Users (Members & Teachers)</option>
-                <option value="member">🎓 Members Only</option>
-                <option value="teacher">👨‍🏫 Teachers Only</option>
+                <option value="all">All Users (Members & Teachers)</option>
+                <option value="member">Members Only</option>
+                <option value="teacher">Teachers Only</option>
               </select>
               <p class="text-[11px] text-slate-400 mt-1 font-mono">Selecting an audience dispatches fill-out notifications to matching users.</p>
             </div>
@@ -50,7 +50,12 @@
               <input type="checkbox" id="req" v-model="newField.required" class="w-4 h-4 text-cyan-500 rounded" />
               <label for="req" class="text-xs text-slate-300">Required Field</label>
             </div>
-            <button type="submit" class="w-full btn-neon-cyan text-xs py-2.5 font-bold">📢 Create Field & Dispatch Notifications</button>
+            <button type="submit" class="w-full btn-neon-cyan text-xs py-2.5 font-bold uppercase tracking-wider flex items-center justify-center gap-2">
+              <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              <span>Create Field & Dispatch Notifications</span>
+            </button>
           </form>
         </div>
 
@@ -96,7 +101,7 @@
                     f.target_role === 'teacher' ? 'bg-purple-950/60 text-purple-400 border-purple-500/30' :
                     'bg-slate-800 text-slate-300 border-slate-700'
                   ]">
-                    {{ f.target_role === 'member' ? '🎓 Members (Students & Admins)' : f.target_role === 'teacher' ? '👨‍🏫 Teachers Only' : '👥 All Users' }}
+                    {{ f.target_role === 'member' ? 'Members (Students & Admins)' : f.target_role === 'teacher' ? 'Teachers Only' : 'All Users' }}
                   </span>
                   <span v-if="f.required" class="text-amber-400 font-semibold">Required</span>
                 </div>
@@ -106,8 +111,11 @@
                 <button @click="toggleActive(f)" :class="f.active ? 'btn-neon-violet' : 'bg-slate-800 text-slate-400'" class="text-xs py-1.5 px-3">
                   {{ f.active ? 'Active' : 'Disabled' }}
                 </button>
-                <button @click="deleteField(f)" class="btn-ghost text-xs py-1.5 px-2.5 text-red-400 hover:bg-red-950/40">
-                  🗑️ Delete
+                <button @click="deleteField(f)" class="btn-ghost text-xs py-1.5 px-2.5 text-red-400 hover:bg-red-950/40 flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                  <span>Delete</span>
                 </button>
               </div>
             </div>
@@ -130,9 +138,9 @@ const successMsg = ref('')
 const activeTab = ref('all')
 
 const filterTabs = [
-  { id: 'all', label: '👥 All' },
-  { id: 'member', label: '🎓 Members' },
-  { id: 'teacher', label: '👨‍🏫 Teachers' }
+  { id: 'all', label: 'All' },
+  { id: 'member', label: 'Members' },
+  { id: 'teacher', label: 'Teachers' }
 ]
 
 const newField = ref({

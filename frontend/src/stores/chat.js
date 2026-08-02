@@ -14,10 +14,10 @@ export const useChatStore = defineStore('chat', {
   actions: {
     initSocket() {
       const authStore = useAuthStore()
-      if (!authStore.token || this.socket) return
+      if (!authStore.isAuthenticated || this.socket) return
 
       this.socket = io({
-        query: { token: authStore.token }
+        withCredentials: true
       })
 
       this.socket.on('presence_update', (data) => {
@@ -47,10 +47,8 @@ export const useChatStore = defineStore('chat', {
     },
 
     sendMessage(content) {
-      const authStore = useAuthStore()
       if (!this.socket || !content.trim()) return
       this.socket.emit('send_message', {
-        token: authStore.token,
         channel: this.activeChannel,
         content: content.trim()
       })

@@ -22,8 +22,9 @@ def get_leaderboard():
         ctf_score = float(ctf_stats.get('score', 0))
         ctf_solves = ctf_stats.get('solves', 0)
 
-        # Leaderboard ranking score strictly based on CTFd score
-        u.leaderboard_score = round(ctf_score, 1)
+        # Leaderboard ranking score strictly based on CTFd score if > 0, else fallback to calculated leaderboard_score
+        if ctf_score > 0:
+            u.leaderboard_score = round(ctf_score, 1)
 
         rankings.append({
             'user_id': u.id,
@@ -47,8 +48,8 @@ def get_leaderboard():
     except Exception:
         db.session.rollback()
 
-    # Sort rankings strictly by CTFd score descending
-    rankings.sort(key=lambda x: (x['ctfd_score'], x['ctfd_solves']), reverse=True)
+    # Sort rankings by overall leaderboard score descending
+    rankings.sort(key=lambda x: (x['leaderboard_score'], x['ctfd_score'], x['ctfd_solves']), reverse=True)
     for idx, item in enumerate(rankings, start=1):
         item['rank'] = idx
 

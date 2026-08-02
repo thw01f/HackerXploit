@@ -45,23 +45,29 @@
 git clone https://github.com/thw01f/HackerXploit.git
 cd HackerXploit
 
-# 2. Setup Virtual Environment & Backend Dependencies
+# 2. Configure environment (required — the stack refuses to start without unique secrets)
+cp .env.example .env
+# Edit .env and replace every REPLACE_WITH_A_UNIQUE_RANDOM_* placeholder.
+# Keep POSTGRES_PASSWORD/REDIS_PASSWORD in sync with DATABASE_URL/REDIS_URL.
+# For local dev you can set FLASK_ENV=development to skip the production secret checks.
+
+# 3. Setup Virtual Environment & Backend Dependencies
 python3 -m venv venv
 source venv/bin/activate
 pip install -r backend/requirements.txt
 
-# 3. Setup Frontend Dependencies
+# 4. Setup Frontend Dependencies
 cd frontend
 npm install
 cd ..
 
-# 4. Start Docker Services (Postgres & Redis)
-docker compose up postgres redis -d
+# 5. Start Docker Services (Postgres & Redis)
+docker compose up db redis -d
 
-# 5. Run Database Initialization & Seed Root Admin
+# 6. Run Database Initialization & Seed Root Admin
 PYTHONPATH=backend python scripts/init_db.py
 
-# 6. Run Test Suite
+# 7. Run Test Suite
 PYTHONPATH=backend pytest tests/ -v
 ```
 

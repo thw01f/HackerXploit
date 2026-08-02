@@ -28,7 +28,10 @@ git clone https://github.com/thw01f/HackerXploit.git
 cd HackerXploit
 
 cp .env.example .env
-nano .env  # Update SECRET_KEY, DB passwords, and SENTRY_DSN
+nano .env  # Replace every REPLACE_WITH_A_UNIQUE_RANDOM_* placeholder: SECRET_KEY,
+           # POSTGRES_PASSWORD/DATABASE_URL, REDIS_PASSWORD/REDIS_URL,
+           # CTFD_OAUTH_CLIENT_SECRET, and set SENTRY_DSN.
+           # The stack refuses to boot in production if any of these are left unset.
 ```
 
 ---
