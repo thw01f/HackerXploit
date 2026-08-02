@@ -2,6 +2,7 @@ import os
 import json
 import hashlib
 import zipfile
+import tarfile
 from datetime import datetime
 from flask import Blueprint, request, jsonify, g, current_app, send_file
 from app.models import db, BackupRecord, User, AuditLog
@@ -139,14 +140,42 @@ def restore_backup():
         return jsonify({'error': 'Invalid confirmation! You must type exact site name "HackerXploit" to restore.'}), 400
 
     record = BackupRecord.query.get_or_404(backup_id)
-    zip_path = os.path.join(get_backup_dir(), record.filename)
+    archive_path = os.path.join(get_backup_dir(), record.filename)
 
-    if not os.path.exists(zip_path):
+    if not os.path.exists(archive_path):
         return jsonify({'error': 'Backup file missing on server'}), 404
 
-    # Verify manifest inside zip
+    # Full backups (scripts/hx-backup.sh) are a real pg_dump + CTFd SQLite
+    # snapshot + both uploads trees, bundled as .tar.gz. Legacy manual/scheduled
+    # backups are a partial JSON snapshot (Users/AuditLog/BackupRecord only,
+    # not a full database dump) bundled as .zip.
+    if record.type == 'full':
+        try:
+            with tarfile.open(archive_path, 'r:gz') as tf:
+                manifest_data = json.loads(tf.extractfile('manifest.json').read().decode('utf-8'))
+        except Exception as e:
+            return jsonify({'error': f'Corrupted backup archive: {e}'}), 400
+
+        log_audit(
+            'BACKUP_RESTORE_REQUIRES_CLI',
+            target_type='BackupRecord',
+            target_id=record.id,
+            notes=f"Root admin requested restore of {record.filename}; full backups must be restored via scripts/hx-backup.sh (needs to stop/restart sibling containers, which this API process cannot safely do to itself)."
+        )
+        return jsonify({
+            'error': 'cli_required',
+            'message': (
+                'This is a full backup (platform database + CTFd database + both uploads trees) '
+                'and can be restored, but not from inside this API request: restoring stops and '
+                'restarts the web, CTFd, and worker containers, which this running process cannot '
+                'safely do to itself. Run the following on the host instead:\n\n'
+                f'  ./scripts/hx-backup.sh restore {record.filename}'
+            ),
+            'manifest': manifest_data
+        }), 501
+
     try:
-        with zipfile.ZipFile(zip_path, 'r') as zf:
+        with zipfile.ZipFile(archive_path, 'r') as zf:
             manifest_data = json.loads(zf.read('manifest.json').decode('utf-8'))
     except Exception as e:
         return jsonify({'error': f'Corrupted backup archive: {e}'}), 400
@@ -155,22 +184,23 @@ def restore_backup():
         'BACKUP_RESTORE_ATTEMPTED_NOT_IMPLEMENTED',
         target_type='BackupRecord',
         target_id=record.id,
-        notes=f"Root admin requested restore of {record.filename}; automated restore is not implemented, manual procedure required."
+        notes=f"Root admin requested restore of {record.filename}; this is a legacy partial-snapshot backup with no automated restore path."
     )
 
-    # Automated restore is intentionally NOT implemented: this archive only snapshots
-    # User/AuditLog/BackupRecord as a JSON manifest, not a full database dump, so an
-    # automated restore here would silently leave every other table (courses,
-    # competitions, chat, etc.) out of sync with the "restored" users - worse than doing
-    # nothing during a real incident. Follow the manual pg_dump/psql procedure in
-    # BACKUPS.md instead, which restores the full database consistently.
+    # This legacy format only ever snapshotted Users/AuditLog/BackupRecord as a JSON
+    # manifest, not a full database dump, so an automated restore here would silently
+    # leave every other table (courses, competitions, chat, etc.) out of sync with the
+    # "restored" users - worse than doing nothing during a real incident. There is no
+    # manual procedure that fixes this either, since the data to restore the rest of
+    # the schema from was simply never captured - take a new full backup going forward.
     return jsonify({
         'error': 'not_implemented',
         'message': (
-            'Automated restore is not implemented. This archive only contains a partial '
-            'JSON snapshot, not a full database dump, so restoring it here would leave '
-            'other tables inconsistent. Follow the manual PostgreSQL restore procedure '
-            'in BACKUPS.md (pg_dump/psql) to perform a full, consistent restore.'
+            'Automated restore is not implemented for this legacy backup. It only contains '
+            'a partial JSON snapshot (Users/AuditLog/BackupRecord), not a full database dump, '
+            'so restoring it would leave other tables inconsistent - and the rest of the schema '
+            'was never captured, so there is no way to complete it after the fact. Use '
+            '"./scripts/hx-backup.sh backup" going forward for a fully restorable backup.'
         ),
         'manifest': manifest_data
     }), 501
