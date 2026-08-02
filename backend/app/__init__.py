@@ -135,7 +135,15 @@ def create_app(config_class=Config):
             "ALTER TABLE users ADD COLUMN personal_gmail VARCHAR(255)",
             "ALTER TABLE users ADD COLUMN student_gmail VARCHAR(255)",
             "ALTER TABLE users ADD COLUMN resume_url VARCHAR(255)",
-            "ALTER TABLE users ADD COLUMN badge_id VARCHAR(64)"
+            "ALTER TABLE users ADD COLUMN badge_id VARCHAR(64)",
+            "ALTER TABLE competition_participation ADD COLUMN application_screenshots JSON DEFAULT '[]'",
+            "ALTER TABLE competition_participation ADD COLUMN github_link VARCHAR(512)",
+            "ALTER TABLE competition_participation ADD COLUMN prize_money VARCHAR(128)",
+            "ALTER TABLE competition_participation ADD COLUMN user_certificate_file VARCHAR(256)",
+            "ALTER TABLE competition_participation ADD COLUMN self_reported_result VARCHAR(32)",
+            "ALTER TABLE competition_participation ADD COLUMN completion_status VARCHAR(32) DEFAULT 'not_submitted'",
+            "ALTER TABLE competition_participation ADD COLUMN completion_submitted_at TIMESTAMP",
+            "UPDATE competition_participation SET application_screenshots = to_json(ARRAY[application_screenshot]) WHERE application_screenshot IS NOT NULL AND (application_screenshots IS NULL OR application_screenshots::text = '[]')"
         ]:
             try:
                 db.session.execute(text(stmt))

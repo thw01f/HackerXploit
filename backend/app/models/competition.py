@@ -64,20 +64,32 @@ class CompetitionParticipation(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     
     applied_at = db.Column(db.DateTime, default=datetime.utcnow)
-    application_screenshot = db.Column(db.String(256), nullable=True)
+    # Up to 3 registration-proof screenshot URLs. Auto-deleted from disk once the
+    # student submits their post-event completion report (space saving - the
+    # registration is by then superseded by verified attendance/result evidence).
+    application_screenshots = db.Column(db.JSON, default=list)
     # application_status: pending_verification | verified | rejected
     application_status = db.Column(db.String(32), default='pending_verification', nullable=False)
-    
+
     verified_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     verified_at = db.Column(db.DateTime, nullable=True)
-    
-    # result: participated | winner | runner_up | not_selected
+
+    # result: participated | winner | runner_up | not_selected (staff-authoritative, set via Wrap-up)
     result = db.Column(db.String(32), default='participated', nullable=True)
     placement_label = db.Column(db.String(64), nullable=True)  # e.g., "1st Place", "Top 10 Finalist"
-    certificate_file = db.Column(db.String(256), nullable=True)
-    event_photos = db.Column(db.JSON, default=list)  # list of photo URLs
-    summary_notes = db.Column(db.Text, nullable=True)
-    
+    certificate_file = db.Column(db.String(256), nullable=True)  # staff-side auto-generated PDF certificate
+    event_photos = db.Column(db.JSON, default=list)  # list of photo URLs, up to 5, student-submitted
+    summary_notes = db.Column(db.Text, nullable=True)  # student's remarks: how it went / learned / built
+
+    # Student self-service post-event completion report
+    github_link = db.Column(db.String(512), nullable=True)
+    prize_money = db.Column(db.String(128), nullable=True)  # free text: "N/A", "$500", "Swag only", etc.
+    user_certificate_file = db.Column(db.String(256), nullable=True)  # student's own uploaded certificate image
+    self_reported_result = db.Column(db.String(32), nullable=True)  # student's claim, staff confirms via `result`
+    # completion_status: not_submitted | pending_review | verified
+    completion_status = db.Column(db.String(32), default='not_submitted', nullable=False)
+    completion_submitted_at = db.Column(db.DateTime, nullable=True)
+
     submitted_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     submitted_at = db.Column(db.DateTime, nullable=True)
 
@@ -87,7 +99,7 @@ class CompetitionParticipation(db.Model):
             'competition_id': self.competition_id,
             'user_id': self.user_id,
             'applied_at': self.applied_at.isoformat() if self.applied_at else None,
-            'application_screenshot': self.application_screenshot,
+            'application_screenshots': self.application_screenshots or [],
             'application_status': self.application_status,
             'verified_by_id': self.verified_by_id,
             'verified_at': self.verified_at.isoformat() if self.verified_at else None,
@@ -96,6 +108,12 @@ class CompetitionParticipation(db.Model):
             'certificate_file': self.certificate_file,
             'event_photos': self.event_photos or [],
             'summary_notes': self.summary_notes,
+            'github_link': self.github_link,
+            'prize_money': self.prize_money,
+            'user_certificate_file': self.user_certificate_file,
+            'self_reported_result': self.self_reported_result,
+            'completion_status': self.completion_status,
+            'completion_submitted_at': self.completion_submitted_at.isoformat() if self.completion_submitted_at else None,
             'submitted_by_id': self.submitted_by_id,
             'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None
         }

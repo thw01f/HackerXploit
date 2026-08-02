@@ -103,6 +103,8 @@
           <option value="applied">Applied (Any)</option>
           <option value="verified">Verified Participant</option>
           <option value="not_applied">Not Applied</option>
+          <option value="completion_pending">Report Pending Review</option>
+          <option value="completed">Event Completed</option>
         </select>
       </div>
     </div>
@@ -158,17 +160,17 @@
               <span 
                 :class="[
                   'text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-md shadow-md backdrop-blur-md border flex items-center gap-1.5',
-                  comp.computed_status === 'ended' ? 'bg-slate-900/90 text-slate-400 border-slate-700' :
-                  comp.computed_status === 'ongoing' ? 'bg-emerald-950/90 text-[#9fef00] border-[#9fef00]/50 animate-pulse' :
+                  comp.status === 'ended' ? 'bg-slate-900/90 text-slate-400 border-slate-700' :
+                  comp.status === 'ongoing' ? 'bg-emerald-950/90 text-[#9fef00] border-[#9fef00]/50 animate-pulse' :
                   'bg-cyan-950/90 text-[#00f0ff] border-[#00f0ff]/50'
                 ]"
               >
                 <span :class="[
                   'w-1.5 h-1.5 rounded-full',
-                  comp.computed_status === 'ended' ? 'bg-slate-500' :
-                  comp.computed_status === 'ongoing' ? 'bg-[#9fef00]' : 'bg-[#00f0ff]'
+                  comp.status === 'ended' ? 'bg-slate-500' :
+                  comp.status === 'ongoing' ? 'bg-[#9fef00]' : 'bg-[#00f0ff]'
                 ]"></span>
-                {{ comp.computed_status || 'UPCOMING' }}
+                {{ (comp.status || 'upcoming').toUpperCase() }}
               </span>
             </div>
           </div>
@@ -246,9 +248,12 @@
               </div>
             </div>
 
-            <!-- User Involvement Badge Bar -->
+            <!-- User Involvement Badge Bar - always shown, even under the "All" filter tab -->
             <div class="flex items-center justify-between pt-1 gap-2">
-              <span class="text-xs text-slate-500 font-mono uppercase shrink-0">My Status</span>
+              <span class="text-xs text-slate-500 font-mono uppercase shrink-0 flex items-center gap-1.5">
+                My Status
+                <span v-if="comp.user_participation" class="text-slate-600 normal-case tracking-normal">({{ formatRegId(comp.user_participation.id) }})</span>
+              </span>
               <span :class="getInvolvementBadgeClass(comp.user_involvement)" class="text-[11px] uppercase px-2.5 py-0.5 rounded font-bold border text-right whitespace-nowrap">
                 {{ formatInvolvement(comp.user_involvement) }}
               </span>
@@ -258,36 +263,63 @@
 
         <!-- Card Footer Actions -->
         <div class="p-5 pt-0 space-y-2 font-mono">
-          <!-- Club Event Specific Action: Feedback (No proof submission required) -->
-          <template v-if="comp.category === 'club' || comp.category === 'Club'">
-            <button 
-              @click="openFeedbackModal(comp)" 
-              class="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all shadow"
-            >
-              <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-              </svg>
-              <span>Event Feedback & Rating</span>
-            </button>
-          </template>
+          <!-- Student/Member participation actions - staff use the dedicated management panel below instead -->
+          <template v-if="!authStore.isTeacher">
+            <!-- Club Event Specific Action: Feedback (No proof submission required) -->
+            <template v-if="comp.category === 'club' || comp.category === 'Club'">
+              <button
+                @click="openFeedbackModal(comp)"
+                class="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all shadow"
+              >
+                <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                </svg>
+                <span>Event Feedback & Rating</span>
+              </button>
+            </template>
 
-          <!-- Standard Competition Action: Proof Submission -->
-          <template v-else>
-            <button 
-              v-if="comp.user_involvement === 'not_applied'" 
-              @click="openApplyModal(comp)" 
-              class="w-full btn-neon-cyan text-xs py-2 rounded-xl font-bold"
-            >
-              I'm Applying (Submit Proof)
-            </button>
+            <!-- Standard Competition Action: Proof Submission -->
+            <template v-else>
+              <button
+                v-if="comp.user_involvement === 'not_applied'"
+                @click="openApplyModal(comp)"
+                class="w-full btn-neon-cyan text-xs py-2 rounded-xl font-bold"
+              >
+                I'm Applying (Submit Proof)
+              </button>
 
-            <button 
-              v-else 
-              @click="openApplyModal(comp)" 
-              class="w-full bg-slate-800 text-[#9fef00] hover:bg-slate-700 text-xs py-2 rounded-xl border border-slate-700 font-bold"
-            >
-              Update Registration Proof
-            </button>
+              <button
+                v-else-if="comp.status !== 'ended' || comp.user_involvement === 'rejected' || comp.user_involvement === 'pending_verification'"
+                @click="openApplyModal(comp)"
+                class="w-full bg-slate-800 text-[#9fef00] hover:bg-slate-700 text-xs py-2 rounded-xl border border-slate-700 font-bold"
+              >
+                Update Registration Proof
+              </button>
+
+              <!-- Post-event self-service completion report, only once staff-verified and the event has ended -->
+              <button
+                v-if="comp.status === 'ended' && comp.user_involvement === 'verified'"
+                @click="openCompletionModal(comp)"
+                class="w-full btn-neon-violet text-xs py-2 rounded-xl font-bold"
+              >
+                File Event Completion Report
+              </button>
+
+              <button
+                v-else-if="comp.user_involvement === 'completion_pending'"
+                @click="openCompletionModal(comp)"
+                class="w-full bg-slate-800 text-amber-300 hover:bg-slate-700 text-xs py-2 rounded-xl border border-amber-500/30 font-bold"
+              >
+                Awaiting Staff Review - Edit Report
+              </button>
+
+              <div
+                v-else-if="comp.user_involvement === 'completed'"
+                class="w-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-xs py-2 rounded-xl font-bold text-center"
+              >
+                ✓ Event Completed & Verified
+              </div>
+            </template>
           </template>
 
           <!-- Teacher & Admin Control Buttons -->
@@ -361,8 +393,8 @@
               <span :class="getPriorityBadgeClass(selectedComp?.priority)" class="text-xs font-mono font-extrabold uppercase px-2 py-0.5 rounded border">
                 {{ selectedComp?.priority }} PRIORITY
               </span>
-              <span :class="selectedComp?.computed_status === 'ended' ? 'bg-slate-900 text-slate-400 border-slate-700' : selectedComp?.computed_status === 'ongoing' ? 'bg-emerald-950 text-[#9fef00] border-[#9fef00]' : 'bg-cyan-950 text-[#00f0ff] border-[#00f0ff]'" class="text-xs font-mono font-bold uppercase px-2 py-0.5 rounded border">
-                {{ selectedComp?.computed_status || 'UPCOMING' }}
+              <span :class="selectedComp?.status === 'ended' ? 'bg-slate-900 text-slate-400 border-slate-700' : selectedComp?.status === 'ongoing' ? 'bg-emerald-950 text-[#9fef00] border-[#9fef00]' : 'bg-cyan-950 text-[#00f0ff] border-[#00f0ff]'" class="text-xs font-mono font-bold uppercase px-2 py-0.5 rounded border">
+                {{ (selectedComp?.status || 'upcoming').toUpperCase() }}
               </span>
             </div>
             <h2 class="text-2xl font-black text-white font-mono leading-tight drop-shadow-md">{{ selectedComp?.title }}</h2>
@@ -435,28 +467,37 @@
         <!-- Modal Footer Actions -->
         <div class="p-4 bg-[#090d16] border-t border-slate-800/80 flex items-center justify-between font-mono shrink-0">
           <button @click="showDetailsModal = false" class="text-slate-400 hover:text-white text-xs px-4 py-2">Close</button>
-          
+
           <div class="flex items-center gap-2">
             <!-- Student Action -->
-            <button 
-              v-if="selectedComp?.category === 'club' || selectedComp?.category === 'Club'"
-              @click="showDetailsModal = false; openFeedbackModal(selectedComp)" 
-              class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs py-2 px-4 rounded-lg font-bold"
-            >
-              ⭐ Event Feedback & Rating
-            </button>
-            <button 
-              v-else
-              @click="showDetailsModal = false; openApplyModal(selectedComp)" 
-              class="btn-neon-cyan text-xs py-2 px-4 rounded-lg font-bold"
-            >
-              Apply / Submit Proof
-            </button>
+            <template v-if="!authStore.isTeacher">
+              <button
+                v-if="selectedComp?.category === 'club' || selectedComp?.category === 'Club'"
+                @click="showDetailsModal = false; openFeedbackModal(selectedComp)"
+                class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs py-2 px-4 rounded-lg font-bold"
+              >
+                ⭐ Event Feedback & Rating
+              </button>
+              <button
+                v-else-if="selectedComp?.status === 'ended' && selectedComp?.user_involvement === 'verified'"
+                @click="showDetailsModal = false; openCompletionModal(selectedComp)"
+                class="btn-neon-violet text-xs py-2 px-4 rounded-lg font-bold"
+              >
+                File Event Completion Report
+              </button>
+              <button
+                v-else
+                @click="showDetailsModal = false; openApplyModal(selectedComp)"
+                class="btn-neon-cyan text-xs py-2 px-4 rounded-lg font-bold"
+              >
+                Apply / Submit Proof
+              </button>
+            </template>
 
             <!-- Teacher/Admin Action -->
-            <button 
-              v-if="authStore.isTeacher" 
-              @click="showDetailsModal = false; openAttendanceModal(selectedComp)" 
+            <button
+              v-if="authStore.isTeacher"
+              @click="showDetailsModal = false; openAttendanceModal(selectedComp)"
               class="bg-amber-400 text-black font-bold text-xs py-2 px-4 rounded-lg"
             >
               Teacher Scanner HUD
@@ -467,28 +508,119 @@
       </div>
     </div>
 
-    <!-- Modal 1: Student Application Proof -->
-
-    <!-- Modal 1: Student Application Proof -->
+    <!-- Modal 1: Student Application Proof (up to 3 screenshots, 5MB each) -->
     <div v-if="showApplyModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div class="glass-panel max-w-lg w-full p-6 space-y-4">
         <h3 class="text-lg font-bold text-white">Upload Registration Proof</h3>
         <p class="text-xs text-slate-400">
-          Upload a screenshot of your external registration confirmation or team ticket for <strong class="text-white">{{ selectedComp?.title }}</strong>.
+          Upload up to 3 screenshots of your external registration confirmation or team ticket for <strong class="text-white">{{ selectedComp?.title }}</strong>. Max 5MB per image.
         </p>
 
         <div class="space-y-3">
-          <input type="file" @change="handleFileUpload" accept="image/*" class="input-field text-xs py-2" />
+          <input
+            v-if="applyScreenshots.length < 3"
+            type="file"
+            @change="handleFileUpload"
+            accept="image/*"
+            class="input-field text-xs py-2"
+          />
+          <p v-else class="text-xs text-amber-400 font-mono">Maximum of 3 screenshots reached. Remove one to add another.</p>
           <div v-if="uploading" class="text-xs text-cyan-400 font-mono">Uploading & scanning with ClamAV...</div>
-          <div v-if="uploadedScreenshotUrl" class="w-full h-36 rounded overflow-hidden bg-slate-900 border border-slate-700">
-            <img :src="uploadedScreenshotUrl" alt="Proof" class="w-full h-full object-contain" />
+          <p v-if="applyError" class="text-xs text-rose-400 font-bold">{{ applyError }}</p>
+
+          <div v-if="applyScreenshots.length" class="grid grid-cols-3 gap-2">
+            <div v-for="(url, idx) in applyScreenshots" :key="idx" class="relative w-full h-24 rounded overflow-hidden bg-slate-900 border border-slate-700 group">
+              <img :src="url" alt="Proof" class="w-full h-full object-cover" />
+              <button
+                @click="applyScreenshots.splice(idx, 1)"
+                type="button"
+                class="absolute top-1 right-1 bg-rose-950/90 text-rose-300 rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+              >✕</button>
+            </div>
           </div>
         </div>
 
         <div class="flex justify-end gap-3 pt-2">
           <button @click="showApplyModal = false" class="text-xs text-slate-400 hover:text-white px-3 py-2 font-mono">Cancel</button>
-          <button @click="submitApplicationProof" :disabled="!uploadedScreenshotUrl || submitting" class="btn-neon-cyan text-xs py-2 px-5">
+          <button @click="submitApplicationProof" :disabled="!applyScreenshots.length || submitting" class="btn-neon-cyan text-xs py-2 px-5">
             Submit Application
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 1b: Student Post-Event Completion Report -->
+    <div v-if="showCompletionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div class="glass-panel max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-lg font-bold text-white">Event Completion Report</h3>
+        <p class="text-xs text-slate-400">
+          Tell us how <strong class="text-white">{{ selectedComp?.title }}</strong> went. This gets reviewed by staff and finalized in your trophy case.
+        </p>
+
+        <div>
+          <label class="block font-mono text-slate-400 mb-1 text-xs">Result</label>
+          <select v-model="completionData.self_reported_result" class="input-field text-xs py-1.5">
+            <option value="participated">Participated</option>
+            <option value="winner">Winner</option>
+            <option value="runner_up">Runner Up</option>
+            <option value="not_selected">Not Selected</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-mono text-slate-400 mb-1 text-xs">How was the event? What did you learn / build?</label>
+          <textarea v-model="completionData.summary_notes" rows="3" class="input-field text-xs" placeholder="e.g. Built a phishing detector, learned about DNS tunneling..."></textarea>
+        </div>
+
+        <div>
+          <label class="block font-mono text-slate-400 mb-1 text-xs">GitHub Link (if you built something)</label>
+          <input v-model="completionData.github_link" type="url" class="input-field text-xs py-1.5" placeholder="https://github.com/you/project" />
+        </div>
+
+        <div>
+          <label class="block font-mono text-slate-400 mb-1 text-xs">Prize Money (if any)</label>
+          <input v-model="completionData.prize_money" type="text" class="input-field text-xs py-1.5" placeholder="e.g. ₹5,000, or leave blank if none" />
+        </div>
+
+        <div class="space-y-2">
+          <label class="block font-mono text-slate-400 mb-1 text-xs">Your Certificate (winner/participation), separate from event photos</label>
+          <input type="file" @change="handleCertificateUpload" accept="image/*" class="input-field text-xs py-2" />
+          <div v-if="certUploading" class="text-xs text-cyan-400 font-mono">Uploading certificate...</div>
+          <div v-if="completionData.user_certificate_file" class="w-full h-28 rounded overflow-hidden bg-slate-900 border border-slate-700">
+            <img :src="completionData.user_certificate_file" class="w-full h-full object-contain" />
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block font-mono text-slate-400 mb-1 text-xs">Event Photos (up to 5, 5MB each)</label>
+          <input
+            v-if="completionData.event_photos.length < 5"
+            type="file"
+            @change="handleEventPhotoUpload"
+            accept="image/*"
+            class="input-field text-xs py-2"
+          />
+          <p v-else class="text-xs text-amber-400 font-mono">Maximum of 5 event photos reached.</p>
+          <div v-if="eventPhotoUploading" class="text-xs text-cyan-400 font-mono">Uploading photo...</div>
+          <div v-if="completionData.event_photos.length" class="grid grid-cols-3 gap-2">
+            <div v-for="(url, idx) in completionData.event_photos" :key="idx" class="relative w-full h-24 rounded overflow-hidden bg-slate-900 border border-slate-700 group">
+              <img :src="url" class="w-full h-full object-cover" />
+              <button
+                @click="completionData.event_photos.splice(idx, 1)"
+                type="button"
+                class="absolute top-1 right-1 bg-rose-950/90 text-rose-300 rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+              >✕</button>
+            </div>
+          </div>
+        </div>
+
+        <p v-if="completionError" class="text-xs text-rose-400 font-bold">{{ completionError }}</p>
+        <p class="text-[11px] text-slate-500">Submitting this will delete your registration proof screenshots - they're superseded by this report.</p>
+
+        <div class="flex justify-end gap-3 pt-2 border-t border-slate-800">
+          <button @click="showCompletionModal = false" class="text-xs text-slate-400 hover:text-white px-3 py-2 font-mono">Cancel</button>
+          <button @click="submitCompletionReport" :disabled="submitting" class="btn-neon-violet text-xs py-2 px-5">
+            Submit Completion Report
           </button>
         </div>
       </div>
@@ -614,11 +746,14 @@
               </div>
             </div>
 
-            <!-- Right: Side-by-side Screenshot -->
-            <div class="w-full h-44 bg-slate-950 rounded border border-slate-800 overflow-hidden">
-              <a :href="app.application_screenshot" target="_blank" class="block w-full h-full">
-                <img :src="app.application_screenshot" alt="Screenshot Proof" class="w-full h-full object-contain" />
+            <!-- Right: Side-by-side Screenshots (up to 3) -->
+            <div v-if="app.application_screenshots?.length" class="grid grid-cols-3 gap-2">
+              <a v-for="(url, idx) in app.application_screenshots" :key="idx" :href="url" target="_blank" class="block w-full h-24 bg-slate-950 rounded border border-slate-800 overflow-hidden">
+                <img :src="url" alt="Screenshot Proof" class="w-full h-full object-cover" />
               </a>
+            </div>
+            <div v-else class="w-full h-24 bg-slate-950 rounded border border-slate-800 flex items-center justify-center text-slate-600 text-xs font-mono">
+              No screenshots (superseded by completion report)
             </div>
           </div>
         </div>
@@ -644,6 +779,32 @@
           <div v-for="(p, idx) in wrapupParticipants" :key="p.id" class="p-3 bg-slate-900 rounded border border-slate-800 space-y-2">
             <div class="flex justify-between items-center font-bold text-slate-100">
               <span>{{ p.applicant_full_name }} (@{{ p.applicant_username }})</span>
+              <span
+                v-if="p.completion_status && p.completion_status !== 'not_submitted'"
+                :class="p.completion_status === 'verified' ? 'text-emerald-400' : 'text-violet-400'"
+                class="text-[11px] uppercase font-bold"
+              >
+                {{ p.completion_status === 'verified' ? 'Report Verified' : 'Report Pending Review' }}
+              </span>
+            </div>
+
+            <!-- Read-only preview of the student's own self-submitted completion report -->
+            <div v-if="p.completion_status && p.completion_status !== 'not_submitted'" class="bg-slate-950/60 rounded-lg border border-slate-800 p-2.5 space-y-1.5">
+              <p v-if="p.summary_notes" class="text-slate-300"><span class="text-slate-500">Remarks:</span> {{ p.summary_notes }}</p>
+              <p v-if="p.github_link"><span class="text-slate-500">GitHub:</span> <a :href="p.github_link" target="_blank" class="text-cyan-400 hover:underline">{{ p.github_link }}</a></p>
+              <p v-if="p.prize_money"><span class="text-slate-500">Prize:</span> <span class="text-amber-400 font-bold">{{ p.prize_money }}</span></p>
+              <p v-if="p.self_reported_result"><span class="text-slate-500">Student claims:</span> <span class="text-white font-bold uppercase">{{ p.self_reported_result }}</span></p>
+              <div v-if="p.event_photos?.length" class="grid grid-cols-5 gap-1.5 pt-1">
+                <a v-for="(url, pidx) in p.event_photos" :key="pidx" :href="url" target="_blank" class="block w-full h-14 rounded overflow-hidden bg-slate-900 border border-slate-800">
+                  <img :src="url" class="w-full h-full object-cover" />
+                </a>
+              </div>
+              <div v-if="p.user_certificate_file" class="pt-1">
+                <span class="text-slate-500 block mb-1">Certificate:</span>
+                <a :href="p.user_certificate_file" target="_blank" class="block w-24 h-16 rounded overflow-hidden bg-slate-900 border border-slate-800">
+                  <img :src="p.user_certificate_file" class="w-full h-full object-cover" />
+                </a>
+              </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
@@ -1161,6 +1322,7 @@ const uploadPosterFile = async (event) => {
 }
 
 const showApplyModal = ref(false)
+const showCompletionModal = ref(false)
 const showAnnounceModal = ref(false)
 const showQueueModal = ref(false)
 const showWrapupModal = ref(false)
@@ -1171,7 +1333,20 @@ const attendanceLoading = ref(false)
 const selectedComp = ref(null)
 const uploading = ref(false)
 const submitting = ref(false)
-const uploadedScreenshotUrl = ref('')
+const applyScreenshots = ref([])
+const applyError = ref('')
+
+const certUploading = ref(false)
+const eventPhotoUploading = ref(false)
+const completionError = ref('')
+const completionData = ref({
+  self_reported_result: 'participated',
+  summary_notes: '',
+  github_link: '',
+  prize_money: '',
+  user_certificate_file: '',
+  event_photos: []
+})
 
 const queueList = ref([])
 const wrapupParticipants = ref([])
@@ -1243,6 +1418,8 @@ const getPriorityBadgeClass = (priority) => {
 }
 
 const getInvolvementBadgeClass = (status) => {
+  if (status === 'completed') return 'bg-cyan-950/80 text-cyan-300 border-cyan-500/40'
+  if (status === 'completion_pending') return 'bg-violet-950/80 text-violet-300 border-violet-500/40'
   if (status === 'verified') return 'bg-emerald-950/80 text-emerald-400 border-emerald-600/40'
   if (status === 'pending_verification') return 'bg-amber-950/80 text-amber-400 border-amber-600/40'
   if (status === 'rejected') return 'bg-red-950/80 text-red-400 border-red-600/40'
@@ -1250,51 +1427,126 @@ const getInvolvementBadgeClass = (status) => {
 }
 
 const formatInvolvement = (status) => {
+  if (status === 'completed') return 'Event Completed'
+  if (status === 'completion_pending') return 'Report Pending Review'
   if (status === 'pending_verification') return 'Pending Verification'
   if (status === 'verified') return 'Verified Participant'
   if (status === 'rejected') return 'Rejected'
   return 'Not Applied'
 }
 
+// Short reg-id badge shown regardless of active filter tab, e.g. when
+// "View All" is selected, so an applied competition is still identifiable at a glance.
+const formatRegId = (participationId) => `CP-${String(participationId).padStart(5, '0')}`
+
 const openApplyModal = (comp) => {
   selectedComp.value = comp
-  uploadedScreenshotUrl.value = comp.user_participation?.application_screenshot || ''
+  applyScreenshots.value = [...(comp.user_participation?.application_screenshots || [])]
+  applyError.value = ''
   showApplyModal.value = true
+}
+
+const uploadToFeature = async (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('feature', 'competitions')
+  const res = await axios.post('/api/uploads', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+  return res.data.url
 }
 
 const handleFileUpload = async (event) => {
   const file = event.target.files[0]
-  if (!file) return
+  event.target.value = ''
+  if (!file || applyScreenshots.value.length >= 3) return
 
   uploading.value = true
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('feature', 'competitions')
-
+  applyError.value = ''
   try {
-    const res = await axios.post('/api/uploads', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-    uploadedScreenshotUrl.value = res.data.url
+    applyScreenshots.value.push(await uploadToFeature(file))
   } catch (err) {
-    alert(err.response?.data?.error || "couldn't be verified as a valid file")
+    applyError.value = err.response?.data?.error || "couldn't be verified as a valid file"
   } finally {
     uploading.value = false
   }
 }
 
 const submitApplicationProof = async () => {
-  if (!selectedComp.value || !uploadedScreenshotUrl.value) return
+  if (!selectedComp.value || !applyScreenshots.value.length) return
   submitting.value = true
 
   try {
     await axios.post(`/api/competitions/${selectedComp.value.id}/apply`, {
-      application_screenshot: uploadedScreenshotUrl.value
+      application_screenshots: applyScreenshots.value
     })
     showApplyModal.value = false
     await fetchCompetitions()
   } catch (err) {
     alert(err.response?.data?.error || 'Failed to submit application')
+  } finally {
+    submitting.value = false
+  }
+}
+
+const openCompletionModal = (comp) => {
+  selectedComp.value = comp
+  const p = comp.user_participation || {}
+  completionData.value = {
+    self_reported_result: p.self_reported_result || 'participated',
+    summary_notes: p.summary_notes || '',
+    github_link: p.github_link || '',
+    prize_money: p.prize_money || '',
+    user_certificate_file: p.user_certificate_file || '',
+    event_photos: [...(p.event_photos || [])]
+  }
+  completionError.value = ''
+  showCompletionModal.value = true
+}
+
+const handleCertificateUpload = async (event) => {
+  const file = event.target.files[0]
+  event.target.value = ''
+  if (!file) return
+
+  certUploading.value = true
+  completionError.value = ''
+  try {
+    completionData.value.user_certificate_file = await uploadToFeature(file)
+  } catch (err) {
+    completionError.value = err.response?.data?.error || "couldn't be verified as a valid file"
+  } finally {
+    certUploading.value = false
+  }
+}
+
+const handleEventPhotoUpload = async (event) => {
+  const file = event.target.files[0]
+  event.target.value = ''
+  if (!file || completionData.value.event_photos.length >= 5) return
+
+  eventPhotoUploading.value = true
+  completionError.value = ''
+  try {
+    completionData.value.event_photos.push(await uploadToFeature(file))
+  } catch (err) {
+    completionError.value = err.response?.data?.error || "couldn't be verified as a valid file"
+  } finally {
+    eventPhotoUploading.value = false
+  }
+}
+
+const submitCompletionReport = async () => {
+  if (!selectedComp.value) return
+  submitting.value = true
+  completionError.value = ''
+
+  try {
+    await axios.post(`/api/competitions/${selectedComp.value.id}/complete`, completionData.value)
+    showCompletionModal.value = false
+    await fetchCompetitions()
+  } catch (err) {
+    completionError.value = err.response?.data?.error || 'Failed to submit completion report'
   } finally {
     submitting.value = false
   }
@@ -1349,8 +1601,16 @@ const openWrapupModal = async (comp) => {
       participation_id: a.id,
       applicant_full_name: a.applicant_full_name,
       applicant_username: a.applicant_username,
-      result: a.result || 'participated',
-      placement_label: a.placement_label || ''
+      // Prefill from the student's own claim while staff hasn't finalized yet
+      result: (a.completion_status === 'pending_review' && a.self_reported_result) ? a.self_reported_result : (a.result || 'participated'),
+      placement_label: a.placement_label || '',
+      completion_status: a.completion_status,
+      self_reported_result: a.self_reported_result,
+      summary_notes: a.summary_notes,
+      github_link: a.github_link,
+      prize_money: a.prize_money,
+      user_certificate_file: a.user_certificate_file,
+      event_photos: a.event_photos || []
     }))
     wrapupData.value.summary_notes = comp.wrapup_notes || ''
     showWrapupModal.value = true

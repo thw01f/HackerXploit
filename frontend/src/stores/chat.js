@@ -9,6 +9,7 @@ export const useChatStore = defineStore('chat', {
     activeChannel: 'general',
     messages: [],
     onlineCount: 1,
+    onlineUsers: [],
     isOpen: false
   }),
   actions: {
@@ -22,6 +23,7 @@ export const useChatStore = defineStore('chat', {
 
       this.socket.on('presence_update', (data) => {
         this.onlineCount = data.online_count
+        this.onlineUsers = data.online_users || []
       })
 
       this.socket.on('new_message', (msg) => {

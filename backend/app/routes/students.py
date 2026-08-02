@@ -152,7 +152,7 @@ def build_structured_profile(user):
             'starts_at': comp.starts_at.isoformat() if comp.starts_at else None,
             'ends_at': comp.ends_at.isoformat() if comp.ends_at else None,
             'applied_at': p.applied_at.isoformat() if p.applied_at else None,
-            'application_screenshot': p.application_screenshot,
+            'application_screenshots': p.application_screenshots or [],
             'application_status': p.application_status,
             'verified_by_id': p.verified_by_id,
             'verified_by_name': (verifier.full_name or verifier.username) if verifier else None,
@@ -162,6 +162,12 @@ def build_structured_profile(user):
             'certificate_file': p.certificate_file,
             'summary_notes': p.summary_notes,
             'event_photos': p.event_photos or [],
+            'github_link': p.github_link,
+            'prize_money': p.prize_money,
+            'user_certificate_file': p.user_certificate_file,
+            'self_reported_result': p.self_reported_result,
+            'completion_status': p.completion_status,
+            'completion_submitted_at': p.completion_submitted_at.isoformat() if p.completion_submitted_at else None,
             'certificate': cert.to_dict() if cert else None
         })
     # Newest applications first, so a teacher scanning the profile sees

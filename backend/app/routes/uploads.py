@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.services.upload_service import UploadPipeline, GENERIC_SECURITY_ERROR
+from app.services.upload_service import UploadPipeline, GENERIC_SECURITY_ERROR, FILE_TOO_LARGE_ERROR
 from app.utils.decorators import require_auth, log_audit
 
 uploads_bp = Blueprint('uploads', __name__, url_prefix='/api/uploads')
@@ -21,7 +21,8 @@ def upload_file():
         result = UploadPipeline.process_and_save(file_item, feature=feature)
         log_audit('FILE_UPLOAD', target_type='File', details={'url': result['url'], 'feature': feature})
         return jsonify(result), 201
-    except ValueError:
-        return jsonify({'error': GENERIC_SECURITY_ERROR}), 400
+    except ValueError as e:
+        error_msg = str(e) if str(e) == FILE_TOO_LARGE_ERROR else GENERIC_SECURITY_ERROR
+        return jsonify({'error': error_msg}), 400
     except Exception:
         return jsonify({'error': GENERIC_SECURITY_ERROR}), 400

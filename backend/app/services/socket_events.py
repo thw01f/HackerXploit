@@ -1,8 +1,12 @@
 import hashlib
+import re
 from flask import request
 from flask_socketio import emit, join_room, leave_room
 from app import socketio, db
 from app.models import ChatMessage, User, DeviceSession, SiteFeatureToggle
+from app.models.chat import Notification
+
+MENTION_RE = re.compile(r'@([a-zA-Z0-9_.]+)')
 
 online_users = set()
 # Per-connection auth state, resolved once from the session cookie at connect time
@@ -22,6 +26,23 @@ def _authenticate_socket():
         return None
     return user
 
+def _broadcast_presence():
+    users = User.query.filter(User.id.in_(online_users)).all() if online_users else []
+    payload = {
+        'online_count': len(online_users),
+        'online_users': [
+            {
+                'id': u.id,
+                'username': u.username,
+                'full_name': u.full_name,
+                'avatar_url': u.avatar_url,
+                'role': 'root_admin' if u.is_root_admin else u.role
+            }
+            for u in users
+        ]
+    }
+    emit('presence_update', payload, broadcast=True)
+
 @socketio.on('connect')
 def handle_connect():
     user = _authenticate_socket()
@@ -30,14 +51,14 @@ def handle_connect():
     sid_to_user[request.sid] = user.id
     online_users.add(user.id)
     join_room(f"user_{user.id}")
-    emit('presence_update', {'online_count': len(online_users)}, broadcast=True)
+    _broadcast_presence()
 
 @socketio.on('disconnect')
 def handle_disconnect():
     user_id = sid_to_user.pop(request.sid, None)
     if user_id is not None and user_id not in sid_to_user.values():
         online_users.discard(user_id)
-    emit('presence_update', {'online_count': len(online_users)}, broadcast=True)
+    _broadcast_presence()
 
 @socketio.on('join_channel')
 def handle_join(data):
@@ -80,6 +101,26 @@ def handle_send_message(data):
     payload['sender_role'] = user.role
 
     emit('new_message', payload, room=channel)
+    _notify_mentions(msg, user, channel)
+
+def _notify_mentions(msg, sender, channel):
+    usernames = set(MENTION_RE.findall(msg.content))
+    if not usernames:
+        return
+    mentioned_users = User.query.filter(User.username.in_(usernames)).all()
+    for u in mentioned_users:
+        if u.id == sender.id:
+            continue
+        notif = Notification(
+            user_id=u.id,
+            type='mention',
+            title=f"{sender.full_name or sender.username} mentioned you",
+            message=msg.content[:120] + ('...' if len(msg.content) > 120 else ''),
+            link='/chat'
+        )
+        db.session.add(notif)
+        db.session.commit()
+        emit_user_notification(u.id, notif.to_dict())
 
 def emit_user_notification(user_id, notification_dict):
     """Utility function to broadcast real-time notification to specific user room"""

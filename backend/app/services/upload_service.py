@@ -28,6 +28,14 @@ COURSE_ATTACHMENT_MIMES = STANDARD_ALLOWED_MIMES | {
 
 GENERIC_SECURITY_ERROR = "couldn't be verified as a valid file"
 
+# Per-feature file size ceilings, enforced on top of the global Flask
+# MAX_CONTENT_LENGTH - competition proof/photos are phone screenshots, not
+# archives, so they get a tighter cap to keep disk usage predictable.
+FEATURE_MAX_BYTES = {
+    'competitions': 5 * 1024 * 1024,
+}
+FILE_TOO_LARGE_ERROR = "file exceeds the maximum allowed size (5MB)"
+
 class UploadPipeline:
     @staticmethod
     def detect_mime(file_stream) -> str:
@@ -110,6 +118,10 @@ class UploadPipeline:
         if not file_bytes:
             raise ValueError(GENERIC_SECURITY_ERROR)
 
+        max_bytes = FEATURE_MAX_BYTES.get(feature)
+        if max_bytes and len(file_bytes) > max_bytes:
+            raise ValueError(FILE_TOO_LARGE_ERROR)
+
         # 1. Real MIME Sniffing via python-magic
         detected_mime = cls.detect_mime(file_storage)
 
@@ -189,3 +201,29 @@ class UploadPipeline:
             'mime': detected_mime,
             'size': len(file_bytes)
         }
+
+    @staticmethod
+    def delete_uploaded_file(url: str):
+        """
+        Best-effort removal of a previously uploaded file (and its thumbnail, if
+        any) from disk given its public /uploads/... URL. Used for space-saving
+        cleanup (e.g. registration proof deleted once superseded by an event
+        completion report) - failures are swallowed since a missing file on
+        disk should never block the caller's own transaction.
+        """
+        if not url or not url.startswith('/uploads/'):
+            return
+        upload_base = current_app.config.get('UPLOAD_FOLDER', '/var/uploads') if current_app else '/var/uploads'
+        relative_path = url[len('/uploads/'):]
+        candidates = [os.path.join(upload_base, relative_path)]
+
+        filename = os.path.basename(relative_path)
+        dirname = os.path.dirname(relative_path)
+        candidates.append(os.path.join(upload_base, dirname, 'thumbs', f'thumb_{filename}'))
+
+        for path in candidates:
+            try:
+                if os.path.isfile(path):
+                    os.remove(path)
+            except OSError:
+                pass
