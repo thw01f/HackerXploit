@@ -951,7 +951,7 @@
                 <tr v-for="att in attendanceList" :key="att.id" class="hover:bg-slate-800/50">
                   <td class="p-3">
                     <div class="flex items-center gap-2">
-                      <img :src="att.user_avatar_url || '/logo.png'" alt="Avatar" class="w-6 h-6 rounded-full object-cover border border-slate-700" />
+                      <img :src="att.user_avatar_url || '/logo.png'" alt="Avatar" @error="$event.target.src='/logo.png'" class="w-6 h-6 rounded-full object-cover border border-slate-700" />
                       <div>
                         <span class="font-bold text-white block">{{ att.user_full_name }}</span>
                         <span class="text-[10px] text-slate-400">@{{ att.user_username }}</span>
@@ -991,7 +991,7 @@
             <div v-for="fb in eventFeedbackList" :key="fb.id" class="p-4 bg-[#111927] rounded-xl border border-slate-800 space-y-2 text-xs">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                  <img :src="fb.user_avatar_url || '/logo.png'" class="w-6 h-6 rounded-full border border-slate-700 object-cover" />
+                  <img :src="fb.user_avatar_url || '/logo.png'" @error="$event.target.src='/logo.png'" class="w-6 h-6 rounded-full border border-slate-700 object-cover" />
                   <div>
                     <span class="font-bold text-white">{{ fb.user_full_name }}</span>
                     <span class="text-[10px] text-slate-400 ml-1.5">@{{ fb.user_username }}</span>

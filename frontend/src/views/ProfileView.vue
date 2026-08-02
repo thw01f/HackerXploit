@@ -28,7 +28,7 @@
 
           <div class="flex items-center space-x-6">
             <div class="relative">
-              <img :src="authStore.user?.avatar_url || '/uploads/avatars/default.png'" class="w-20 h-20 rounded-2xl object-cover border-2 border-cyan-500/40" />
+              <img :src="authStore.user?.avatar_url || '/uploads/avatars/default.png'" @error="$event.target.src='/uploads/avatars/default.png'" class="w-20 h-20 rounded-2xl object-cover border-2 border-cyan-500/40" />
             </div>
             <div>
               <label class="btn-ghost text-xs py-2 px-4 cursor-pointer inline-block">

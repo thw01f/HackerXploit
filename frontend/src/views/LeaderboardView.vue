@@ -27,7 +27,7 @@
       <!-- #2 Silver -->
       <div class="glass-panel p-6 border-slate-400/40 text-center space-y-3 order-2 md:order-1 mt-4 bg-[#0d1420]">
         <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-400/20 text-slate-300 border border-slate-400/40">🥈 RANK #2</span>
-        <img :src="filteredRankings[1].avatar_url || '/uploads/avatars/default.png'" class="w-20 h-20 mx-auto rounded-full object-cover border-2 border-slate-400" />
+        <img :src="filteredRankings[1].avatar_url || '/uploads/avatars/default.png'" @error="$event.target.src='/uploads/avatars/default.png'" class="w-20 h-20 mx-auto rounded-full object-cover border-2 border-slate-400" />
         <div>
           <h3 class="font-bold text-white text-base">{{ filteredRankings[1].full_name }}</h3>
           <p class="text-xs text-[#00f0ff]">@{{ filteredRankings[1].username }}</p>
@@ -41,7 +41,7 @@
       <!-- #1 Gold -->
       <div class="glass-panel p-8 border-amber-500/60 text-center space-y-4 order-1 md:order-2 shadow-2xl shadow-amber-500/10 scale-105 bg-[#0d1420]">
         <span class="inline-block px-4 py-1.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50">👑 RANK #1 (CHAMPION)</span>
-        <img :src="filteredRankings[0].avatar_url || '/uploads/avatars/default.png'" class="w-24 h-24 mx-auto rounded-full object-cover border-4 border-amber-400 shadow-lg shadow-amber-500/30" />
+        <img :src="filteredRankings[0].avatar_url || '/uploads/avatars/default.png'" @error="$event.target.src='/uploads/avatars/default.png'" class="w-24 h-24 mx-auto rounded-full object-cover border-4 border-amber-400 shadow-lg shadow-amber-500/30" />
         <div>
           <h3 class="font-bold text-white text-lg">{{ filteredRankings[0].full_name }}</h3>
           <p class="text-xs text-[#00f0ff]">@{{ filteredRankings[0].username }}</p>
@@ -56,7 +56,7 @@
       <!-- #3 Bronze -->
       <div class="glass-panel p-6 border-amber-700/40 text-center space-y-3 order-3 mt-8 bg-[#0d1420]">
         <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-800/20 text-amber-500 border border-amber-700/40">🥉 RANK #3</span>
-        <img :src="filteredRankings[2].avatar_url || '/uploads/avatars/default.png'" class="w-20 h-20 mx-auto rounded-full object-cover border-2 border-amber-600" />
+        <img :src="filteredRankings[2].avatar_url || '/uploads/avatars/default.png'" @error="$event.target.src='/uploads/avatars/default.png'" class="w-20 h-20 mx-auto rounded-full object-cover border-2 border-amber-600" />
         <div>
           <h3 class="font-bold text-white text-base">{{ filteredRankings[2].full_name }}</h3>
           <p class="text-xs text-[#00f0ff]">@{{ filteredRankings[2].username }}</p>
@@ -92,7 +92,7 @@
               </td>
               <td class="px-6 py-4">
                 <div class="flex items-center space-x-3">
-                  <img :src="user.avatar_url || '/uploads/avatars/default.png'" class="w-8 h-8 rounded-full object-cover border border-[#1f293d]" />
+                  <img :src="user.avatar_url || '/uploads/avatars/default.png'" @error="$event.target.src='/uploads/avatars/default.png'" class="w-8 h-8 rounded-full object-cover border border-[#1f293d]" />
                   <div>
                     <div class="flex items-center gap-2">
                       <p class="font-bold text-white text-xs leading-tight">{{ user.full_name }}</p>

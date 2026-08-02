@@ -32,7 +32,7 @@
           alt="Avatar" 
           :class="['w-16 h-16 rounded-xl object-cover border-2 shadow-lg', 'border-' + theme.hex]"
           :style="{ borderColor: theme.hex }"
-          @error="$event.target.src='https://api.dicebear.com/7.x/bottts/svg?seed=' + (user?.username || 'member')"
+          @error="$event.target.src='/uploads/avatars/default.png'"
         />
         <div :class="['absolute -bottom-1 -right-1 text-black text-[9px] font-mono font-bold px-1.5 py-0.2 rounded uppercase shadow', theme.chipBg]">
           {{ user?.is_root_admin || user?.role === 'root_admin' ? 'ROOT' : (user?.role === 'admin' ? 'ADMIN' : user?.role) }}
@@ -89,11 +89,13 @@ const formattedBadgeId = computed(() => {
   if (u.badge_id && (u.badge_id.startsWith('HX-ROOT-') || u.badge_id.startsWith('HX-ADM-') || u.badge_id.startsWith('HX-FAC-') || u.badge_id.startsWith('HX-STU-'))) {
     return u.badge_id
   }
+  // Backend always sends a real badge_id for approved users (see User.get_badge_id());
+  // this is only a placeholder for the brief window before that's ever computed.
   const numStr = String(u.id || 1).padStart(4, '0')
   if (u.is_root_admin || u.role === 'root_admin') return `HX-ROOT-${numStr}`
   if (u.role === 'admin') return `HX-ADM-${numStr}`
   if (u.role === 'teacher' || u.role === 'teacher_admin') return `HX-FAC-${numStr}`
-  return `HX-STU-${u.student_id || numStr}`
+  return `HX-STU-${numStr}`
 })
 
 const rotateX = ref(0)

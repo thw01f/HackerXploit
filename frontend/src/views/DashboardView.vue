@@ -111,7 +111,7 @@
             <div class="space-y-3">
               <div v-for="member in clubStore.members.slice(0, 5)" :key="member.id" class="flex items-center justify-between p-2.5 rounded-lg bg-[#090d16] border border-[#1f293d] hover:border-slate-700 transition-colors">
                 <div class="flex items-center space-x-3">
-                  <img :src="member.avatar_url || '/uploads/avatars/default.png'" class="w-8 h-8 rounded-lg object-cover border border-[#9fef00]/40" />
+                  <img :src="member.avatar_url || '/uploads/avatars/default.png'" @error="$event.target.src='/uploads/avatars/default.png'" class="w-8 h-8 rounded-lg object-cover border border-[#9fef00]/40" />
                   <div>
                     <span class="block text-xs font-bold text-white font-mono">{{ member.full_name || member.username }}</span>
                     <span class="block text-[10px] text-slate-400 font-mono">@{{ member.username }}</span>

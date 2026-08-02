@@ -21,6 +21,12 @@
         Loading ID badge credentials...
       </div>
 
+      <!-- Error State -->
+      <div v-else-if="loadError" class="py-16 text-center space-y-3 max-w-md mx-auto">
+        <p class="text-sm text-rose-400 font-mono">Failed to load your ID badge credentials.</p>
+        <button @click="fetchIDCard" class="btn-ghost text-xs py-2 px-4">Retry</button>
+      </div>
+
       <!-- Card Display -->
       <div v-else-if="cardData" class="max-w-2xl mx-auto flex flex-col items-center w-full relative">
 
@@ -203,13 +209,19 @@
               <h3 class="text-lg font-bold text-white font-mono mt-2">Scan for Attendance & Event Access</h3>
             </div>
 
-            <!-- Large Center QR Code -->
+            <!-- Large Center QR Code (rendered fully client-side - the verification
+                 URL embeds a live bearer token, so it's never sent to a third party
+                 just to draw a QR image) -->
             <div class="flex flex-col items-center justify-center p-4 bg-white rounded-xl border-2 border-[#00f0ff] shadow-xl max-w-[220px] mx-auto">
-              <img 
-                :src="`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(cardData.verification_url)}`" 
-                alt="QR Verification" 
-                class="w-44 h-44 object-contain" 
+              <img
+                v-if="qrDataUrl"
+                :src="qrDataUrl"
+                alt="QR Verification"
+                class="w-44 h-44 object-contain"
               />
+              <div v-else class="w-44 h-44 flex items-center justify-center text-[10px] font-mono text-slate-500">
+                Generating QR...
+              </div>
               <span class="text-[10px] font-mono font-bold text-slate-700 mt-2">HX-VERIFY-ID</span>
             </div>
 
@@ -324,7 +336,7 @@
                   <input 
                     v-model="scanTokenInput" 
                     type="text" 
-                    placeholder="Scan QR or enter Member ID (e.g. HX-2026-0001)..." 
+                    placeholder="Scan QR or enter Badge ID (e.g. HX-STU-0001)..."
                     class="input-field text-xs font-mono bg-[#0c1117] w-full border-slate-700"
                     @keyup.enter="submitAttendanceScan"
                   />
@@ -552,30 +564,46 @@ const theme = computed(() => {
   }
 })
 
+const loadError = ref(false)
+const qrDataUrl = ref('')
+
+const loadQrCodeScript = () => {
+  return new Promise((resolve) => {
+    if (window.QRCode) {
+      resolve(true)
+      return
+    }
+    const script = document.createElement('script')
+    script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.head.appendChild(script)
+  })
+}
+
+const generateQrCode = async (verificationUrl) => {
+  qrDataUrl.value = ''
+  if (!verificationUrl) return
+  const loaded = await loadQrCodeScript()
+  if (!loaded || !window.QRCode) return
+  try {
+    qrDataUrl.value = await window.QRCode.toDataURL(verificationUrl, { width: 360, margin: 1 })
+  } catch (err) {
+    console.error('Failed to render QR code', err)
+  }
+}
+
 const fetchIDCard = async () => {
   loading.value = true
+  loadError.value = false
   try {
     const res = await axios.get('/api/profile/id-card')
     cardData.value = res.data
+    generateQrCode(res.data?.verification_url)
   } catch (err) {
-    console.error('Failed to load ID Card, using active user fallback', err)
-    cardData.value = {
-      user: {
-        id: 1,
-        username: 'admin',
-        full_name: 'System Admin',
-        member_id: 'HX-2026-0001',
-        role: 'root_admin',
-        created_at: new Date().toISOString(),
-        avatar_url: null
-      },
-      token: 'hx_sec_token_9948184818481848',
-      verification_url: 'https://club.hackerxploit.org/verify/hx_sec_token_9948184818481848',
-      live_status: {
-        is_active_event: false,
-        active_event_name: null
-      }
-    }
+    console.error('Failed to load ID Card', err)
+    cardData.value = null
+    loadError.value = true
   } finally {
     loading.value = false
   }
@@ -588,6 +616,7 @@ const regenerateToken = async () => {
     if (cardData.value) {
       cardData.value.token = res.data.token
       cardData.value.verification_url = res.data.verification_url
+      generateQrCode(res.data.verification_url)
     }
   } catch (err) {
     alert(err.response?.data?.error || 'Token regeneration failed')
@@ -841,7 +870,9 @@ const formatKolkataTime = (isoStr) => {
 
 onMounted(() => {
   fetchIDCard()
-  loadActiveClubEvents()
+  if (authStore.isTeacher) {
+    loadActiveClubEvents()
+  }
 })
 
 onUnmounted(() => {

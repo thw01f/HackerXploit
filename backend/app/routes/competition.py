@@ -535,9 +535,10 @@ def scan_event_attendance(comp_id):
     if tok_obj:
         target_user = User.query.get(tok_obj.user_id)
 
-    # 2. Search by member_id
+    # 2. Search by Badge ID (User has no member_id column - that's a display
+    # value computed from badge_id, so look up by the real column)
     if not target_user:
-        target_user = User.query.filter_by(member_id=token_input).first()
+        target_user = User.query.filter_by(badge_id=token_input).first()
 
     # 3. Search by username
     if not target_user:
