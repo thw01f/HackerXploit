@@ -29,8 +29,13 @@ class DeviceSession(db.Model):
             'ip_address': self.ip_address,
             'user_agent': self.user_agent,
             'device_label': self.device_label,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'last_active_at': self.last_active_at.isoformat() if self.last_active_at else None
+            # created_at/last_active_at are naive UTC datetimes (datetime.utcnow()).
+            # isoformat() alone omits any timezone designator, so
+            # `new Date(...)` on the frontend parsed it as LOCAL time instead
+            # of UTC - on a UTC+5:30 browser a session active 4 minutes ago
+            # would read as ~5.5 hours old. Appending 'Z' marks it as UTC.
+            'created_at': self.created_at.isoformat() + 'Z' if self.created_at else None,
+            'last_active_at': self.last_active_at.isoformat() + 'Z' if self.last_active_at else None
         }
 
 class LoginAttempt(db.Model):
@@ -55,8 +60,10 @@ class LoginAttempt(db.Model):
             'user_agent': self.user_agent,
             'success': self.success,
             'failure_reason': self.failure_reason,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'timestamp': self.created_at.isoformat() if self.created_at else None
+            # See DeviceSession.to_dict() above - naive UTC datetime, needs an
+            # explicit 'Z' or the frontend misparses it as local time.
+            'created_at': self.created_at.isoformat() + 'Z' if self.created_at else None,
+            'timestamp': self.created_at.isoformat() + 'Z' if self.created_at else None
         }
 
 # Alias for backwards compatibility

@@ -275,21 +275,37 @@ def login():
     )
     db.session.add(attempt)
 
-    # Create device session
+    # Create (or refresh) device session
     token = secrets.token_hex(32)
     token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
     device_label = request.headers.get('User-Agent', 'Web Browser')[:100]
 
-    device = DeviceSession(
-        user_id=user.id,
-        session_token=token,
-        session_token_hash=token_hash,
-        ip_address=ip_addr,
-        user_agent=user_agent[:250],
-        device_label=device_label,
-        is_active=True
-    )
-    db.session.add(device)
+    # Logging in again from the same browser/IP (e.g. after a manual logout,
+    # or a fresh login before the old session expired) used to always insert
+    # a brand new row, leaving an identical-looking "duplicate" device
+    # session behind forever. Reuse the existing row for this exact
+    # (user, ip, user_agent) fingerprint instead, issuing it a fresh token
+    # and resetting created_at so the 7-day expiry restarts from this login.
+    device = DeviceSession.query.filter_by(
+        user_id=user.id, ip_address=ip_addr, user_agent=user_agent[:250], is_active=True
+    ).first()
+    if device:
+        device.session_token = token
+        device.session_token_hash = token_hash
+        device.device_label = device_label
+        device.created_at = datetime.utcnow()
+        device.last_active_at = datetime.utcnow()
+    else:
+        device = DeviceSession(
+            user_id=user.id,
+            session_token=token,
+            session_token_hash=token_hash,
+            ip_address=ip_addr,
+            user_agent=user_agent[:250],
+            device_label=device_label,
+            is_active=True
+        )
+        db.session.add(device)
     db.session.commit()
 
     resp = make_response(jsonify({
