@@ -85,7 +85,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { usePreferences } from '../stores/preferences'
 
+const prefs = usePreferences()
 const reports = ref([])
 const statusFilter = ref('pending')
 const targetFilter = ref('all')
@@ -128,7 +130,7 @@ const getTargetBadgeClass = (type) => {
 const formatDate = (isoStr) => {
   if (!isoStr) return ''
   const d = new Date(isoStr)
-  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: prefs.is12h.value })
 }
 
 onMounted(() => {

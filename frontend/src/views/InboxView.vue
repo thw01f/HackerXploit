@@ -303,9 +303,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { usePreferences } from '../stores/preferences'
 import axios from 'axios'
 
 const authStore = useAuthStore()
+const prefs = usePreferences()
 const currentFolder = ref('inbox')
 const filterMode = ref('all') // 'all' | 'direct' | 'broadcast'
 const loading = ref(true)
@@ -442,7 +444,7 @@ const getScopeLabel = (scope) => {
 const formatDate = (isoStr) => {
   if (!isoStr) return ''
   const d = new Date(isoStr)
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: prefs.is12h.value })
 }
 
 onMounted(() => {

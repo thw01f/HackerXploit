@@ -124,93 +124,81 @@
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div 
-        v-for="comp in filteredCompetitions" 
-        :key="comp.id" 
-        class="glass-panel rounded-2xl overflow-hidden flex flex-col justify-between transition-all duration-300 hover:border-[#9fef00]/60 hover:shadow-2xl hover:shadow-[#9fef00]/10 group relative border border-[#1f293d]"
+      <div
+        v-for="comp in filteredCompetitions"
+        :key="comp.id"
+        class="glass-panel rounded-2xl overflow-hidden flex flex-col transition-all duration-300 hover:border-[#9fef00]/50 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/20 group relative border border-[#1f293d]"
       >
-        <div>
-          <!-- Poster Header Image with Dynamic Aesthetic Gradient & Badges -->
-          <div 
-            class="relative w-full h-44 overflow-hidden border-b border-[#1f293d] flex items-center justify-center"
-            :style="getCardBannerStyle(comp)"
-          >
-            <!-- Overlay Gradient for contrast -->
-            <div class="absolute inset-0 bg-gradient-to-t from-[#111927] via-transparent to-black/60"></div>
+        <!-- Poster Header: purely decorative, badges only - title lives in the content block below -->
+        <div
+          class="relative w-full h-28 overflow-hidden shrink-0"
+          :style="getCardBannerStyle(comp)"
+        >
+          <div class="absolute inset-0 bg-gradient-to-t from-[#111927] via-[#111927]/5 to-black/20"></div>
 
-            <!-- Custom Category Icon/Artwork if no poster image -->
-            <div v-if="!comp.poster_image || comp.poster_image === '/logo.png'" class="relative z-10 text-center p-4 space-y-1">
-              <span class="text-3xl opacity-80 filter drop-shadow">
-                {{ getCategoryEmoji(comp.category) }}
-              </span>
-              <span class="block text-[11px] font-mono font-extrabold uppercase tracking-widest text-slate-300/80">
-                {{ comp.category || 'EVENT' }} GAUNTLET
-              </span>
-            </div>
-
-            <!-- Top Left: Category Pill -->
-            <div class="absolute top-3 left-3 z-20">
-              <span class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md text-white border border-white/20 shadow">
-                {{ comp.category || 'GAUNTLET' }}
-              </span>
-            </div>
-
-            <!-- Top Right: Computed Status Badge -->
-            <div class="absolute top-3 right-3 z-20">
-              <span 
-                :class="[
-                  'text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-md shadow-md backdrop-blur-md border flex items-center gap-1.5',
-                  comp.status === 'ended' ? 'bg-slate-900/90 text-slate-400 border-slate-700' :
-                  comp.status === 'ongoing' ? 'bg-emerald-950/90 text-[#9fef00] border-[#9fef00]/50 animate-pulse' :
-                  'bg-cyan-950/90 text-[#00f0ff] border-[#00f0ff]/50'
-                ]"
-              >
-                <span :class="[
-                  'w-1.5 h-1.5 rounded-full',
-                  comp.status === 'ended' ? 'bg-slate-500' :
-                  comp.status === 'ongoing' ? 'bg-[#9fef00]' : 'bg-[#00f0ff]'
-                ]"></span>
-                {{ (comp.status || 'upcoming').toUpperCase() }}
-              </span>
-            </div>
+          <div v-if="!comp.poster_image || comp.poster_image === '/logo.png'" class="absolute inset-0 flex items-center justify-center opacity-[0.15]">
+            <svg class="w-14 h-14 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" :d="getCategoryIconPath(comp.category)"/>
+            </svg>
           </div>
 
-          <!-- Card Content Body -->
-          <div class="p-5 space-y-3 font-mono">
-            <!-- Header & Priority Badge -->
+          <div class="absolute top-3 left-3 z-20">
+            <span class="text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md text-white border border-white/20 shadow">
+              {{ comp.category || 'EVENT' }}
+            </span>
+          </div>
+
+          <div class="absolute top-3 right-3 z-20">
+            <span
+              :class="[
+                'text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-md shadow-md backdrop-blur-md border flex items-center gap-1.5',
+                comp.status === 'ended' ? 'bg-slate-900/90 text-slate-400 border-slate-700' :
+                comp.status === 'ongoing' ? 'bg-emerald-950/90 text-[#9fef00] border-[#9fef00]/50 animate-pulse' :
+                'bg-cyan-950/90 text-[#00f0ff] border-[#00f0ff]/50'
+              ]"
+            >
+              <span :class="[
+                'w-1.5 h-1.5 rounded-full',
+                comp.status === 'ended' ? 'bg-slate-500' :
+                comp.status === 'ongoing' ? 'bg-[#9fef00]' : 'bg-[#00f0ff]'
+              ]"></span>
+              {{ (comp.status || 'upcoming').toUpperCase() }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Card Content Body -->
+        <div class="p-5 flex flex-col flex-1 font-mono">
+          <div class="space-y-3">
+            <!-- Title & Priority Badge -->
             <div class="flex items-start justify-between gap-2">
-              <h3 @click="openEventDetails(comp)" class="text-base font-extrabold text-white leading-snug group-hover:text-[#9fef00] transition-colors line-clamp-1 cursor-pointer hover:underline" title="Click for complete details">
+              <h3 @click="openEventDetails(comp)" class="text-lg font-extrabold text-white leading-snug group-hover:text-[#9fef00] transition-colors line-clamp-1 cursor-pointer" title="Click for complete details">
                 {{ comp.title }}
               </h3>
-              <span :class="getPriorityBadgeClass(comp.priority)" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded border shrink-0">
+              <span :class="getPriorityBadgeClass(comp.priority)" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded border shrink-0 mt-0.5">
                 {{ comp.priority }}
               </span>
             </div>
 
             <!-- Description -->
-            <p @click="openEventDetails(comp)" class="text-slate-400 text-xs line-clamp-2 leading-relaxed h-9 cursor-pointer hover:text-slate-200" title="Click for complete details">
+            <p @click="openEventDetails(comp)" class="text-slate-400 text-xs line-clamp-2 leading-relaxed h-9 cursor-pointer hover:text-slate-300 transition-colors">
               {{ comp.description || 'No detailed description available for this event.' }}
             </p>
 
-            <!-- Complete Details Trigger Button -->
-            <button @click="openEventDetails(comp)" class="w-full text-left text-[11px] text-cyan-400 hover:text-cyan-300 font-bold font-mono py-1 flex items-center justify-between group-hover:translate-x-0.5 transition-all">
-              <span class="flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <!-- Meta links row: details + external portal, compact side-by-side pills -->
+            <div class="flex items-center gap-2">
+              <button @click="openEventDetails(comp)" class="text-[11px] text-cyan-400 hover:text-cyan-300 font-bold font-mono px-2.5 py-1.5 rounded-lg bg-cyan-500/5 border border-cyan-500/20 hover:border-cyan-500/40 flex items-center gap-1.5 transition-all">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                 </svg>
-                <span>View Complete Details & Overview</span>
-              </span>
-              <span>&rarr;</span>
-            </button>
-
-            <!-- External Link -->
-            <div v-if="comp.external_link" class="pt-0.5">
-              <a :href="comp.external_link" target="_blank" class="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline inline-flex items-center gap-1.5">
+                <span>Details</span>
+              </button>
+              <a v-if="comp.external_link" :href="comp.external_link" target="_blank" class="text-[11px] text-slate-400 hover:text-cyan-300 font-bold font-mono px-2.5 py-1.5 rounded-lg bg-slate-800/40 border border-slate-700 hover:border-cyan-500/40 flex items-center gap-1.5 transition-all">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                 </svg>
-                <span>Registration / Portal Link</span>
+                <span>Portal</span>
               </a>
             </div>
 
@@ -249,7 +237,7 @@
             </div>
 
             <!-- User Involvement Badge Bar - always shown, even under the "All" filter tab -->
-            <div class="flex items-center justify-between pt-1 gap-2">
+            <div class="flex items-center justify-between gap-2">
               <span class="text-xs text-slate-500 font-mono uppercase shrink-0 flex items-center gap-1.5">
                 My Status
                 <span v-if="comp.user_participation" class="text-slate-600 normal-case tracking-normal">({{ formatRegId(comp.user_participation.id) }})</span>
@@ -259,10 +247,9 @@
               </span>
             </div>
           </div>
-        </div>
 
-        <!-- Card Footer Actions -->
-        <div class="p-5 pt-0 space-y-2 font-mono">
+          <!-- Card Footer Actions - divider makes the section break intentional, not empty dead space -->
+          <div class="mt-4 pt-4 border-t border-[#1f293d]/70 space-y-2 font-mono">
           <!-- Student/Member participation actions - staff use the dedicated management panel below instead -->
           <template v-if="!authStore.isTeacher">
             <!-- Club Event Specific Action: Feedback (No proof submission required) -->
@@ -371,87 +358,97 @@
         </div>
       </div>
     </div>
+    </div>
 
     <!-- Modal 0: Comprehensive Event Details Popup -->
     <div v-if="showDetailsModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div class="glass-panel max-w-2xl w-full rounded-2xl overflow-hidden border-2 border-slate-700/80 shadow-2xl space-y-0 max-h-[90vh] flex flex-col">
-        
-        <!-- Header Banner with Poster Image or Category Gradient -->
-        <div class="h-44 w-full relative p-6 flex flex-col justify-between overflow-hidden shrink-0" :style="getCardBannerStyle(selectedComp)">
-          <div class="absolute inset-0 bg-gradient-to-t from-[#111927] via-[#111927]/60 to-transparent"></div>
-          
-          <div class="relative z-10 flex items-center justify-between">
-            <span class="px-3 py-1 rounded-full text-sm font-mono font-extrabold uppercase bg-black/60 backdrop-blur border border-white/20 text-white flex items-center gap-1.5 shadow">
-              <span>{{ getCategoryEmoji(selectedComp?.category) }}</span>
-              <span>{{ selectedComp?.category?.toUpperCase() || 'EVENT' }}</span>
+      <div class="glass-panel max-w-2xl w-full rounded-2xl overflow-hidden border border-slate-700/60 shadow-2xl max-h-[90vh] flex flex-col">
+
+        <!-- Decorative Banner Strip: badges + close button only, no title (avoids clipping against the image/gradient) -->
+        <div class="h-24 w-full relative shrink-0" :style="getCardBannerStyle(selectedComp)">
+          <div class="absolute inset-0 bg-gradient-to-t from-[#111927] to-[#111927]/10"></div>
+          <div class="absolute inset-0 flex items-center justify-center opacity-[0.12]">
+            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" :d="getCategoryIconPath(selectedComp?.category)"/>
+            </svg>
+          </div>
+
+          <div class="relative z-10 flex items-center justify-between p-4">
+            <span class="px-3 py-1 rounded-full text-xs font-mono font-extrabold uppercase bg-black/60 backdrop-blur border border-white/20 text-white shadow">
+              {{ selectedComp?.category?.toUpperCase() || 'EVENT' }}
             </span>
             <button @click="showDetailsModal = false" class="w-8 h-8 rounded-full bg-black/60 hover:bg-black text-slate-300 hover:text-white border border-white/20 flex items-center justify-center font-mono font-bold text-base transition-all">✕</button>
           </div>
-
-          <div class="relative z-10 space-y-1.5">
-            <div class="flex items-center gap-2">
-              <span :class="getPriorityBadgeClass(selectedComp?.priority)" class="text-xs font-mono font-extrabold uppercase px-2 py-0.5 rounded border">
-                {{ selectedComp?.priority }} PRIORITY
-              </span>
-              <span :class="selectedComp?.status === 'ended' ? 'bg-slate-900 text-slate-400 border-slate-700' : selectedComp?.status === 'ongoing' ? 'bg-emerald-950 text-[#9fef00] border-[#9fef00]' : 'bg-cyan-950 text-[#00f0ff] border-[#00f0ff]'" class="text-xs font-mono font-bold uppercase px-2 py-0.5 rounded border">
-                {{ (selectedComp?.status || 'upcoming').toUpperCase() }}
-              </span>
-            </div>
-            <h2 class="text-2xl font-black text-white font-mono leading-tight drop-shadow-md">{{ selectedComp?.title }}</h2>
-          </div>
         </div>
 
-        <!-- Scrollable Modal Content Body (10 Detailed Sections) -->
+        <!-- Title Block: solid background, guaranteed legible regardless of banner art -->
+        <div class="px-6 pt-5 pb-4 border-b border-slate-800/80 shrink-0 space-y-2">
+          <div class="flex items-center gap-2">
+            <span :class="getPriorityBadgeClass(selectedComp?.priority)" class="text-[11px] font-mono font-extrabold uppercase px-2 py-0.5 rounded border">
+              {{ selectedComp?.priority }} Priority
+            </span>
+            <span :class="selectedComp?.status === 'ended' ? 'bg-slate-900 text-slate-400 border-slate-700' : selectedComp?.status === 'ongoing' ? 'bg-emerald-950 text-[#9fef00] border-[#9fef00]' : 'bg-cyan-950 text-[#00f0ff] border-[#00f0ff]'" class="text-[11px] font-mono font-bold uppercase px-2 py-0.5 rounded border">
+              {{ (selectedComp?.status || 'upcoming').toUpperCase() }}
+            </span>
+          </div>
+          <h2 class="text-2xl font-black text-white font-mono leading-tight">{{ selectedComp?.title }}</h2>
+        </div>
+
+        <!-- Scrollable Modal Content Body -->
         <div class="p-6 space-y-5 overflow-y-auto font-mono text-sm text-slate-300 flex-1">
 
-          <!-- 1. Full Description -->
+          <!-- Full Description -->
           <div class="space-y-1.5 bg-[#090d16] p-4 rounded-xl border border-slate-800/80">
-            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <span>📜</span>
-              <span>Complete Event Overview & Description</span>
+            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Overview & Description
             </h4>
             <p class="text-slate-200 text-sm leading-relaxed whitespace-pre-line">
               {{ selectedComp?.description || 'No detailed overview supplied for this competition.' }}
             </p>
           </div>
 
-          <!-- 2. Detailed IST Timeline Grid (Starts, Ends, Deadline) -->
+          <!-- Event Timeline (Starts, Ends, Deadline) -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div class="bg-[#090d16] p-3.5 rounded-xl border border-emerald-500/30 space-y-1.5">
-              <span class="text-[11px] text-slate-400 uppercase block font-bold">1. Event Starts (IST)</span>
+              <span class="text-[11px] text-slate-400 uppercase block font-bold flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                Starts (IST)
+              </span>
               <p class="text-sm font-bold text-emerald-400">{{ formatDate(selectedComp?.starts_at) }}</p>
             </div>
             <div class="bg-[#090d16] p-3.5 rounded-xl border border-rose-500/30 space-y-1.5">
-              <span class="text-[11px] text-slate-400 uppercase block font-bold">2. Event Ends (IST)</span>
+              <span class="text-[11px] text-slate-400 uppercase block font-bold flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                Ends (IST)
+              </span>
               <p class="text-sm font-bold text-rose-400">{{ formatDate(selectedComp?.ends_at) }}</p>
             </div>
             <div class="bg-[#090d16] p-3.5 rounded-xl border border-amber-500/30 space-y-1.5">
-              <span class="text-[11px] text-slate-400 uppercase block font-bold">3. Application Deadline</span>
+              <span class="text-[11px] text-slate-400 uppercase block font-bold flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Application Deadline
+              </span>
               <p class="text-sm font-bold text-amber-400">{{ formatDate(selectedComp?.application_deadline) || 'No hard deadline' }}</p>
             </div>
           </div>
 
-          <!-- 3. Key Details Metadata Grid -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 bg-[#090d16] p-4 rounded-xl border border-slate-800">
-            <div class="space-y-1">
-              <span class="text-[11px] text-slate-500 block uppercase">Category</span>
-              <span class="text-sm text-white font-bold uppercase">{{ selectedComp?.category }}</span>
-            </div>
-            <div class="space-y-1">
-              <span class="text-[11px] text-slate-500 block uppercase">Priority</span>
-              <span class="text-sm text-white font-bold uppercase">{{ selectedComp?.priority }}</span>
-            </div>
+          <!-- My Involvement Summary -->
+          <div class="grid grid-cols-2 gap-3 bg-[#090d16] p-4 rounded-xl border border-slate-800">
             <div class="space-y-1">
               <span class="text-[11px] text-slate-500 block uppercase">My Status</span>
               <span class="text-sm text-cyan-400 font-bold uppercase">{{ formatInvolvement(selectedComp?.user_involvement) }}</span>
             </div>
-            <div class="space-y-1">
+            <div v-if="selectedComp?.category === 'club' || selectedComp?.category === 'Club'" class="space-y-1">
               <span class="text-[11px] text-slate-500 block uppercase">Attendees / Scanned</span>
               <span class="text-sm text-emerald-400 font-bold">{{ selectedComp?.attendee_count || 0 }} Members</span>
             </div>
+            <div v-else-if="authStore.isTeacher" class="space-y-1">
+              <span class="text-[11px] text-slate-500 block uppercase">Total Applicants</span>
+              <span class="text-sm text-emerald-400 font-bold">{{ modalApplicants.length }} Applied</span>
+            </div>
           </div>
 
-          <!-- 4. Registration & Portal External Link -->
+          <!-- Registration & Portal External Link -->
           <div v-if="selectedComp?.external_link" class="bg-cyan-950/40 p-3.5 rounded-xl border border-cyan-500/40 flex items-center justify-between gap-3">
             <div class="min-w-0 flex-1">
               <span class="text-xs text-cyan-300 uppercase block font-bold">Official External Portal / Link</span>
@@ -460,6 +457,44 @@
             <a :href="selectedComp?.external_link" target="_blank" class="btn-neon-cyan text-xs py-2 px-4 rounded-lg font-bold shrink-0">
               Open Portal ↗
             </a>
+          </div>
+
+          <!-- Applicants (Teacher/Admin only, non-club competitions) -->
+          <div
+            v-if="authStore.isTeacher && selectedComp?.category !== 'club' && selectedComp?.category !== 'Club'"
+            class="space-y-2 bg-[#090d16] p-4 rounded-xl border border-slate-800/80"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Applicants ({{ modalApplicants.length }})
+              </h4>
+              <button
+                v-if="modalApplicants.length > 0"
+                @click="exportApplicantsCsv(selectedComp)"
+                class="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 hover:border-emerald-500/50 px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-all"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                <span>Export CSV</span>
+              </button>
+            </div>
+
+            <div v-if="modalApplicantsLoading" class="text-xs text-slate-500 font-mono text-center py-4">Loading applicants...</div>
+            <div v-else-if="modalApplicants.length === 0" class="text-xs text-slate-500 font-mono text-center py-4">No applications submitted yet.</div>
+            <div v-else class="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+              <div
+                v-for="app in modalApplicants"
+                :key="app.id"
+                class="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-slate-900/60 border border-slate-800"
+              >
+                <div class="min-w-0">
+                  <p class="text-sm font-bold text-white truncate">{{ app.applicant_full_name }} <span class="text-slate-500 font-normal">(@{{ app.applicant_username }})</span></p>
+                  <p class="text-[11px] text-slate-500 font-mono">Applied {{ formatDate(app.applied_at) }}</p>
+                </div>
+                <span :class="getInvolvementBadgeClass(app.application_status)" class="text-[10px] uppercase px-2 py-0.5 rounded font-bold border shrink-0 whitespace-nowrap">
+                  {{ formatInvolvement(app.application_status) }}
+                </span>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -474,9 +509,10 @@
               <button
                 v-if="selectedComp?.category === 'club' || selectedComp?.category === 'Club'"
                 @click="showDetailsModal = false; openFeedbackModal(selectedComp)"
-                class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs py-2 px-4 rounded-lg font-bold"
+                class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs py-2 px-4 rounded-lg font-bold flex items-center gap-1.5"
               >
-                ⭐ Event Feedback & Rating
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <span>Event Feedback & Rating</span>
               </button>
               <button
                 v-else-if="selectedComp?.status === 'ended' && selectedComp?.user_involvement === 'verified'"
@@ -494,9 +530,9 @@
               </button>
             </template>
 
-            <!-- Teacher/Admin Action -->
+            <!-- Teacher/Admin Action: Scanner HUD is club-event only, matching the card's gating -->
             <button
-              v-if="authStore.isTeacher"
+              v-if="authStore.isTeacher && (selectedComp?.category === 'club' || selectedComp?.category === 'Club')"
               @click="showDetailsModal = false; openAttendanceModal(selectedComp)"
               class="bg-amber-400 text-black font-bold text-xs py-2 px-4 rounded-lg"
             >
@@ -694,7 +730,7 @@
                 <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
-                <span>{{ posterUploading ? 'Uploading Poster...' : '📁 Upload Poster Image' }}</span>
+                <span>{{ posterUploading ? 'Uploading Poster...' : 'Upload Poster Image' }}</span>
                 <input type="file" @change="uploadPosterFile" accept="image/*" class="hidden" :disabled="posterUploading" />
               </label>
               <span class="text-slate-500 text-[11px] font-mono">or paste URL below</span>
@@ -855,17 +891,19 @@
               activeAttendanceTab === 'roster' ? 'bg-amber-400 text-black shadow-md' : 'text-slate-400 hover:text-white bg-[#0c1117]'
             ]"
           >
-            <span>📋 Attendance Roster</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>Attendance Roster</span>
             <span class="bg-black/30 text-current px-2 py-0.5 rounded text-[10px]">{{ attendanceList.length }}</span>
           </button>
-          <button 
+          <button
             @click="activeAttendanceTab = 'feedback'"
             :class="[
               'px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2',
               activeAttendanceTab === 'feedback' ? 'bg-amber-400 text-black shadow-md' : 'text-slate-400 hover:text-white bg-[#0c1117]'
             ]"
           >
-            <span>⭐ Member Feedback & Ratings</span>
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <span>Member Feedback & Ratings</span>
             <span class="bg-black/30 text-current px-2 py-0.5 rounded text-[10px]">
               {{ eventAvgRating > 0 ? eventAvgRating + ' ★ (' + eventTotalRatings + ')' : '0 Reviews' }}
             </span>
@@ -1146,8 +1184,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import { usePreferences } from '../stores/preferences'
 
 const authStore = useAuthStore()
+const prefs = usePreferences()
 
 const categories = ['All', 'CTF', 'Hackathon', 'Workshop', 'Club', 'Other']
 const activeCategory = ref('All')
@@ -1249,13 +1289,15 @@ const filteredCompetitions = computed(() => {
   )
 })
 
-const getCategoryEmoji = (category) => {
+// Vector icon paths per category, replacing the previous emoji glyphs for a
+// more professional, consistent-weight look across the card banner and modal.
+const getCategoryIconPath = (category) => {
   const cat = (category || '').toLowerCase()
-  if (cat.includes('ctf')) return '⚡'
-  if (cat.includes('hackathon')) return '🚀'
-  if (cat.includes('workshop')) return '⚙️'
-  if (cat.includes('club')) return '🛡️'
-  return '🏆'
+  if (cat.includes('ctf')) return 'M13 10V3L4 14h7v7l9-11h-7z' // lightning bolt
+  if (cat.includes('hackathon')) return 'M9.663 17h4.673M12 3c-3.866 0-7 3.134-7 7 0 2.223 1.042 4.185 2.657 5.474L8 21h8l.343-5.526C17.958 14.185 19 12.223 19 10c0-3.866-3.134-7-7-7z' // rocket-ish
+  if (cat.includes('workshop')) return 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.958a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.368 2.446a1 1 0 00-.363 1.118l1.287 3.958c.299.921-.756 1.688-1.54 1.118l-3.367-2.446a1 1 0 00-1.176 0l-3.367 2.446c-.784.57-1.838-.197-1.539-1.118l1.286-3.958a1 1 0 00-.363-1.118L2.83 9.385c-.783-.57-.38-1.81.588-1.81h4.163a1 1 0 00.95-.69l1.286-3.958z' // gear/star hybrid kept simple
+  if (cat.includes('club')) return 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' // shield-check
+  return 'M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257v-1.007M12 2a5 5 0 015 5v2a5 5 0 01-10 0V7a5 5 0 015-5z' // trophy-ish default
 }
 
 const getCardBannerStyle = (comp) => {
@@ -1291,10 +1333,32 @@ const confirmDeleteCompetition = async (comp) => {
 const showDetailsModal = ref(false)
 const posterUploading = ref(false)
 
-const openEventDetails = (comp) => {
+const modalApplicants = ref([])
+const modalApplicantsLoading = ref(false)
+
+const openEventDetails = async (comp) => {
   if (!comp) return
   selectedComp.value = comp
   showDetailsModal.value = true
+  modalApplicants.value = []
+
+  const isClub = (comp.category || '').toLowerCase() === 'club'
+  if (authStore.isTeacher && !isClub) {
+    modalApplicantsLoading.value = true
+    try {
+      const res = await axios.get(`/api/competitions/${comp.id}/applications`)
+      modalApplicants.value = res.data.applications || []
+    } catch (err) {
+      console.error('Failed to load applicants', err)
+    } finally {
+      modalApplicantsLoading.value = false
+    }
+  }
+}
+
+const exportApplicantsCsv = (comp) => {
+  if (!comp) return
+  window.open(`/api/competitions/${comp.id}/applications/export`, '_blank')
 }
 
 const uploadPosterFile = async (event) => {
@@ -1398,7 +1462,7 @@ const formatDate = (isoStr) => {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: prefs.is12h.value
     })
   } catch (e) {
     return isoStr
@@ -1723,7 +1787,7 @@ const updateLiveClock = () => {
   const now = new Date()
   liveTimeFormatted.value = now.toLocaleTimeString('en-IN', {
     timeZone: 'Asia/Kolkata',
-    hour12: true,
+    hour12: prefs.is12h.value,
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',

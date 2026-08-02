@@ -105,7 +105,9 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import AdminSubNav from '../components/AdminSubNav.vue'
+import { usePreferences } from '../stores/preferences'
 
+const prefs = usePreferences()
 const logs = ref([])
 const searchQuery = ref('')
 const scopeFilter = ref('all')
@@ -166,7 +168,7 @@ const getScopeLabel = (scope) => {
 const formatDate = (isoStr) => {
   if (!isoStr) return ''
   const d = new Date(isoStr)
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: prefs.is12h.value })
 }
 
 onMounted(() => {

@@ -103,12 +103,12 @@ const routes = [
     component: OpportunitiesView, 
     meta: { requiresAuth: true } 
   },
-  { 
-    path: '/account-settings', 
-    alias: '/profile',
-    name: 'account-settings', 
-    component: ProfileView, 
-    meta: { requiresAuth: true } 
+  {
+    path: '/settings',
+    alias: ['/account-settings', '/profile'],
+    name: 'settings',
+    component: ProfileView,
+    meta: { requiresAuth: true }
   },
   { 
     path: '/chat', 

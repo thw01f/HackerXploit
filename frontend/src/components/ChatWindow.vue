@@ -40,7 +40,7 @@
             <div class="flex items-center justify-between">
               <span class="font-bold text-slate-200">{{ msg.sender_username }}</span>
               <div class="flex items-center space-x-2">
-                <span class="text-[9px] text-slate-500 font-mono">{{ new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</span>
+                <span class="text-[9px] text-slate-500 font-mono">{{ new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: prefs.is12h.value}) }}</span>
                 <button 
                   v-if="authStore.isTeacher && !msg.is_deleted" 
                   @click="chatStore.softDeleteMessage(msg.id)"
@@ -76,9 +76,11 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useChatStore } from '../stores/chat'
+import { usePreferences } from '../stores/preferences'
 
 const authStore = useAuthStore()
 const chatStore = useChatStore()
+const prefs = usePreferences()
 const newMessage = ref('')
 const chatContainerRef = ref(null)
 

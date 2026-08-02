@@ -241,10 +241,12 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useChatStore } from '../stores/chat'
+import { usePreferences } from '../stores/preferences'
 import axios from 'axios'
 
 const authStore = useAuthStore()
 const chatStore = useChatStore()
+const prefs = usePreferences()
 
 const chatEnabled = ref(true)
 const newMessageText = ref('')
@@ -461,7 +463,7 @@ const getRoleColor = (role) => {
 const formatTimestamp = (isoStr) => {
   if (!isoStr) return ''
   const d = new Date(isoStr)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: prefs.is12h.value })
 }
 
 const formatTimeOnly = (isoStr) => formatTimestamp(isoStr)

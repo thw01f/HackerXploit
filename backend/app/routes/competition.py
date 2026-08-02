@@ -326,6 +326,51 @@ def get_applications_queue(comp_id):
 
     return jsonify({'competition': comp.to_dict(), 'applications': queue}), 200
 
+@competition_bp.route('/<int:comp_id>/applications/export', methods=['GET'])
+@require_role('teacher', 'admin', 'root_admin')
+def export_applications(comp_id):
+    comp = Competition.query.get_or_404(comp_id)
+    participations = CompetitionParticipation.query.filter_by(competition_id=comp_id).order_by(CompetitionParticipation.applied_at.asc()).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        'Badge ID', 'Student ID', 'Full Name', 'Username', 'Email', 'Academic Year', 'Department',
+        'Application Status', 'Applied At', 'Verified By', 'Verified At',
+        'Result', 'Placement Label', 'Completion Status', 'GitHub Link', 'Prize Money'
+    ])
+
+    for p in participations:
+        u = User.query.get(p.user_id)
+        verifier = User.query.get(p.verified_by_id) if p.verified_by_id else None
+        writer.writerow([
+            u.get_badge_id() if u else 'N/A',
+            u.student_id if u and u.student_id else 'N/A',
+            u.full_name if u else (u.username if u else 'Unknown'),
+            u.username if u else 'Unknown',
+            u.email if u else 'N/A',
+            u.academic_year if u else 'N/A',
+            u.department if u else 'N/A',
+            p.application_status.upper(),
+            p.applied_at.isoformat() if p.applied_at else '',
+            verifier.full_name or verifier.username if verifier else '',
+            p.verified_at.isoformat() if p.verified_at else '',
+            p.result or '',
+            p.placement_label or '',
+            p.completion_status.upper(),
+            p.github_link or '',
+            p.prize_money or ''
+        ])
+
+    csv_data = output.getvalue()
+    response = make_response(csv_data)
+    filename = f"competition_applications_{comp_id}_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+    response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+    return response
+
+
 @competition_bp.route('/<int:comp_id>/applications/<int:app_id>/verify', methods=['POST'])
 @require_role('teacher', 'admin', 'root_admin')
 def verify_application(comp_id, app_id):
@@ -560,7 +605,7 @@ def export_event_attendance(comp_id):
 
     # CSV Header
     writer.writerow([
-        'Member ID', 'Full Name', 'Username', 'Email', 
+        'Badge ID', 'Full Name', 'Username', 'Email',
         'Academic Year', 'Department', 'Status', 'Scanned At', 'Approved By', 'Remark'
     ])
 
@@ -568,7 +613,7 @@ def export_event_attendance(comp_id):
         u = User.query.get(r.user_id)
         scanned_by = User.query.get(r.scanned_by_id) if r.scanned_by_id else None
         writer.writerow([
-            u.member_id if u else 'N/A',
+            u.get_badge_id() if u else 'N/A',
             u.full_name if u else (u.username if u else 'Unknown'),
             u.username if u else 'Unknown',
             u.email if u else 'N/A',

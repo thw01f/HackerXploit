@@ -104,7 +104,7 @@
           </router-link>
 
           <!-- User Profile & Avatar -->
-          <router-link to="/account-settings" class="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-[#151f30] transition-colors border border-transparent hover:border-[#1f293d]">
+          <router-link to="/settings" class="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-[#151f30] transition-colors border border-transparent hover:border-[#1f293d]">
             <img :src="authStore.user?.avatar_url || '/uploads/avatars/default.png'" class="w-8 h-8 rounded-lg border border-[#9fef00]/50 object-cover" />
             <div class="hidden sm:block text-left font-mono">
               <div class="flex items-center space-x-1.5">
@@ -145,7 +145,7 @@
       <router-link to="/inbox" @click="mobileMenuOpen = false" class="mobile-nav-link">Inbox</router-link>
       <router-link to="/chat" @click="mobileMenuOpen = false" class="mobile-nav-link">Chat</router-link>
       <router-link to="/id-card" @click="mobileMenuOpen = false" class="mobile-nav-link text-[#00f0ff]">ID Card</router-link>
-      <router-link to="/account-settings" @click="mobileMenuOpen = false" class="mobile-nav-link">Account Settings</router-link>
+      <router-link to="/settings" @click="mobileMenuOpen = false" class="mobile-nav-link">Settings</router-link>
       <router-link v-if="authStore.isTeacher" to="/teacher/students" @click="mobileMenuOpen = false" class="mobile-nav-link">Students</router-link>
       <router-link v-if="authStore.isTeacher" to="/admin" @click="mobileMenuOpen = false" class="mobile-nav-link text-amber-400">Control Center</router-link>
     </div>
@@ -156,9 +156,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { usePreferences } from '../stores/preferences'
 import axios from 'axios'
 
 const authStore = useAuthStore()
+const prefs = usePreferences()
 const router = useRouter()
 
 const mobileMenuOpen = ref(false)
@@ -223,7 +225,7 @@ const handleNotificationClick = async (n) => {
 const formatDate = (isoStr) => {
   if (!isoStr) return ''
   const d = new Date(isoStr)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: prefs.is12h.value })
 }
 
 const handleLogout = async () => {

@@ -183,7 +183,7 @@ class ClubEventFeedback(db.Model):
             'user_full_name': (user.full_name or user.username) if user else 'Anonymous',
             'user_username': user.username if user else 'Anonymous',
             'user_avatar_url': user.avatar_url if user else None,
-            'user_member_id': user.member_id if user else None,
+            'user_member_id': user.get_badge_id() if user else None,
             'rating': self.rating,
             'feedback_text': self.feedback_text,
             'created_at': self.created_at.isoformat() if self.created_at else None

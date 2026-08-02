@@ -1,10 +1,26 @@
 <template>
   <div class="space-y-8">
       <div>
-        <h1 class="text-3xl font-extrabold text-white">Account Settings & Security</h1>
-        <p class="text-slate-400 text-sm mt-1">Manage your identity, digital credentials, and active device sessions.</p>
+        <h1 class="text-3xl font-extrabold text-white">Settings</h1>
+        <p class="text-slate-400 text-sm mt-1">Manage your account, security, notifications, appearance, and privacy.</p>
       </div>
 
+      <!-- Settings Tab Bar -->
+      <div class="flex flex-wrap gap-2 border-b border-[#1f293d] pb-px font-mono">
+        <button
+          v-for="tab in settingsTabs"
+          :key="tab.value"
+          @click="activeTab = tab.value"
+          :class="[
+            'px-4 py-2.5 text-sm font-bold rounded-t-lg border-b-2 transition-all -mb-px',
+            activeTab === tab.value ? 'text-[#9fef00] border-[#9fef00]' : 'text-slate-400 border-transparent hover:text-white hover:border-slate-700'
+          ]"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
+
+      <div v-show="activeTab === 'account'" class="space-y-8">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Left: Avatar Upload & Profile Details -->
         <div class="lg:col-span-2 glass-panel p-8 space-y-6">
@@ -255,9 +271,10 @@
           </button>
         </form>
       </div>
+      </div>
 
       <!-- Notification Preferences -->
-      <div class="glass-panel p-8 bg-[#111927] border border-[#1f293d] space-y-6">
+      <div v-show="activeTab === 'notifications'" class="glass-panel p-8 bg-[#111927] border border-[#1f293d] space-y-6">
         <div class="border-b border-[#1f293d] pb-4">
           <h3 class="text-lg font-bold text-white font-mono">Notification Preferences</h3>
           <p class="text-slate-400 text-xs mt-1">The in-app notification bell always shows these. These toggles control whether HackerXploit ALSO emails you.</p>
@@ -298,7 +315,7 @@
       </div>
 
       <!-- Appearance -->
-      <div class="glass-panel p-8 bg-[#111927] border border-[#1f293d] space-y-6">
+      <div v-show="activeTab === 'appearance'" class="glass-panel p-8 bg-[#111927] border border-[#1f293d] space-y-6">
         <div class="border-b border-[#1f293d] pb-4">
           <h3 class="text-lg font-bold text-white font-mono">Appearance</h3>
           <p class="text-slate-400 text-xs mt-1">Choose how HackerXploit looks on this device.</p>
@@ -325,10 +342,35 @@
         <p class="text-[11px] text-slate-500 font-mono">
           "System" follows your OS/browser's light or dark setting automatically and switches live if you change it.
         </p>
+
+        <div class="border-t border-[#1f293d] pt-6 space-y-3">
+          <div>
+            <h4 class="text-sm font-bold text-white font-mono">Time Format</h4>
+            <p class="text-slate-400 text-xs mt-1">Applies to every clock and timestamp across the platform.</p>
+          </div>
+          <div class="grid grid-cols-2 gap-3 max-w-xs">
+            <button
+              v-for="opt in timeFormatOptions"
+              :key="opt.value"
+              @click="prefs.setTimeFormat(opt.value)"
+              :class="[
+                'flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all font-mono',
+                prefs.timeFormat.value === opt.value ? 'border-[#9fef00] bg-[#9fef00]/10' : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+              ]"
+            >
+              <span :class="prefs.timeFormat.value === opt.value ? 'text-white font-bold' : 'text-slate-400'" class="text-sm tabular-nums">
+                {{ opt.preview }}
+              </span>
+              <span :class="prefs.timeFormat.value === opt.value ? 'text-[#9fef00] font-bold' : 'text-slate-500'" class="text-[11px] uppercase tracking-wide">
+                {{ opt.label }}
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Privacy & Data Governance (embedded) -->
-      <div class="glass-panel p-8 bg-[#111927] border border-[#1f293d] space-y-6">
+      <div v-show="activeTab === 'privacy'" class="glass-panel p-8 bg-[#111927] border border-[#1f293d] space-y-6">
         <div class="border-b border-[#1f293d] pb-4">
           <h3 class="text-lg font-bold text-white font-mono">Privacy & Data Governance</h3>
           <p class="text-slate-400 text-xs mt-1">Manage public profile visibility, export your data, or request deletion.</p>
@@ -411,14 +453,29 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useTheme } from '../stores/theme'
+import { usePreferences } from '../stores/preferences'
 
 const authStore = useAuthStore()
 const theme = useTheme()
+const prefs = usePreferences()
+
+const settingsTabs = [
+  { value: 'account', label: 'Account Settings & Security' },
+  { value: 'notifications', label: 'Notifications' },
+  { value: 'appearance', label: 'Appearance' },
+  { value: 'privacy', label: 'Privacy & Data' }
+]
+const activeTab = ref('account')
 
 const themeOptions = [
   { value: 'light', label: 'Light', icon: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z' },
   { value: 'dark', label: 'Dark', icon: 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z' },
   { value: 'system', label: 'System', icon: 'M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25' }
+]
+
+const timeFormatOptions = [
+  { value: '12h', label: '12-Hour', preview: '2:30 PM' },
+  { value: '24h', label: '24-Hour', preview: '14:30' }
 ]
 
 const form = ref({

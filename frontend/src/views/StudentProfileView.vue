@@ -297,10 +297,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { usePreferences } from '../stores/preferences'
 
 import axios from 'axios'
 
 const route = useRoute()
+const prefs = usePreferences()
 const activeTab = ref('overview')
 const profile = ref(null)
 const loading = ref(true)
@@ -349,7 +351,7 @@ const formatStatus = (status) => {
 const formatDate = (isoStr) => {
   if (!isoStr) return 'N/A'
   try {
-    return new Date(isoStr).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    return new Date(isoStr).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: prefs.is12h.value })
   } catch (e) {
     return isoStr
   }
