@@ -64,6 +64,7 @@
               v-model:nodes="nodes"
               v-model:edges="edges"
               :default-viewport="{ zoom: 0.9 }"
+              :delete-key-code="['Backspace', 'Delete']"
               @connect="onConnect"
               class="hx-roadmap-canvas"
             >
@@ -77,7 +78,7 @@
                 />
               </template>
 
-              <Background pattern-color="#1f293d" :gap="20" />
+              <Background :pattern-color="isDark ? '#1f293d' : '#cbd5e1'" :gap="20" />
               <Controls />
               <MiniMap />
             </VueFlow>
@@ -173,11 +174,13 @@ import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import RoadmapNodeCard from '../components/RoadmapNodeCard.vue'
+import { useTheme } from '../stores/theme'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
 import '@vue-flow/minimap/dist/style.css'
 
+const { isDark } = useTheme()
 const roadmaps = ref([])
 const activeSlug = ref('')
 const nodes = ref([])
@@ -367,5 +370,12 @@ onMounted(async () => {
   width: 100%;
   height: 100%;
   background: #0b0e14;
+}
+
+/* Plain CSS rule, not a Tailwind bg-[#hex] class, so it's invisible to the
+   global light-mode override list in index.css - stayed black regardless
+   of theme without this. */
+html.light .hx-roadmap-canvas {
+  background: #f8fafc;
 }
 </style>

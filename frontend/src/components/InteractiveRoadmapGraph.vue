@@ -4,10 +4,6 @@
     <!-- Top Progress Bar Header -->
     <div class="absolute top-0 left-0 right-0 z-20 h-14 bg-[#161b22]/90 backdrop-blur-md border-b border-[#21262d] px-6 flex items-center justify-between">
       <div class="flex items-center space-x-4">
-        <router-link to="/academy" class="text-slate-400 hover:text-[#00f0ff] transition-colors flex items-center space-x-1.5 text-xs font-bold">
-          <span>&larr; Academy</span>
-        </router-link>
-        <span class="text-slate-600">|</span>
         <div class="flex items-center space-x-2">
           <span class="w-2.5 h-2.5 rounded-full bg-[#9fef00] animate-pulse"></span>
           <h1 class="text-sm font-extrabold text-white tracking-wide uppercase">{{ roadmapTitle || 'Cyber Security Roadmap' }}</h1>
@@ -49,7 +45,7 @@
           />
         </template>
 
-        <Background pattern-color="#1f293d" :gap="20" />
+        <Background :pattern-color="isDark ? '#1f293d' : '#cbd5e1'" :gap="20" />
         <Controls />
         <MiniMap />
       </VueFlow>
@@ -175,6 +171,7 @@ import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import RoadmapNodeCard from './RoadmapNodeCard.vue'
 import { useRoadmapGraph } from '../composables/useRoadmapGraph'
+import { useTheme } from '../stores/theme'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
@@ -195,6 +192,7 @@ const {
 } = useRoadmapGraph(props.roadmapSlug)
 
 const selectedNode = ref(null)
+const { isDark } = useTheme()
 
 const selectNode = (node) => {
   selectedNode.value = node
@@ -210,5 +208,12 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   background: #0b0e14;
+}
+
+/* .hx-roadmap-canvas's background is a plain CSS rule, not a Tailwind
+   bg-[#hex] class, so it's invisible to the global light-mode override list
+   in index.css - it stayed black in light mode regardless of theme. */
+html.light .hx-roadmap-canvas {
+  background: #f8fafc;
 }
 </style>
