@@ -9,10 +9,17 @@
       @close="mobileSidebarOpen = false"
     />
 
-    <!-- Main Content Area -->
+    <!-- Main Content Area.
+         min-w-0 matters here: a flex item's default min-width is `auto`, not
+         0, so without it this column refuses to shrink below whatever
+         routed page inside it happens to have the widest intrinsic content
+         - pushing the entire layout wider than the viewport and letting
+         mobile browsers pinch-zoom out to reveal the overflow. Sidebar is
+         `fixed` (out of flow), so this is the only flex participant in the
+         row, but the bug still applies to a single flex-1 child. -->
     <div
       :class="[
-        'flex-1 flex flex-col min-h-screen transition-all duration-300',
+        'flex-1 flex flex-col min-h-screen min-w-0 transition-all duration-300',
         sidebarCollapsed ? 'lg:ml-[76px]' : 'lg:ml-72'
       ]"
     >
@@ -242,7 +249,7 @@
       </header>
 
       <!-- Page Content -->
-      <main class="flex-1 p-4 sm:p-6 lg:p-8">
+      <main class="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
         <slot />
       </main>
     </div>
