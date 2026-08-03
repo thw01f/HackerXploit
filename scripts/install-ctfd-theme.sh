@@ -397,7 +397,11 @@ fi
 # ---------------------------------------------------------------------------
 log "Relabeling the SSO login button..."
 JS_TMP_LOCAL="$(mktemp)"
-trap 'rm -f "$CSS_TMP_LOCAL" "$JS_TMP_LOCAL"' EXIT
+# ${CSS_TMP_LOCAL:-} not $CSS_TMP_LOCAL: that variable is only ever set inside
+# the (now-conditional) branding block above, and `set -u` errors on an
+# unset-variable reference - this trap runs unconditionally, including on the
+# default (no --with-branding) path where CSS_TMP_LOCAL was never assigned.
+trap 'rm -f "${CSS_TMP_LOCAL:-}" "$JS_TMP_LOCAL"' EXIT
 
 # Single-quoted heredoc - bash does zero expansion/escaping inside it, so the
 # JS's own double quotes pass through untouched (this bit it the hard way
