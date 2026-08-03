@@ -386,6 +386,24 @@ cat > "$JS_TMP_LOCAL" <<'HX_JS_EOF'
 document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll('a[href="/oauth"]').forEach(function (el) {
     el.textContent = "Login with HackerXploit";
+    // Every CTFd account provisioned by the platform gets a random,
+    // never-disclosed password (see ctfd_sync.py) so CTFd's native local
+    // login can never work for them, by design - SSO is the only real path
+    // in. Leaving the native form visible right below the SSO button reads
+    // as "an alternative that should also work," and members who try their
+    // real password there just get a confusing "incorrect password" error
+    // for an account that's completely fine. Hide the <hr> separator and
+    // the native form (all its siblings after the button), leaving only
+    // the SSO button. Harmless no-op on every other page, where this
+    // selector simply matches nothing.
+    var sibling = el.nextElementSibling;
+    while (sibling) {
+      var next = sibling.nextElementSibling;
+      if (sibling.tagName === 'HR' || sibling.tagName === 'FORM') {
+        sibling.style.display = 'none';
+      }
+      sibling = next;
+    }
   });
 });
 </script>
