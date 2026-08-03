@@ -970,7 +970,7 @@
 
         <!-- TAB 2: MEMBER FEEDBACK & RATINGS -->
         <div v-else-if="activeAttendanceTab === 'feedback'" class="space-y-4">
-          <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-800 flex items-center justify-between text-xs">
+          <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
             <div>
               <span class="text-slate-400 block uppercase font-bold text-[10px]">Average Event Satisfaction Rating</span>
               <div class="flex items-center gap-2 mt-1">
@@ -981,6 +981,17 @@
                 <span class="text-slate-400 text-xs">({{ eventTotalRatings }} total reviews)</span>
               </div>
             </div>
+
+            <button
+              v-if="eventFeedbackList.length"
+              @click="exportFeedbackCsv(selectedComp.id)"
+              class="btn-htb text-xs py-2 px-4 bg-amber-400 hover:bg-amber-300 text-black font-extrabold flex items-center gap-2 shadow"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              <span>Export Feedback CSV</span>
+            </button>
           </div>
 
           <div v-if="eventFeedbackList.length === 0" class="py-12 text-center text-slate-500 text-xs">
@@ -1777,6 +1788,10 @@ const openAttendanceModal = async (comp) => {
 
 const exportAttendanceCsv = (compId) => {
   window.open(`/api/competitions/${compId}/attendance/export`, '_blank')
+}
+
+const exportFeedbackCsv = (compId) => {
+  window.open(`/api/competitions/${compId}/feedback/export`, '_blank')
 }
 
 // ==================== LIVE IST CLOCK TIMER ====================

@@ -1,8 +1,9 @@
 import secrets
 from datetime import datetime
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, Response
 from app.models import db, User, IDCardToken, CompetitionParticipation, Competition
 from app.utils.decorators import require_auth, log_audit
+from app.services.qr_service import generate_branded_qr_png
 
 id_card_bp = Blueprint('id_card', __name__, url_prefix='/api')
 
@@ -47,6 +48,21 @@ def get_user_id_card():
             'active_event_name': active_event_name
         }
     }), 200
+
+@id_card_bp.route('/profile/id-card/qr.png', methods=['GET'])
+@require_auth
+def get_user_id_card_qr():
+    """Server-rendered branded QR (HackerXploit logo embedded) for the
+    current user's verification URL - replaces the old client-side approach
+    of loading a QR-drawing script from a public CDN at runtime."""
+    user = g.current_user
+    token_obj = get_or_create_active_token(user.id)
+    verification_url = f"https://club.hackerxploit.org/verify/{token_obj.token}"
+    png_bytes = generate_branded_qr_png(verification_url)
+    return Response(png_bytes, mimetype='image/png', headers={
+        'Cache-Control': 'no-store, must-revalidate',
+        'Pragma': 'no-cache'
+    })
 
 @id_card_bp.route('/profile/id-card/regenerate', methods=['POST'])
 @require_auth
@@ -97,8 +113,13 @@ def verify_id_card_token(token):
         'status': 'verified',
         'member': {
             'username': user.username,
+            'full_name': user.full_name or user.username,
             'member_id': user.get_badge_id(),
+            'registration_number': user.registration_number,
             'role': user.role,
+            'specialization_role': user.specialization_role,
+            'department': user.department,
+            'academic_year': user.academic_year,
             'member_since': user.created_at.strftime('%B %Y'),
             'avatar_url': getattr(user, 'avatar_url', None)
         },

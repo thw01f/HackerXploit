@@ -452,7 +452,7 @@ def file_wrapup(comp_id):
 # ==================== CLUB EVENT ATTENDANCE & SCANNER ROUTES ====================
 
 @competition_bp.route('/club-events/active', methods=['GET'])
-@require_auth
+@require_role('teacher', 'admin')
 def get_active_club_events():
     now_ist = get_kolkata_now()
 
@@ -472,13 +472,13 @@ def get_active_club_events():
     for comp in events:
         scan_open = comp.starts_at - timedelta(minutes=30)
         scan_close = comp.ends_at + timedelta(minutes=30) if comp.ends_at else comp.starts_at + timedelta(hours=4)
-        
-        # Scheduled window check against Kolkata IST time
-        in_scheduled_window = (scan_open <= now_ist <= scan_close)
 
-        # Teachers / admins are authorized to operate scanner for any active club event
-        is_teacher = getattr(g.current_user, 'role', '') in ['teacher', 'admin', 'root_admin']
-        is_scan_allowed = in_scheduled_window or is_teacher
+        # Scheduled window check against Kolkata IST time - the scanner is
+        # only ever active in this window, with no role-based bypass. Access
+        # to the scanner at all is separately restricted to teachers/admins
+        # via the @require_role decorator on this route.
+        in_scheduled_window = (scan_open <= now_ist <= scan_close)
+        is_scan_allowed = in_scheduled_window
 
         comp_dict = comp.to_dict()
         comp_dict['scan_open_iso'] = scan_open.isoformat()
@@ -495,36 +495,14 @@ def get_active_club_events():
     return jsonify({'club_events': results}), 200
 
 
-@competition_bp.route('/<int:comp_id>/attendance/scan', methods=['POST'])
-@require_auth
-def scan_event_attendance(comp_id):
-    comp = Competition.query.get_or_404(comp_id)
-    data = request.get_json() or {}
-
-    token_input = (data.get('token') or data.get('member_id') or data.get('code') or '').strip()
-    remark = (data.get('remark') or '').strip()
-
-    if not token_input:
-        return jsonify({'error': 'QR Code, Token, or Member ID is required'}), 400
-
-    # 30-minute pre-start and post-end window check with Kolkata (IST) time
-    now_ist = get_kolkata_now()
-    scan_open = comp.starts_at - timedelta(minutes=30)
-    scan_close = comp.ends_at + timedelta(minutes=30) if comp.ends_at else comp.starts_at + timedelta(hours=4)
-
-    is_teacher = getattr(g.current_user, 'role', '') in ['teacher', 'admin', 'root_admin']
-    in_scheduled_window = (scan_open <= now_ist <= scan_close)
-
-    if not in_scheduled_window and not is_teacher:
-        return jsonify({
-            'error': f'Scanner inactive! Official attendance window for "{comp.title}" is closed.'
-        }), 400
-
-    # Resolve target user from token / URL / member_id / username
+def _resolve_scanned_user(token_input):
+    """Resolves a scanned/typed QR payload (a full verify URL, a raw token,
+    a badge ID, a username, or a numeric user id) to a User. Shared by the
+    lookup (preview) and scan (record) steps so both use identical matching."""
     target_user = None
+    raw_token = token_input
 
     # Handle full verification URLs (e.g. https://.../verify/TOKEN or http://.../verify?token=XYZ)
-    raw_token = token_input
     if '/verify/' in token_input:
         token_input = token_input.split('/verify/')[-1].split('?')[0].split('/')[0].strip()
     elif 'token=' in token_input:
@@ -548,6 +526,78 @@ def scan_event_attendance(comp_id):
     if not target_user and token_input.isdigit():
         target_user = User.query.get(int(token_input))
 
+    return target_user
+
+
+def _scan_window_open(comp):
+    now_ist = get_kolkata_now()
+    scan_open = comp.starts_at - timedelta(minutes=30)
+    scan_close = comp.ends_at + timedelta(minutes=30) if comp.ends_at else comp.starts_at + timedelta(hours=4)
+    return scan_open <= now_ist <= scan_close
+
+
+@competition_bp.route('/<int:comp_id>/attendance/lookup', methods=['POST'])
+@require_role('teacher', 'admin')
+def lookup_event_attendance(comp_id):
+    """Read-only preview step: resolves a scanned/typed code to a member and
+    returns their details (plus whether they're already marked present) so
+    the scanner can show who it found before anything is recorded."""
+    comp = Competition.query.get_or_404(comp_id)
+    data = request.get_json() or {}
+    token_input = (data.get('token') or data.get('member_id') or data.get('code') or '').strip()
+
+    if not token_input:
+        return jsonify({'error': 'QR Code, Token, or Member ID is required'}), 400
+
+    if not _scan_window_open(comp):
+        return jsonify({
+            'error': f'Scanner inactive! Official attendance window for "{comp.title}" is closed.'
+        }), 400
+
+    target_user = _resolve_scanned_user(token_input)
+    if not target_user:
+        return jsonify({'error': 'Invalid QR badge code or member not found'}), 404
+
+    existing = EventAttendance.query.filter_by(competition_id=comp_id, user_id=target_user.id).first()
+
+    return jsonify({
+        'member': {
+            'id': target_user.id,
+            'username': target_user.username,
+            'full_name': target_user.full_name or target_user.username,
+            'avatar_url': target_user.avatar_url,
+            'badge_id': target_user.get_badge_id(),
+            'role': target_user.role,
+            'department': target_user.department,
+            'academic_year': target_user.academic_year
+        },
+        'already_scanned': existing is not None,
+        'attendance': existing.to_dict() if existing else None
+    }), 200
+
+
+@competition_bp.route('/<int:comp_id>/attendance/scan', methods=['POST'])
+@require_role('teacher', 'admin')
+def scan_event_attendance(comp_id):
+    comp = Competition.query.get_or_404(comp_id)
+    data = request.get_json() or {}
+
+    token_input = (data.get('token') or data.get('member_id') or data.get('code') or '').strip()
+    remark = (data.get('remark') or '').strip()
+
+    if not token_input:
+        return jsonify({'error': 'QR Code, Token, or Member ID is required'}), 400
+
+    # 30-minute pre-start and post-end window check with Kolkata (IST) time -
+    # applies unconditionally, with no role-based bypass. Who may reach this
+    # route at all is separately restricted to teachers/admins via
+    # @require_role above.
+    if not _scan_window_open(comp):
+        return jsonify({
+            'error': f'Scanner inactive! Official attendance window for "{comp.title}" is closed.'
+        }), 400
+
+    target_user = _resolve_scanned_user(token_input)
     if not target_user:
         return jsonify({'error': 'Invalid QR badge code or member not found'}), 404
 
@@ -691,3 +741,37 @@ def submit_event_feedback(comp_id):
     log_audit('SUBMIT_EVENT_FEEDBACK', target_type='Competition', target_id=comp_id)
 
     return jsonify({'message': 'Thank you for your event feedback!', 'feedback': (existing or fb).to_dict()}), 200
+
+
+@competition_bp.route('/<int:comp_id>/feedback/export', methods=['GET'])
+@require_role('teacher', 'admin', 'root_admin')
+def export_event_feedback(comp_id):
+    from app.models import ClubEventFeedback
+    comp = Competition.query.get_or_404(comp_id)
+    feedbacks = ClubEventFeedback.query.filter_by(competition_id=comp_id).order_by(ClubEventFeedback.created_at.asc()).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        'Badge ID', 'Full Name', 'Username', 'Email', 'Rating (1-5)', 'Feedback', 'Submitted At'
+    ])
+
+    for fb in feedbacks:
+        u = User.query.get(fb.user_id)
+        writer.writerow([
+            u.get_badge_id() if u else 'N/A',
+            u.full_name if u else (u.username if u else 'Unknown'),
+            u.username if u else 'Unknown',
+            u.email if u else 'N/A',
+            fb.rating,
+            fb.feedback_text or '',
+            fb.created_at.isoformat() if fb.created_at else ''
+        ])
+
+    csv_data = output.getvalue()
+    response = make_response(csv_data)
+    filename = f"club_event_feedback_{comp_id}_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+    response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+    return response

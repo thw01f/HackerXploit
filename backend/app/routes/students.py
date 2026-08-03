@@ -122,6 +122,32 @@ def build_structured_profile(user):
         if not c:
             continue
         cert = Certificate.query.filter_by(user_id=user.id, source_id=c.id, type='course_completion').first()
+
+        # completed_chapters actually stores completed Note ids (see
+        # complete_note() in routes/academy.py) - derive a per-Module
+        # completion breakdown from it so a teacher/admin can see exactly
+        # which modules within this Path are done, in progress, or untouched.
+        completed_note_ids = set(e.completed_chapters or [])
+        modules = []
+        modules_completed = 0
+        for ch in sorted(c.chapters, key=lambda m: m.order_index or 0):
+            notes_total = len(ch.notes)
+            notes_completed = sum(1 for n in ch.notes if n.id in completed_note_ids)
+            if notes_total > 0 and notes_completed == notes_total:
+                status = 'completed'
+                modules_completed += 1
+            elif notes_completed > 0:
+                status = 'in_progress'
+            else:
+                status = 'not_started'
+            modules.append({
+                'id': ch.id,
+                'title': ch.title,
+                'notes_total': notes_total,
+                'notes_completed': notes_completed,
+                'status': status
+            })
+
         academy_courses.append({
             'course_id': c.id,
             'title': c.title,
@@ -129,7 +155,10 @@ def build_structured_profile(user):
             'cover_image': c.cover_image,
             'progress_percent': e.progress_percent,
             'completed_at': e.completed_at.isoformat() if e.completed_at else None,
-            'certificate': cert.to_dict() if cert else None
+            'certificate': cert.to_dict() if cert else None,
+            'modules_total': len(c.chapters),
+            'modules_completed': modules_completed,
+            'modules': modules
         })
 
     # 4. Competitions ("Trophy Case")

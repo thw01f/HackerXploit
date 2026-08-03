@@ -52,46 +52,53 @@
       </div>
     </div>
 
+    <!-- Backdrop - click anywhere outside the panel to close it -->
+    <div
+      v-if="selectedNode"
+      class="fixed inset-0 z-40 bg-black/40"
+      @click="selectedNode = null"
+    ></div>
+
     <!-- Detail Panel -->
     <div
       v-if="selectedNode"
-      class="fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] bg-[#161b22] border-l border-[#21262d] shadow-2xl flex flex-col"
+      class="fixed inset-y-0 right-0 z-50 w-full sm:w-[520px] bg-[#161b22] border-l border-[#21262d] shadow-2xl flex flex-col"
     >
       <div class="p-6 border-b border-[#21262d] flex items-center justify-between bg-[#0b0e14]/50">
-        <h2 class="text-lg font-extrabold text-white leading-tight">{{ selectedNode.label }}</h2>
+        <h2 class="text-xl font-extrabold text-white leading-tight">{{ selectedNode.label }}</h2>
         <button @click="selectedNode = null" class="p-2 text-slate-400 hover:text-white hover:bg-[#21262d] rounded-lg transition-colors">&times;</button>
       </div>
 
       <div class="flex-1 overflow-y-auto p-6 space-y-6">
         <div class="bg-[#0b0e14] p-4 rounded-xl border border-[#21262d] flex items-center justify-between">
-          <span class="text-xs font-extrabold uppercase" :class="getStatusColorClass(selectedNode.user_status)">
+          <span class="text-sm font-extrabold uppercase" :class="getStatusColorClass(selectedNode.user_status)">
             {{ selectedNode.user_status === 'done' ? 'Completed' : selectedNode.user_status === 'in_progress' ? 'In Progress' : 'Not Started' }}
           </span>
           <button
             @click="cycleNodeProgress(selectedNode)"
             :disabled="updatingProgress"
-            class="px-4 py-2 text-xs font-extrabold rounded-lg border transition-all"
+            class="px-5 py-2.5 text-sm font-extrabold rounded-lg border transition-all"
             :class="getCycleButtonClass(selectedNode.user_status)"
           >
             {{ updatingProgress ? 'Updating...' : getCycleButtonText(selectedNode.user_status) }}
           </button>
         </div>
 
-        <div class="prose prose-invert max-w-none text-xs leading-relaxed">
+        <div class="prose prose-invert max-w-none text-sm leading-relaxed">
           <div v-html="selectedNode.description_html"></div>
         </div>
 
         <div v-if="selectedNode.resources?.length" class="pt-4 border-t border-[#21262d] space-y-2">
-          <h3 class="text-xs font-extrabold text-[#00f0ff] uppercase tracking-wider mb-2">// LEARNING RESOURCES</h3>
+          <h3 class="text-sm font-extrabold text-[#00f0ff] uppercase tracking-wider mb-2">// LEARNING RESOURCES</h3>
           <a
             v-for="res in selectedNode.resources"
             :key="res.id"
             :href="res.url"
             target="_blank"
             rel="noopener noreferrer"
-            class="block p-3 bg-[#0b0e14] hover:bg-[#21262d] rounded-xl border border-[#21262d] hover:border-[#00f0ff]/50 transition-all"
+            class="block p-3.5 bg-[#0b0e14] hover:bg-[#21262d] rounded-xl border border-[#21262d] hover:border-[#00f0ff]/50 transition-all"
           >
-            <span class="text-xs font-bold text-slate-200">{{ res.title }}</span>
+            <span class="text-sm font-bold text-slate-200">{{ res.title }}</span>
           </a>
         </div>
       </div>
@@ -100,20 +107,19 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import RoadmapNodeCard from '../components/RoadmapNodeCard.vue'
 import { useRoadmapGraph } from '../composables/useRoadmapGraph'
 
 const route = useRoute()
-const roadmapSlug = route.params.slug || 'cyber-security'
 
 const {
   roadmapTitle, rawNodes,
   updatingProgress,
   fetchRoadmapData, cycleNodeProgress,
   getStatusColorClass, getCycleButtonClass, getCycleButtonText
-} = useRoadmapGraph(roadmapSlug)
+} = useRoadmapGraph(() => route.params.slug || 'cyber-security')
 
 const selectedTrack = ref('')
 const selectedNode = ref(null)
@@ -139,6 +145,13 @@ const trackProgressPercent = computed(() => {
 const selectNode = (node) => {
   selectedNode.value = node
 }
+
+watch(() => route.params.slug, async () => {
+  selectedTrack.value = ''
+  selectedNode.value = null
+  await fetchRoadmapData()
+  if (tracks.value.length > 0) selectedTrack.value = tracks.value[0]
+})
 
 onMounted(async () => {
   await fetchRoadmapData()

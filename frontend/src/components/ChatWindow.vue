@@ -34,15 +34,20 @@
 
       <!-- Messages Feed -->
       <div class="flex-1 overflow-y-auto space-y-3 py-3 pr-1">
-        <div v-for="msg in chatStore.messages" :key="msg.id" class="flex items-start space-x-2 text-xs">
-          <img :src="msg.sender_avatar || defaultAvatarSvg" @error="(e) => e.target.src = defaultAvatarSvg" class="w-7 h-7 rounded-full object-cover border border-slate-700 mt-0.5" />
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-slate-200">{{ msg.sender_username }}</span>
-              <div class="flex items-center space-x-2">
+        <div
+          v-for="msg in chatStore.messages"
+          :key="msg.id"
+          class="flex items-start space-x-2 text-xs"
+          :class="isOwnMessage(msg) ? 'flex-row-reverse space-x-reverse' : ''"
+        >
+          <img :src="msg.sender_avatar || defaultAvatarSvg" @error="(e) => e.target.src = defaultAvatarSvg" class="w-7 h-7 rounded-full object-cover border border-slate-700 mt-0.5 flex-shrink-0" />
+          <div class="flex-1 min-w-0" :class="isOwnMessage(msg) ? 'flex flex-col items-end' : ''">
+            <div class="flex items-center space-x-2" :class="isOwnMessage(msg) ? 'flex-row-reverse space-x-reverse' : 'justify-between w-full'">
+              <span class="font-bold" :class="isOwnMessage(msg) ? 'text-cyan-300' : 'text-slate-200'">{{ isOwnMessage(msg) ? 'You' : msg.sender_username }}</span>
+              <div class="flex items-center space-x-2" :class="isOwnMessage(msg) ? 'flex-row-reverse space-x-reverse' : ''">
                 <span class="text-[9px] text-slate-500 font-mono">{{ new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: prefs.is12h.value}) }}</span>
-                <button 
-                  v-if="authStore.isTeacher && !msg.is_deleted" 
+                <button
+                  v-if="authStore.isTeacher && !msg.is_deleted"
                   @click="chatStore.softDeleteMessage(msg.id)"
                   class="text-[9px] text-red-400 hover:underline font-mono"
                   title="Soft-delete message"
@@ -51,7 +56,10 @@
                 </button>
               </div>
             </div>
-            <p :class="msg.is_deleted ? 'text-slate-500 italic' : 'text-slate-300'" class="mt-0.5 break-words">
+            <p
+              :class="[msg.is_deleted ? 'text-slate-500 italic' : (isOwnMessage(msg) ? 'text-cyan-100 bg-cyan-950/50 border border-cyan-500/20' : 'text-slate-300'), isOwnMessage(msg) && !msg.is_deleted ? 'px-2.5 py-1 rounded-lg rounded-tr-sm' : '']"
+              class="mt-0.5 break-words max-w-[85%]"
+            >
               {{ msg.content }}
             </p>
           </div>
@@ -85,6 +93,8 @@ const newMessage = ref('')
 const chatContainerRef = ref(null)
 
 const defaultAvatarSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230b0e14'/><circle cx='50' cy='38' r='20' fill='%231f293d' stroke='%239fef00' stroke-width='2'/><path d='M20,85 C20,62 35,55 50,55 C65,55 80,62 80,85 Z' fill='%231f293d' stroke='%239fef00' stroke-width='2'/></svg>"
+
+const isOwnMessage = (msg) => authStore.user && msg.user_id === authStore.user.id
 
 const handleClickOutside = (event) => {
   if (chatStore.isOpen && chatContainerRef.value && !chatContainerRef.value.contains(event.target)) {

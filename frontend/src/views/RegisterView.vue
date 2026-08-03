@@ -87,15 +87,11 @@
           </div>
 
           <!-- Turnstile CAPTCHA Widget -->
-          <div class="p-3 bg-[#090d16] border border-[#1f293d] rounded-lg flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-              <input type="checkbox" id="turnstile" v-model="captchaVerified" required class="w-4 h-4 text-[#9fef00] bg-slate-900 border-slate-700 rounded focus:ring-0" />
-              <label for="turnstile" class="text-xs font-mono text-slate-300">Verify Cloudflare Turnstile Security</label>
-            </div>
-            <span class="text-[10px] font-mono text-slate-500">PROTECTED</span>
+          <div v-if="turnstileSiteKey" class="flex justify-center pt-1">
+            <TurnstileWidget ref="turnstileRef" :site-key="turnstileSiteKey" :theme="isDark ? 'dark' : 'light'" @verified="captchaToken = $event" @expired="captchaToken = ''" @error="captchaToken = ''" />
           </div>
 
-          <button type="submit" :disabled="loading" class="w-full btn-htb py-3 text-sm flex items-center justify-center space-x-2 mt-2">
+          <button type="submit" :disabled="loading || (turnstileSiteKey && !captchaToken)" class="w-full btn-htb py-3 text-sm flex items-center justify-center space-x-2 mt-2">
             <span v-if="loading" class="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></span>
             <span>{{ loading ? 'SUBMITTING APPLICATION...' : 'CREATE ACCOUNT &rarr;' }}</span>
           </button>
@@ -118,9 +114,12 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import Navbar from '../components/Navbar.vue'
 import Footer from '../components/Footer.vue'
+import TurnstileWidget from '../components/TurnstileWidget.vue'
 import { useAuthStore } from '../stores/auth'
+import { useTheme } from '../stores/theme'
 
 const authStore = useAuthStore()
+const { isDark } = useTheme()
 
 const form = ref({
   full_name: '',
@@ -135,32 +134,51 @@ const customFields = ref([])
 const allowedDomainsHint = ref('')
 const minPasswordLength = ref(8)
 
-const captchaVerified = ref(false)
+const turnstileSiteKey = ref('')
+const captchaToken = ref('')
+const turnstileRef = ref(null)
 const loading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
-onMounted(async () => {
-  try {
-    const [fieldsRes, configRes] = await Promise.all([
-      axios.get('/api/auth/custom-fields'),
-      axios.get('/api/auth/registration-config')
-    ])
-    customFields.value = fieldsRes.data.fields
-    if (configRes.data.allowed_email_domains) {
-      const list = configRes.data.allowed_email_domains.split(',').map(d => d.trim()).filter(Boolean).map(d => '@' + d)
-      allowedDomainsHint.value = list.join(', ')
-    }
-    if (configRes.data.min_password_length) {
-      minPasswordLength.value = configRes.data.min_password_length
-    }
-  } catch (err) {
-    console.error('Failed to load registration config', err)
+onMounted(() => {
+  // Fetched independently (not Promise.all'd together) - custom-fields
+  // failing must never take the CAPTCHA widget down with it, and vice versa.
+  axios.get('/api/auth/custom-fields')
+    .then(res => { customFields.value = res.data.fields })
+    .catch(err => console.error('Failed to load custom registration fields', err))
+
+  axios.get('/api/auth/registration-config')
+    .then(res => {
+      if (res.data.allowed_email_domains) {
+        const list = res.data.allowed_email_domains.split(',').map(d => d.trim()).filter(Boolean).map(d => '@' + d)
+        allowedDomainsHint.value = list.join(', ')
+      }
+      if (res.data.min_password_length) {
+        minPasswordLength.value = res.data.min_password_length
+      }
+      if (res.data.turnstile_site_key) {
+        turnstileSiteKey.value = res.data.turnstile_site_key
+      }
+    })
+    .catch(err => console.error('Failed to load registration config', err))
+
+  // Fallback source for the site key - same field, same value, served by
+  // the endpoint Login already relies on successfully. Covers the case
+  // where registration-config fails/changes but public-settings doesn't.
+  if (!turnstileSiteKey.value) {
+    axios.get('/api/auth/public-settings')
+      .then(res => {
+        if (!turnstileSiteKey.value && res.data.turnstile_site_key) {
+          turnstileSiteKey.value = res.data.turnstile_site_key
+        }
+      })
+      .catch(err => console.error('Failed to load public settings', err))
   }
 })
 
 const handleRegister = async () => {
-  if (!captchaVerified.value) {
+  if (turnstileSiteKey.value && !captchaToken.value) {
     errorMessage.value = 'Please complete CAPTCHA verification'
     return
   }
@@ -172,11 +190,15 @@ const handleRegister = async () => {
   try {
     const res = await authStore.register({
       ...form.value,
-      captcha_token: 'DEV_BYPASS_TOKEN'
+      captcha_token: captchaToken.value
     })
     successMessage.value = res.message
   } catch (err) {
     errorMessage.value = err.message
+    // Turnstile tokens are single-use - a failed submission already burned
+    // this one, so the widget must issue a fresh token before a retry can pass.
+    captchaToken.value = ''
+    turnstileRef.value?.reset()
   } finally {
     loading.value = false
   }

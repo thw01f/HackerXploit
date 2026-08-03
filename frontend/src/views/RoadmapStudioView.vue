@@ -64,7 +64,14 @@
               v-model:nodes="nodes"
               v-model:edges="edges"
               :default-viewport="{ zoom: 0.9 }"
+              :delete-key-code="['Backspace', 'Delete']"
+              :pan-on-drag="canvasInteractive"
+              :zoom-on-scroll="canvasInteractive"
+              :zoom-on-pinch="canvasInteractive"
+              :zoom-on-double-click="canvasInteractive"
               @connect="onConnect"
+              @edge-click="onEdgeClick"
+              @pane-click="selectedEdge = null"
               class="hx-roadmap-canvas"
             >
               <template #node-roadmapNode="nodeProps">
@@ -77,10 +84,37 @@
                 />
               </template>
 
-              <Background pattern-color="#1f293d" :gap="20" />
-              <Controls />
+              <Background :pattern-color="isDark ? '#1f293d' : '#cbd5e1'" :gap="20" />
+              <Controls @interaction-change="canvasInteractive = $event" />
               <MiniMap />
             </VueFlow>
+
+            <!-- Connection Style Toolbar - appears when an edge is selected -->
+            <div
+              v-if="selectedEdge"
+              class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-[#161b22] border border-[#21262d] rounded-xl shadow-2xl p-2 flex items-center gap-2 font-mono"
+            >
+              <span class="text-[10px] text-slate-400 uppercase font-bold px-1">Connection:</span>
+              <button
+                @click="setEdgeType('default')"
+                :class="(selectedEdge.data?.edge_type || 'default') === 'default' ? 'bg-[#9fef00]/15 text-[#9fef00] border-[#9fef00]/40' : 'text-slate-400 border-slate-700 hover:border-slate-600'"
+                class="px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5"
+              >
+                <svg class="w-4 h-3" viewBox="0 0 16 12"><line x1="0" y1="6" x2="16" y2="6" stroke="currentColor" stroke-width="2"/></svg>
+                <span>Solid</span>
+              </button>
+              <button
+                @click="setEdgeType('alternative')"
+                :class="selectedEdge.data?.edge_type === 'alternative' ? 'bg-amber-400/15 text-amber-400 border-amber-400/40' : 'text-slate-400 border-slate-700 hover:border-slate-600'"
+                class="px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5"
+              >
+                <svg class="w-4 h-3" viewBox="0 0 16 12"><line x1="0" y1="6" x2="16" y2="6" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2.5"/></svg>
+                <span>Dashed</span>
+              </button>
+              <span class="text-[10px] text-slate-600 px-1">|</span>
+              <span class="text-[10px] text-slate-500">Press Delete to remove</span>
+              <button @click="selectedEdge = null" class="text-slate-500 hover:text-white ml-1">&times;</button>
+            </div>
           </div>
         </template>
       </div>
@@ -173,11 +207,19 @@ import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import RoadmapNodeCard from '../components/RoadmapNodeCard.vue'
+import { useTheme } from '../stores/theme'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
 import '@vue-flow/minimap/dist/style.css'
 
+const { isDark } = useTheme()
+// Vue Flow's built-in Controls lock only toggles node dragging/connecting/
+// selection - it does NOT touch canvas pan/zoom at all, so "locking" still
+// let the whole graph be panned and zoomed. Mirror the same interactive
+// state onto the canvas's own pan/zoom props via the lock button's
+// interaction-change event so "locked" actually freezes the view too.
+const canvasInteractive = ref(true)
 const roadmaps = ref([])
 const activeSlug = ref('')
 const nodes = ref([])
@@ -201,6 +243,43 @@ const toFlowNode = (n, idx) => ({
   data: { ...n }
 })
 
+// Vue Flow's default edge is a thin 1px gray line - barely visible against
+// this app's dark canvas. Style every edge explicitly instead, and use
+// edge_type (already on the RoadmapEdge model, previously never read by the
+// frontend) to distinguish solid "default" connections from dashed
+// "alternative" ones.
+const edgeStyleFor = (edgeType) => {
+  if (edgeType === 'alternative') {
+    return { stroke: '#fbbf24', strokeWidth: 2.5, strokeDasharray: '8 6' }
+  }
+  return { stroke: '#9fef00', strokeWidth: 2.5 }
+}
+
+const toFlowEdge = (e) => {
+  const edgeType = e.edge_type || 'default'
+  return {
+    id: `e${e.id}`,
+    source: String(e.source_node_id),
+    target: String(e.target_node_id),
+    label: e.label || '',
+    data: { edge_type: edgeType },
+    style: edgeStyleFor(edgeType)
+  }
+}
+
+const selectedEdge = ref(null)
+const onEdgeClick = ({ edge }) => {
+  selectedEdge.value = edge
+}
+const setEdgeType = (edgeType) => {
+  if (!selectedEdge.value) return
+  const edge = edges.value.find(e => e.id === selectedEdge.value.id)
+  if (!edge) return
+  edge.data = { ...edge.data, edge_type: edgeType }
+  edge.style = edgeStyleFor(edgeType)
+  selectedEdge.value = edge
+}
+
 const fetchRoadmaps = async () => {
   const res = await axios.get('/api/roadmaps')
   roadmaps.value = res.data
@@ -214,12 +293,8 @@ const selectRoadmap = async (slug) => {
   const { nodes: apiNodes, edges: apiEdges } = res.data
 
   nodes.value = apiNodes.map(toFlowNode)
-  edges.value = apiEdges.map(e => ({
-    id: `e${e.id}`,
-    source: String(e.source_node_id),
-    target: String(e.target_node_id),
-    label: e.label || ''
-  }))
+  edges.value = apiEdges.map(toFlowEdge)
+  selectedEdge.value = null
 }
 
 const createRoadmap = async () => {
@@ -245,6 +320,7 @@ const deleteActiveRoadmap = async () => {
     nodes.value = []
     edges.value = []
     activeNode.value = null
+    selectedEdge.value = null
     await fetchRoadmaps()
   } catch (err) {
     alert(err.response?.data?.error || 'Failed to delete roadmap')
@@ -278,7 +354,9 @@ const onConnect = (params) => {
   edges.value.push({
     id: `e${params.source}-${params.target}`,
     source: params.source,
-    target: params.target
+    target: params.target,
+    data: { edge_type: 'default' },
+    style: edgeStyleFor('default')
   })
 }
 
@@ -288,7 +366,7 @@ const saveLayout = async () => {
   try {
     await axios.put(`/api/roadmaps/${activeSlug.value}/layout`, {
       nodes: nodes.value.map(n => ({ id: Number(n.id), position_x: n.position.x, position_y: n.position.y })),
-      edges: edges.value.map(e => ({ source_node_id: Number(e.source), target_node_id: Number(e.target), label: e.label || null }))
+      edges: edges.value.map(e => ({ source_node_id: Number(e.source), target_node_id: Number(e.target), label: e.label || null, edge_type: e.data?.edge_type || 'default' }))
     })
     saveMessage.value = 'Saved'
     setTimeout(() => { saveMessage.value = '' }, 2000)
@@ -367,5 +445,12 @@ onMounted(async () => {
   width: 100%;
   height: 100%;
   background: #0b0e14;
+}
+
+/* Plain CSS rule, not a Tailwind bg-[#hex] class, so it's invisible to the
+   global light-mode override list in index.css - stayed black regardless
+   of theme without this. */
+html.light .hx-roadmap-canvas {
+  background: #f8fafc;
 }
 </style>

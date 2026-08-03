@@ -30,6 +30,6 @@ class AuditLog(db.Model):
             'notes': self.notes or (str(self.details) if self.details else ''),
             'details': self.details or {},
             'ip_address': self.ip_address,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'timestamp': self.created_at.isoformat() if self.created_at else None
+            'created_at': self.created_at.isoformat() + 'Z' if self.created_at else None,
+            'timestamp': self.created_at.isoformat() + 'Z' if self.created_at else None
         }

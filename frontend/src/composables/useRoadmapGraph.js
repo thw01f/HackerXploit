@@ -6,7 +6,14 @@ import axios from 'axios'
 // state, and owns the progress-cycling logic both consumers need. The
 // Studio (RoadmapStudioView.vue) does its own fetching since it also needs
 // write operations (create/update/delete) that don't belong here.
-export function useRoadmapGraph(roadmapSlug) {
+//
+// roadmapSlugSource may be a plain string OR a getter function (`() =>
+// props.roadmapSlug`). Accepting a getter lets fetchRoadmapData() re-read
+// the CURRENT slug on every call instead of closing over whatever value was
+// passed in at setup time - a plain string here previously meant switching
+// roadmaps via a dropdown silently kept re-fetching the original slug.
+export function useRoadmapGraph(roadmapSlugSource) {
+  const resolveSlug = () => (typeof roadmapSlugSource === 'function' ? roadmapSlugSource() : roadmapSlugSource)
   const roadmapTitle = ref('')
   const rawNodes = ref([])
   const nodes = ref([])
@@ -31,7 +38,7 @@ export function useRoadmapGraph(roadmapSlug) {
 
   const fetchRoadmapData = async () => {
     try {
-      const res = await axios.get(`/api/roadmaps/${roadmapSlug}`, { withCredentials: true })
+      const res = await axios.get(`/api/roadmaps/${resolveSlug()}`, { withCredentials: true })
       roadmapTitle.value = res.data.roadmap?.title || 'Roadmap'
       rawNodes.value = res.data.nodes || []
       progressPercent.value = res.data.progress_percent || 0
@@ -39,12 +46,19 @@ export function useRoadmapGraph(roadmapSlug) {
       totalCount.value = res.data.total_count || 0
 
       nodes.value = rawNodes.value.map(toFlowNode)
-      edges.value = (res.data.edges || []).map(e => ({
-        id: `e${e.id}`,
-        source: String(e.source_node_id),
-        target: String(e.target_node_id),
-        label: e.label || ''
-      }))
+      edges.value = (res.data.edges || []).map(e => {
+        const edgeType = e.edge_type || 'default'
+        return {
+          id: `e${e.id}`,
+          source: String(e.source_node_id),
+          target: String(e.target_node_id),
+          label: e.label || '',
+          data: { edge_type: edgeType },
+          style: edgeType === 'alternative'
+            ? { stroke: '#fbbf24', strokeWidth: 2.5, strokeDasharray: '8 6' }
+            : { stroke: '#9fef00', strokeWidth: 2.5 }
+        }
+      })
     } catch (e) {
       console.error('Failed to fetch roadmap data:', e)
     }

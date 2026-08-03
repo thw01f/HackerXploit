@@ -86,6 +86,7 @@ def create_app(config_class=Config):
     from app.routes.support import support_bp
     from app.routes.roadmap import roadmap_bp
     from app.routes.announcement import announcement_bp
+    from app.routes.certification import certification_bp, certification_category_bp
 
     flask_app.register_blueprint(auth_bp)
     flask_app.register_blueprint(oauth_bp)
@@ -110,6 +111,8 @@ def create_app(config_class=Config):
     flask_app.register_blueprint(support_bp)
     flask_app.register_blueprint(roadmap_bp)
     flask_app.register_blueprint(announcement_bp)
+    flask_app.register_blueprint(certification_bp)
+    flask_app.register_blueprint(certification_category_bp)
 
 
 
@@ -158,13 +161,56 @@ def create_app(config_class=Config):
             "ALTER TABLE competition_participation ADD COLUMN completion_submitted_at TIMESTAMP",
             "UPDATE competition_participation SET application_screenshots = to_json(ARRAY[application_screenshot]) WHERE application_screenshot IS NOT NULL AND (application_screenshots IS NULL OR application_screenshots::text = '[]')",
             "ALTER TABLE roadmap_nodes ADD COLUMN position_x FLOAT",
-            "ALTER TABLE roadmap_nodes ADD COLUMN position_y FLOAT"
+            "ALTER TABLE roadmap_nodes ADD COLUMN position_y FLOAT",
+            "ALTER TABLE certifications ADD COLUMN category_id INTEGER REFERENCES certification_categories(id) ON DELETE SET NULL",
+            "ALTER TABLE certifications ADD COLUMN position_x FLOAT",
+            "ALTER TABLE certifications ADD COLUMN position_y FLOAT",
+            "ALTER TABLE course_chapters ADD COLUMN description TEXT",
+            "ALTER TABLE course_chapters ADD COLUMN cover_image VARCHAR(255)",
+            # LiveClass.thumbnail_url has been on the model since this feature
+            # was built, but the live_classes table predates it and never got
+            # an ALTER TABLE for it - every "Schedule Live Class" submission
+            # was hitting a real 500 (UndefinedColumn) because the INSERT
+            # always includes thumbnail_url.
+            "ALTER TABLE live_classes ADD COLUMN thumbnail_url VARCHAR(255)",
+            # CourseComment is now doubling as a per-Note "Review" (paired with
+            # NoteRating) alongside its original per-Module discussion use -
+            # note_id is nullable so pre-existing module-wide comments are
+            # unaffected. The unique index enforces one review per user per
+            # note; NULLs (legacy rows, and any future module-wide comment)
+            # don't collide with each other under a unique index.
+            "ALTER TABLE course_comments ADD COLUMN note_id INTEGER REFERENCES module_notes(id) ON DELETE CASCADE",
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_course_comments_note_user_unique ON course_comments (note_id, user_id)"
         ]:
             try:
                 db.session.execute(text(stmt))
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+
+        # One-time backfill: Learning Paths used to be a flat Path -> Chapter
+        # structure where the chapter WAS the readable content. Introducing
+        # the Module/Note split (a Module now needs its own cover page and
+        # holds any number of Notes) means existing chapter content would
+        # otherwise vanish from every reader - migrate each pre-existing
+        # chapter's content_markdown/attachments into a single ModuleNote so
+        # nothing already written is lost.
+        try:
+            from app.models import CourseChapter, ModuleNote
+            legacy_chapters = CourseChapter.query.filter(CourseChapter.content_markdown.isnot(None), CourseChapter.content_markdown != '').all()
+            for ch in legacy_chapters:
+                if len(ch.notes) == 0:
+                    db.session.add(ModuleNote(
+                        chapter_id=ch.id,
+                        order_index=1,
+                        title=ch.title,
+                        content_markdown=ch.content_markdown,
+                        attachments=ch.attachments or []
+                    ))
+            if legacy_chapters:
+                db.session.commit()
+        except Exception:
+            db.session.rollback()
 
         # One-time backfill: migrate the old single-string dashboard banner into
         # the new multi-announcement table, preserving the previously-hardcoded

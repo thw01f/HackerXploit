@@ -1,7 +1,7 @@
 <template>
-  <div 
+  <div
     :class="[
-      'relative w-full max-w-sm rounded-xl p-5 text-white overflow-hidden shadow-2xl transition-all duration-300 transform cursor-pointer select-none bg-gradient-to-br',
+      'id-badge-card relative w-full max-w-sm rounded-xl p-5 text-white overflow-hidden shadow-2xl transition-all duration-300 transform cursor-pointer select-none bg-gradient-to-br',
       theme.borderClass,
       theme.bgGradient
     ]"

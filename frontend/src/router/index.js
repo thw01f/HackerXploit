@@ -10,7 +10,11 @@ import DashboardView from '../views/DashboardView.vue'
 import AcademyView from '../views/AcademyView.vue'
 import AcademyWriteView from '../views/AcademyWriteView.vue'
 import RoadmapStudioView from '../views/RoadmapStudioView.vue'
+import CertificationStudioView from '../views/CertificationStudioView.vue'
 import CourseDetailView from '../views/CourseDetailView.vue'
+import CourseOverviewView from '../views/CourseOverviewView.vue'
+import ModuleOverviewView from '../views/ModuleOverviewView.vue'
+import NoteEditorView from '../views/NoteEditorView.vue'
 import MyCoursesView from '../views/MyCoursesView.vue'
 import SearchView from '../views/SearchView.vue'
 import CompetitionsView from '../views/CompetitionsView.vue'
@@ -89,11 +93,41 @@ const routes = [
     component: RoadmapStudioView,
     meta: { requiresAuth: true, roles: ['teacher', 'admin', 'root_admin'] }
   },
-  { 
-    path: '/academy/course/:slug', 
-    name: 'course-detail', 
-    component: CourseDetailView, 
-    meta: { requiresAuth: true } 
+  {
+    path: '/academy/certification-studio',
+    name: 'certification-studio',
+    component: CertificationStudioView,
+    meta: { requiresAuth: true, roles: ['teacher', 'admin', 'root_admin'] }
+  },
+  {
+    path: '/academy/course/:slug',
+    name: 'course-overview',
+    component: CourseOverviewView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/academy/course/:slug/module/:moduleId',
+    name: 'module-overview',
+    component: ModuleOverviewView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/academy/course/:slug/module/:moduleId/read',
+    name: 'course-detail',
+    component: CourseDetailView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/academy/modules/:moduleId/notes/new',
+    name: 'note-create',
+    component: NoteEditorView,
+    meta: { requiresAuth: true, roles: ['teacher', 'admin', 'root_admin'] }
+  },
+  {
+    path: '/academy/notes/:noteId/edit',
+    name: 'note-edit',
+    component: NoteEditorView,
+    meta: { requiresAuth: true, roles: ['teacher', 'admin', 'root_admin'] }
   },
   { 
     path: '/academy/my-courses', 

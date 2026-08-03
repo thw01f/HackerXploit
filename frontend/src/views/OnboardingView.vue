@@ -186,7 +186,7 @@
               <input 
                 v-model="form.phone_number" 
                 type="tel" 
-                placeholder="e.g. 6379855124" 
+                placeholder="e.g. +91 XXXXXXXXXX"
                 class="input-field text-xs py-2 w-full"
               />
             </div>

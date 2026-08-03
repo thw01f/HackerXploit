@@ -20,13 +20,14 @@ export const useAuthStore = defineStore('auth', {
     userRole: (state) => state.user?.role || 'guest'
   },
   actions: {
-    async login(emailOrUsername, password) {
+    async login(emailOrUsername, password, captchaToken) {
       this.loading = true
       this.error = null
       try {
         const res = await axios.post('/api/auth/login', {
           email_or_username: emailOrUsername,
-          password
+          password,
+          captcha_token: captchaToken
         })
         this.user = res.data.user
         this.authChecked = true

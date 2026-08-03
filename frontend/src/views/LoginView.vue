@@ -45,9 +45,14 @@
             />
           </div>
 
-          <button 
-            type="submit" 
-            :disabled="loading"
+          <!-- Turnstile CAPTCHA Widget -->
+          <div v-if="turnstileSiteKey" class="flex justify-center pt-1">
+            <TurnstileWidget ref="turnstileRef" :site-key="turnstileSiteKey" :theme="isDark ? 'dark' : 'light'" @verified="captchaToken = $event" @expired="captchaToken = ''" @error="captchaToken = ''" />
+          </div>
+
+          <button
+            type="submit"
+            :disabled="loading || (turnstileSiteKey && !captchaToken)"
             class="w-full btn-htb py-3 text-sm flex items-center justify-center space-x-2 mt-2"
           >
             <span v-if="loading" class="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></span>
@@ -68,26 +73,42 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import axios from 'axios'
 import Navbar from '../components/Navbar.vue'
 import Footer from '../components/Footer.vue'
+import TurnstileWidget from '../components/TurnstileWidget.vue'
 import { useAuthStore } from '../stores/auth'
+import { useTheme } from '../stores/theme'
 
 const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
+const { isDark } = useTheme()
 
 const emailOrUsername = ref('')
 const password = ref('')
 const loading = ref(false)
 const errorMessage = ref('')
+const turnstileSiteKey = ref('')
+const captchaToken = ref('')
+const turnstileRef = ref(null)
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('/api/auth/public-settings')
+    turnstileSiteKey.value = res.data.turnstile_site_key || ''
+  } catch (err) {
+    console.error('Failed to load public settings', err)
+  }
+})
 
 const handleLogin = async () => {
   loading.value = true
   errorMessage.value = ''
   try {
-    await authStore.login(emailOrUsername.value, password.value)
+    await authStore.login(emailOrUsername.value, password.value, captchaToken.value)
     if (authStore.user?.is_root_admin && authStore.user?.is_first_login) {
       router.push('/setup-admin')
     } else if (authStore.user?.status === 'approved' && !authStore.user?.onboarding_completed) {
@@ -98,6 +119,10 @@ const handleLogin = async () => {
     }
   } catch (err) {
     errorMessage.value = err.message || 'Login failed.'
+    // Turnstile tokens are single-use - a failed login already burned this
+    // one, so the widget must issue a fresh token before a retry can pass.
+    captchaToken.value = ''
+    turnstileRef.value?.reset()
   } finally {
     loading.value = false
   }

@@ -38,15 +38,11 @@
               <input v-model="loginId" type="text" required placeholder="operator@hackerxploit.org" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500" />
             </div>
 
-            <div class="p-3 bg-slate-900/80 border border-slate-700/70 rounded-lg flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <input type="checkbox" id="captcha" v-model="captchaVerified" required class="w-4 h-4 text-cyan-500 rounded" />
-                <label for="captcha" class="text-xs text-slate-300">Verify CAPTCHA Security</label>
-              </div>
-              <span class="text-[10px] font-mono text-slate-500">PROTECTED</span>
+            <div v-if="turnstileSiteKey" class="flex justify-center pt-1">
+              <TurnstileWidget ref="turnstileRef" :site-key="turnstileSiteKey" :theme="isDark ? 'dark' : 'light'" @verified="captchaToken = $event" @expired="captchaToken = ''" @error="captchaToken = ''" />
             </div>
 
-            <button type="submit" :disabled="loading" class="w-full btn-neon-cyan py-3 text-sm flex items-center justify-center space-x-2">
+            <button type="submit" :disabled="loading || (turnstileSiteKey && !captchaToken)" class="w-full btn-neon-cyan py-3 text-sm flex items-center justify-center space-x-2">
               <span v-if="loading" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
               <span>{{ loading ? 'Submitting...' : 'Continue' }}</span>
             </button>
@@ -130,14 +126,20 @@
 </template>
 
 <script setup>
-import { ref, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 import Navbar from '../components/Navbar.vue'
 import Footer from '../components/Footer.vue'
+import TurnstileWidget from '../components/TurnstileWidget.vue'
+import { useTheme } from '../stores/theme'
+
+const { isDark } = useTheme()
 
 const step = ref(1)
 const loginId = ref('')
-const captchaVerified = ref(false)
+const turnstileSiteKey = ref('')
+const captchaToken = ref('')
+const turnstileRef = ref(null)
 const code = ref('')
 const password = ref('')
 const confirmPassword = ref('')
@@ -147,6 +149,15 @@ const successMessage = ref('')
 
 const secondsLeft = ref(0)
 let countdownTimer = null
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('/api/auth/public-settings')
+    turnstileSiteKey.value = res.data.turnstile_site_key || ''
+  } catch (err) {
+    console.error('Failed to load public settings', err)
+  }
+})
 
 const startCountdown = (expiresAtIso) => {
   clearInterval(countdownTimer)
@@ -167,8 +178,8 @@ const startCountdown = (expiresAtIso) => {
 onUnmounted(() => clearInterval(countdownTimer))
 
 const handleStep1 = async () => {
-  if (!captchaVerified.value) {
-    errorMessage.value = 'Please verify CAPTCHA'
+  if (turnstileSiteKey.value && !captchaToken.value) {
+    errorMessage.value = 'Please complete CAPTCHA verification'
     return
   }
   loading.value = true
@@ -176,11 +187,15 @@ const handleStep1 = async () => {
   try {
     await axios.post('/api/auth/forgot-password', {
       email_or_username: loginId.value,
-      captcha_token: 'DEV_BYPASS_TOKEN'
+      captcha_token: captchaToken.value
     })
     step.value = 2
   } catch (err) {
     errorMessage.value = err.response?.data?.error || 'Failed to submit reset request'
+    // Turnstile tokens are single-use - a failed submit already burned this
+    // one, so the widget must issue a fresh token before a retry can pass.
+    captchaToken.value = ''
+    turnstileRef.value?.reset()
   } finally {
     loading.value = false
   }
