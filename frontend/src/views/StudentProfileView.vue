@@ -170,6 +170,36 @@
                     <div class="bg-cyan-400 h-full rounded-full transition-all" :style="{ width: course.progress_percent + '%' }"></div>
                   </div>
                 </div>
+
+                <!-- Per-Module breakdown: completed modules render as a
+                     "scratched" (struck-through) column but stay fully
+                     legible - not just faded/hidden. -->
+                <div v-if="course.modules_total" class="space-y-2 pt-2">
+                  <div class="flex justify-between text-sm font-mono text-slate-400">
+                    <span>Modules</span>
+                    <span>{{ course.modules_completed }}/{{ course.modules_total }} completed</span>
+                  </div>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <div
+                      v-for="mod in course.modules"
+                      :key="mod.id"
+                      class="rounded-lg border p-2.5 flex flex-col justify-between min-h-[62px]"
+                      :class="moduleStatusClass(mod.status)"
+                    >
+                      <p
+                        class="text-xs font-bold leading-snug line-clamp-2"
+                        :class="mod.status === 'completed' ? 'line-through decoration-2 text-emerald-300' : 'text-slate-200'"
+                      >
+                        {{ mod.title }}
+                      </p>
+                      <div class="flex items-center justify-between mt-1.5 gap-1">
+                        <span class="text-[10px] font-mono text-slate-500">{{ mod.notes_completed }}/{{ mod.notes_total }} notes</span>
+                        <svg v-if="mod.status === 'completed'" class="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        <span v-else-if="mod.status === 'in_progress'" class="text-[9px] font-mono font-bold text-amber-400 uppercase flex-shrink-0">In Progress</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div v-if="course.certificate" class="pt-3 border-t border-slate-800 flex justify-between items-center text-sm font-mono">
@@ -323,6 +353,12 @@ const fetchProfile = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const moduleStatusClass = (status) => {
+  if (status === 'completed') return 'bg-emerald-950/20 border-emerald-500/30'
+  if (status === 'in_progress') return 'bg-amber-950/20 border-amber-500/30'
+  return 'bg-slate-900/60 border-slate-800'
 }
 
 const getResultBadgeClass = (res) => {

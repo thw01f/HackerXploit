@@ -91,6 +91,7 @@ html.light .bg-\[\#0d1420\]\/80,
 html.light .bg-\[\#161b22\],
 html.light .bg-\[\#161b22\]\/90,
 html.light .bg-\[\#161b22\]\/95,
+html.light .bg-\[\#161b22\]\/85,
 html.light .bg-\[\#161b22\]\/80,
 html.light .bg-\[\#161b22\]\/70,
 html.light .bg-\[\#161b22\]\/60,
@@ -100,6 +101,14 @@ html.light .bg-\[\#1a2332\],
 html.light .bg-\[\#21262d\],
 html.light .bg-\[\#30363d\] {
   background-color: #ffffff !important;
+}
+
+/* bg-[#1f293d] is used as a progress-bar TRACK (e.g. CourseDetailView.vue,
+   CourseOverviewView.vue), not a card surface - forcing it to white like
+   the surfaces above would make the track invisible against an
+   already-white card. Give it a visible light-gray track color instead. */
+html.light .bg-\[\#1f293d\] {
+  background-color: #e2e8f0 !important;
 }
 
 /* Light Mode Border Overrides */
@@ -200,6 +209,35 @@ html.light .text-\[\#9fef00\] {
 
 html.light .text-\[\#ffb700\] {
   color: #b45309 !important;
+}
+
+/* The Digital ID Badge card (Dashboard widget + full ID Card page) always
+   renders on its own dark gradient background regardless of app theme - it's
+   a mockup of a physical badge, not a themeable panel. The light-mode
+   text-darkening rules above would make its text invisible against that
+   permanently-dark background, so restore full-brightness colors scoped to
+   .id-badge-card specifically. */
+html.light .id-badge-card.text-white,
+html.light .id-badge-card .text-white {
+  color: #ffffff !important;
+}
+html.light .id-badge-card .text-slate-300 {
+  color: #cbd5e1 !important;
+}
+html.light .id-badge-card .text-slate-400 {
+  color: #94a3b8 !important;
+}
+html.light .id-badge-card .text-slate-500 {
+  color: #64748b !important;
+}
+html.light .id-badge-card .text-\[\#00f0ff\] {
+  color: #00f0ff !important;
+}
+html.light .id-badge-card .text-\[\#9fef00\] {
+  color: #9fef00 !important;
+}
+html.light .id-badge-card .text-\[\#ffb700\] {
+  color: #ffb700 !important;
 }
 
 /* Light Mode Navigation Items */
@@ -535,6 +573,53 @@ html.light textarea:focus {
 ::-webkit-scrollbar-thumb {
   background: #1f293d;
   border-radius: 4px;
+}
+
+/* Vue Flow zoom/pan Controls widget (Roadmap Studio, Certification Studio,
+   and their read-only viewers) ships with tiny 16px buttons and a 12px icon
+   cap - a detailed lock icon at that size just reads as an indistinct blob,
+   and the buttons are too small to comfortably click. Enlarge and re-skin
+   to match the app's dark-surface styling instead of vue-flow's stock white
+   pill, which also just doesn't fit against a dark canvas. */
+.vue-flow__controls {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.vue-flow__controls-button {
+  width: 34px;
+  height: 34px;
+  background: #161b22;
+  border: none;
+  border-bottom: 1px solid #21262d;
+}
+
+.vue-flow__controls-button svg {
+  max-width: 18px;
+  max-height: 18px;
+  fill: #e2e8f0;
+}
+
+.vue-flow__controls-button:hover {
+  background: #21262d;
+}
+
+.vue-flow__controls-button:disabled svg {
+  fill-opacity: 0.3;
+}
+
+html.light .vue-flow__controls-button {
+  background: #ffffff;
+  border-bottom-color: #e2e8f0;
+}
+
+html.light .vue-flow__controls-button svg {
+  fill: #1e293b;
+}
+
+html.light .vue-flow__controls-button:hover {
+  background: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb:hover {

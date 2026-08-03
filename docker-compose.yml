@@ -34,6 +34,8 @@ services:
       - CLAMAV_HOST=clamav
       - CLAMAV_PORT=3310
       - SENTRY_DSN=${SENTRY_DSN:-}
+      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-1x0000000000000000000000000000000AA}
+      - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-1x00000000000000000000AA}
     volumes:
       - uploads_data:/var/uploads
       - backups_data:/var/hx_backups

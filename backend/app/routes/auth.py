@@ -22,7 +22,8 @@ def get_registration_config():
     return jsonify({
         'allowed_email_domains': toggle.allowed_email_domains or "gmail.com,srm.edu.in,hackerxploit.org",
         'min_password_length': toggle.password_min_length or 8,
-        'general_chat_enabled': toggle.general_chat_enabled if toggle else True
+        'general_chat_enabled': toggle.general_chat_enabled if toggle else True,
+        'turnstile_site_key': current_app.config.get('TURNSTILE_SITE_KEY')
     }), 200
 
 @auth_bp.route('/public-settings', methods=['GET'])
@@ -34,7 +35,8 @@ def get_public_settings():
     return jsonify({
         'general_chat_enabled': toggle.general_chat_enabled if toggle else True,
         'allowed_email_domains': toggle.allowed_email_domains or "",
-        'min_password_length': toggle.password_min_length or 8
+        'min_password_length': toggle.password_min_length or 8,
+        'turnstile_site_key': current_app.config.get('TURNSTILE_SITE_KEY')
     }), 200
 
 @auth_bp.route('/register', methods=['POST'])
@@ -176,6 +178,10 @@ def login():
     data = request.get_json() or {}
     login_id = data.get('email_or_username', '').strip()
     password = data.get('password', '')
+    captcha_token = data.get('captcha_token', '')
+
+    if not verify_turnstile(captcha_token, request.remote_addr):
+        return jsonify({'error': 'CAPTCHA verification failed'}), 400
 
     user = User.query.filter(
         (User.email == login_id.lower()) | (User.username == login_id)

@@ -5,8 +5,9 @@ db = SQLAlchemy()
 from .user import User, PasswordResetRequest, PasswordResetCode, ProfileFieldDefinition, UserProfileValue
 from .session import DeviceSession, LoginAttempt, LoginActivity
 from .audit import AuditLog
-from .academy import Course, CourseChapter, Enrollment, CourseEnrollment, CourseComment
+from .academy import Course, CourseChapter, CourseModule, ModuleNote, Enrollment, CourseEnrollment, CourseComment, CourseResource, NoteRating
 from .certificate import Certificate
+from .certification import Certification, CertificationCategory, CertificationEdge
 from .competition import Competition, CompetitionParticipation, CompetitionApplication, EventAttendance, ClubEventFeedback
 from .retention import RetentionSettings
 from .opportunity import Opportunity, OpportunityApplication, Skill, member_skills, opportunity_skills
@@ -33,10 +34,17 @@ __all__ = [
     'AuditLog',
     'Course',
     'CourseChapter',
+    'CourseModule',
+    'ModuleNote',
     'Enrollment',
     'CourseEnrollment',
     'CourseComment',
+    'CourseResource',
+    'NoteRating',
     'Certificate',
+    'Certification',
+    'CertificationCategory',
+    'CertificationEdge',
     'Competition',
     'CompetitionParticipation',
     'CompetitionApplication',

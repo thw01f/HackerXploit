@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d1420"/>
+      <stop offset="100%" stop-color="#0b0e14"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#1f293d" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <rect width="800" height="450" fill="url(#grid)"/>
+  <g transform="translate(400,190)" fill="none" stroke="#9fef00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M -60 -30 L -60 40 a 12 12 0 0 0 12 12 L 48 52 a 12 12 0 0 0 12 -12 L 60 -10 a 12 12 0 0 0 -12 -12 L -8 -22 L -24 -38 L -48 -38 a 12 12 0 0 0 -12 8 z"/>
+  </g>
+  <text x="400" y="290" font-family="'Fira Code', monospace" font-size="22" font-weight="700" fill="#e2e8f0" text-anchor="middle" letter-spacing="1">HACKERXPLOIT ACADEMY</text>
+  <text x="400" y="320" font-family="'Fira Code', monospace" font-size="14" fill="#64748b" text-anchor="middle" letter-spacing="2">NO COVER IMAGE SET</text>
+</svg>

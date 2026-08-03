@@ -99,24 +99,44 @@ def test_pdf_certificate_generator(tmp_path):
     assert os.path.exists(os.path.join(cert_dir, "certificate_CERT-12345.pdf"))
 
 def test_academy_flow_and_auto_certificate(client, auth_teacher_token, auth_student_token):
-    # 1. Login teacher and create course chapter
-    res = client.post('/api/academy/write', json={
+    # 1. Teacher creates a Path, a Module inside it, and a Note inside the module
+    res = client.post('/api/academy/courses', json={
         'title': 'Binary Exploitation 101',
         'description': 'Buffer overflow fundamentals',
-        'order_index': 1,
-        'content_markdown': '# Lesson 1\nIntroduction to stack frames.'
+        'status': 'published'
     }, headers={'Authorization': f'Bearer {auth_teacher_token}'})
     assert res.status_code == 201
-    course_id = res.json['course']['id']
-    chapter_id = res.json['chapter']['id']
+    course_id = res.json['id']
 
-    # 2. Switch to student and view course details
-    res = client.get(f"/api/academy/course/binary-exploitation-101", headers={'Authorization': f'Bearer {auth_student_token}'})
+    res = client.post(f'/api/academy/courses/{course_id}/modules', json={
+        'title': 'Stack Frames', 'description': 'Intro module'
+    }, headers={'Authorization': f'Bearer {auth_teacher_token}'})
+    assert res.status_code == 201
+    module_id = res.json['id']
+
+    res = client.post(f'/api/academy/modules/{module_id}/notes', json={
+        'title': 'Lesson 1', 'content_markdown': '# Lesson 1\nIntroduction to stack frames.'
+    }, headers={'Authorization': f'Bearer {auth_teacher_token}'})
+    assert res.status_code == 201
+    note_id = res.json['id']
+
+    # 2. Switch to student and view the Path overview (shows Modules, not note content)
+    res = client.get(f"/api/academy/course/binary-exploitation-101/overview", headers={'Authorization': f'Bearer {auth_student_token}'})
     assert res.status_code == 200
     assert res.json['title'] == 'Binary Exploitation 101'
+    assert res.json['modules'][0]['title'] == 'Stack Frames'
 
-    # 3. Complete chapter -> reach 100% progress and auto-generate certificate
-    res = client.post(f"/api/academy/chapters/{chapter_id}/complete", headers={'Authorization': f'Bearer {auth_student_token}'})
+    # 2b. View the Module overview (shows Notes) and the reader (has content)
+    res = client.get(f"/api/academy/modules/{module_id}/overview", headers={'Authorization': f'Bearer {auth_student_token}'})
+    assert res.status_code == 200
+    assert res.json['notes'][0]['title'] == 'Lesson 1'
+
+    res = client.get(f"/api/academy/modules/{module_id}/read", headers={'Authorization': f'Bearer {auth_student_token}'})
+    assert res.status_code == 200
+    assert 'stack frames' in res.json['notes'][0]['content_markdown']
+
+    # 3. Complete the note -> reach 100% progress and auto-generate certificate
+    res = client.post(f"/api/academy/notes/{note_id}/complete", headers={'Authorization': f'Bearer {auth_student_token}'})
     assert res.status_code == 200
     assert res.json['progress_percent'] == 100.0
     assert 'certificate' in res.json
@@ -128,8 +148,8 @@ def test_academy_flow_and_auto_certificate(client, auth_teacher_token, auth_stud
     assert len(res.json['enrollments']) == 1
     assert res.json['enrollments'][0]['certificate']['file_path'].startswith('/uploads/certificates/')
 
-    # 5. Comment and Report Comment
-    res = client.post(f"/api/academy/chapters/{chapter_id}/comments", json={'body': 'Great chapter!'}, headers={'Authorization': f'Bearer {auth_student_token}'})
+    # 5. Comment and Report Comment (comments stay Module-scoped)
+    res = client.post(f"/api/academy/chapters/{module_id}/comments", json={'body': 'Great module!'}, headers={'Authorization': f'Bearer {auth_student_token}'})
     assert res.status_code == 201
     comment_id = res.json['id']
 

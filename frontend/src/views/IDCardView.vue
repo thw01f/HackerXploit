@@ -90,8 +90,8 @@
           </div>
 
           <!-- Card Outer Container -->
-          <div 
-            :class="['glass-panel p-6 rounded-2xl border-2 bg-gradient-to-b shadow-2xl relative overflow-hidden transition-transform duration-100 ease-out transform-gpu mt-2', theme.borderClass, theme.bgGradient]"
+          <div
+            :class="['id-badge-card p-6 rounded-2xl border-2 bg-gradient-to-b shadow-2xl relative overflow-hidden transition-transform duration-100 ease-out transform-gpu mt-2', theme.borderClass, theme.bgGradient]"
             :style="cardTransformStyle"
           >
             
@@ -209,19 +209,16 @@
               <h3 class="text-lg font-bold text-white font-mono mt-2">Scan for Attendance & Event Access</h3>
             </div>
 
-            <!-- Large Center QR Code (rendered fully client-side - the verification
-                 URL embeds a live bearer token, so it's never sent to a third party
-                 just to draw a QR image) -->
+            <!-- Large Center QR Code - server-rendered with the HackerXploit
+                 logo embedded (high error-correction so the overlay doesn't
+                 break scannability); the URL never includes the raw token,
+                 the backend resolves it from the caller's own session. -->
             <div class="flex flex-col items-center justify-center p-4 bg-white rounded-xl border-2 border-[#00f0ff] shadow-xl max-w-[220px] mx-auto">
               <img
-                v-if="qrDataUrl"
-                :src="qrDataUrl"
+                :src="qrImageSrc"
                 alt="QR Verification"
                 class="w-44 h-44 object-contain"
               />
-              <div v-else class="w-44 h-44 flex items-center justify-center text-[10px] font-mono text-slate-500">
-                Generating QR...
-              </div>
               <span class="text-[10px] font-mono font-bold text-slate-700 mt-2">HX-VERIFY-ID</span>
             </div>
 
@@ -246,131 +243,211 @@
                 CLUB EVENT QR ATTENDANCE SCANNER
               </span>
               <h3 class="text-lg font-bold text-white font-mono mt-2">Scan & Approve Member Attendance</h3>
-              <p class="text-xs text-slate-400 font-mono mt-0.5">Attendance window: 30 minutes before start to 30 minutes after event end.</p>
+              <p class="text-xs text-slate-400 font-mono mt-0.5">Restricted to Admins/Teachers - active 30 min before start through 30 min after event end.</p>
             </div>
 
-            <!-- Active Club Event Dropdown Selector -->
+            <!-- Active Club Event Selector - a deliberate click, not an
+                 auto-picked default, since the camera/scan UI below only
+                 appears once an event is actually selected here. -->
             <div class="font-mono space-y-1.5">
               <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Select Active Club Event</label>
-              <select 
-                v-model="selectedClubEventId" 
-                @change="onClubEventChange" 
-                class="input-field w-full text-xs font-mono bg-[#0b0e14] border-amber-500/40 text-amber-300 font-bold"
-              >
-                <option v-if="clubEventsLoading" value="" disabled>Loading active club events...</option>
-                <option v-else-if="clubEvents.length === 0" value="" disabled>No Club Events currently scheduled</option>
-                <option v-for="ev in clubEvents" :key="ev.id" :value="ev.id">
-                  {{ ev.title }} ({{ formatKolkataTime(ev.starts_at) }} IST) - {{ ev.is_scan_allowed ? 'SCAN READY' : 'LOCKED' }}
-                </option>
-              </select>
+
+              <div v-if="clubEventsLoading" class="p-4 text-center text-xs text-slate-500 bg-[#0b0e14] rounded-xl border border-[#1f293d]">
+                Loading active club events...
+              </div>
+              <div v-else-if="clubEvents.length === 0" class="p-4 text-center text-xs text-slate-500 bg-[#0b0e14] rounded-xl border border-[#1f293d]">
+                No Club Events currently scheduled
+              </div>
+              <div v-else class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                <button
+                  v-for="ev in clubEvents"
+                  :key="ev.id"
+                  type="button"
+                  @click="selectClubEvent(ev)"
+                  class="w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between gap-3"
+                  :class="selectedClubEvent?.id === ev.id ? 'bg-amber-400/10 border-amber-400/60 shadow-[0_0_10px_rgba(251,191,36,0.15)]' : 'bg-[#0b0e14] border-[#1f293d] hover:border-slate-600'"
+                >
+                  <div class="min-w-0">
+                    <p class="text-xs font-bold truncate" :class="selectedClubEvent?.id === ev.id ? 'text-amber-300' : 'text-slate-200'">{{ ev.title }}</p>
+                    <p class="text-[10px] text-slate-500 mt-0.5">{{ formatKolkataTime(ev.starts_at) }} IST</p>
+                  </div>
+                  <span
+                    class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full flex-shrink-0 border"
+                    :class="ev.is_scan_allowed ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40' : 'bg-slate-800 text-slate-500 border-slate-700'"
+                  >
+                    {{ ev.is_scan_allowed ? 'Scan Ready' : 'Locked' }}
+                  </span>
+                </button>
+              </div>
             </div>
 
-            <!-- Time Window Status Banner -->
-            <div v-if="selectedClubEvent" class="font-mono text-xs p-3.5 rounded-xl border bg-emerald-950/40 border-emerald-500/50 text-emerald-300">
+            <!-- Single status banner that reflects the actual scan state
+                 (no more "teacher bypass" mode - the window applies to
+                 everyone, so there's exactly one active/locked state). -->
+            <div
+              v-if="selectedClubEvent"
+              class="font-mono text-xs p-3.5 rounded-xl border"
+              :class="selectedClubEvent.is_scan_allowed ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-300' : 'bg-slate-900/60 border-slate-700 text-slate-400'"
+            >
               <div class="flex items-center justify-between font-bold mb-1">
                 <span class="uppercase tracking-wider flex items-center gap-1.5">
-                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  {{ selectedClubEvent.in_scheduled_window ? 'SCANNER WINDOW ACTIVE (SCHEDULED)' : 'SCANNER ACTIVE (TEACHER SCAN MODE)' }}
+                  <span class="w-2 h-2 rounded-full" :class="selectedClubEvent.is_scan_allowed ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'"></span>
+                  {{ selectedClubEvent.is_scan_allowed ? 'Scanner Window Active' : 'Scanner Locked' }}
                 </span>
                 <span class="text-[10px] uppercase bg-black/40 px-2 py-0.5 rounded border border-current">
                   {{ selectedClubEvent.attendee_count || 0 }} Scanned
                 </span>
               </div>
               <p class="text-[11px] leading-relaxed opacity-90">
-                Scanner is active for <strong>{{ selectedClubEvent.title }}</strong>. Scan or input member badge code below.
+                <template v-if="selectedClubEvent.is_scan_allowed">
+                  Scanner is active for <strong>{{ selectedClubEvent.title }}</strong>. Scan or input member badge code below.
+                </template>
+                <template v-else>
+                  Window for <strong>{{ selectedClubEvent.title }}</strong>: {{ formatKolkataTime(selectedClubEvent.scan_open_iso) }} &ndash; {{ formatKolkataTime(selectedClubEvent.scan_close_iso) }} IST.
+                </template>
               </p>
             </div>
 
             <!-- Camera & Scanner Form -->
             <div v-if="selectedClubEvent && selectedClubEvent.is_scan_allowed" class="space-y-4 font-mono">
-              
-              <!-- Camera Viewport -->
-              <div class="relative bg-black rounded-xl overflow-hidden border-2 border-amber-500/40 h-52 flex flex-col items-center justify-center group shadow-inner">
-                <video ref="videoElem" autoplay playsinline webkit-playsinline muted class="w-full h-full object-cover" v-show="cameraActive"></video>
 
-                <!-- Scanner Reticle HUD -->
-                <div class="absolute inset-0 pointer-events-none border-2 border-amber-500/20 rounded-xl flex flex-col items-center justify-between p-4">
-                  <div class="w-full flex justify-between">
-                    <div class="w-4 h-4 border-t-2 border-l-2 border-amber-400"></div>
-                    <div class="w-4 h-4 border-t-2 border-r-2 border-amber-400"></div>
+              <!-- Step 1: Scan / Enter Code - hidden once a member has been found and is awaiting approval -->
+              <template v-if="!scannedMember">
+                <!-- Camera Viewport -->
+                <div class="relative bg-black rounded-xl overflow-hidden border-2 border-amber-500/40 h-52 flex flex-col items-center justify-center group shadow-inner">
+                  <video ref="videoElem" autoplay playsinline webkit-playsinline muted class="w-full h-full object-cover" v-show="cameraActive"></video>
+
+                  <!-- Scanner Reticle HUD -->
+                  <div class="absolute inset-0 pointer-events-none border-2 border-amber-500/20 rounded-xl flex flex-col items-center justify-between p-4">
+                    <div class="w-full flex justify-between">
+                      <div class="w-4 h-4 border-t-2 border-l-2 border-amber-400"></div>
+                      <div class="w-4 h-4 border-t-2 border-r-2 border-amber-400"></div>
+                    </div>
+                    <div class="w-28 h-28 border border-amber-400/40 rounded-lg relative overflow-hidden flex items-center justify-center">
+                      <div class="absolute w-full h-0.5 bg-amber-400 shadow-[0_0_8px_#fbbf24] animate-bounce"></div>
+                    </div>
+                    <div class="w-full flex justify-between">
+                      <div class="w-4 h-4 border-b-2 border-l-2 border-amber-400"></div>
+                      <div class="w-4 h-4 border-b-2 border-r-2 border-amber-400"></div>
+                    </div>
                   </div>
-                  <div class="w-28 h-28 border border-amber-400/40 rounded-lg relative overflow-hidden flex items-center justify-center">
-                    <div class="absolute w-full h-0.5 bg-amber-400 shadow-[0_0_8px_#fbbf24] animate-bounce"></div>
+
+                  <div v-if="!cameraActive" class="absolute inset-0 flex flex-col items-center justify-center bg-[#090d16]/95 p-4 text-center space-y-2">
+                    <svg class="w-8 h-8 text-amber-400 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    <p class="text-xs text-slate-300 font-bold">Webcam Sensor & Scanner</p>
+
+                    <button @click="startCamera" class="btn-htb text-[11px] py-1.5 px-3 bg-amber-400 hover:bg-amber-300 text-black font-extrabold shadow">
+                      Start Optical Camera
+                    </button>
+
+                    <p v-if="cameraErrorMsg" class="text-[10px] text-rose-300 bg-rose-950/80 p-2 rounded border border-rose-500/50 max-w-xs mt-1 leading-tight">
+                      {{ cameraErrorMsg }}
+                    </p>
                   </div>
-                  <div class="w-full flex justify-between">
-                    <div class="w-4 h-4 border-b-2 border-l-2 border-amber-400"></div>
-                    <div class="w-4 h-4 border-b-2 border-r-2 border-amber-400"></div>
+
+                  <div v-if="cameraActive" class="absolute bottom-2 left-2 z-30 bg-black/80 text-emerald-400 px-2.5 py-1 rounded text-[10px] font-bold border border-emerald-500/40 flex items-center gap-1.5 animate-pulse">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    LIVE QR SCANNER ACTIVE (Align QR Code)
                   </div>
+
+                  <button v-else @click="stopCamera" class="absolute top-2 right-2 z-30 bg-black/80 text-rose-400 hover:text-white px-2 py-1 rounded text-[10px] font-bold border border-rose-500/40">
+                    Stop Camera
+                  </button>
                 </div>
 
-                <div v-if="!cameraActive" class="absolute inset-0 flex flex-col items-center justify-center bg-[#090d16]/95 p-4 text-center space-y-2">
-                  <svg class="w-8 h-8 text-amber-400 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-                  </svg>
-                  <p class="text-xs text-slate-300 font-bold">Webcam Sensor & Scanner</p>
+                <!-- Input Code Field -->
+                <div class="space-y-3 bg-[#080c14] p-4 rounded-xl border border-[#1f293d]">
+                  <div class="space-y-1">
+                    <label class="block text-[11px] font-bold text-slate-300 uppercase">Member Badge Code / QR Token</label>
+                    <input
+                      v-model="scanTokenInput"
+                      type="text"
+                      placeholder="Scan QR or enter Badge ID (e.g. HX-STU-0001)..."
+                      class="input-field text-xs font-mono bg-[#0c1117] w-full border-slate-700"
+                      @keyup.enter="lookupScannedCode(scanTokenInput)"
+                    />
+                  </div>
 
-                  <button @click="startCamera" class="btn-htb text-[11px] py-1.5 px-3 bg-amber-400 hover:bg-amber-300 text-black font-extrabold shadow">
-                    Start Optical Camera
+                  <button
+                    @click="lookupScannedCode(scanTokenInput)"
+                    :disabled="lookupPending || !scanTokenInput.trim()"
+                    class="btn-htb w-full text-xs py-2.5 px-4 font-mono font-extrabold bg-amber-400 hover:bg-amber-300 text-black shadow-lg flex items-center justify-center gap-2"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <span>{{ lookupPending ? 'Looking up...' : 'Find Member' }}</span>
                   </button>
 
-                  <p v-if="cameraErrorMsg" class="text-[10px] text-rose-300 bg-rose-950/80 p-2 rounded border border-rose-500/50 max-w-xs mt-1 leading-tight">
-                    {{ cameraErrorMsg }}
+                  <div v-if="lookupError" class="p-3 bg-rose-950/90 border border-rose-500 text-rose-300 rounded-lg text-xs font-mono font-bold flex items-center gap-2">
+                    <span>{{ lookupError }}</span>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Step 2: Confirm scanned member, then Approve -->
+              <div v-else class="space-y-4">
+                <div class="p-4 rounded-xl border" :class="scannedMember.already_scanned ? 'bg-amber-950/30 border-amber-500/40' : 'bg-emerald-950/30 border-emerald-500/40'">
+                  <div class="flex items-center gap-3">
+                    <img
+                      :src="scannedMember.member.avatar_url || '/uploads/avatars/default.png'"
+                      @error="$event.target.src='/uploads/avatars/default.png'"
+                      alt="Member photo"
+                      class="w-14 h-14 rounded-xl object-cover border-2 border-amber-400/60 shadow-lg flex-shrink-0"
+                    />
+                    <div class="min-w-0 flex-1">
+                      <p class="text-sm font-bold text-white truncate">{{ scannedMember.member.full_name }}</p>
+                      <p class="text-[11px] text-slate-400 truncate">@{{ scannedMember.member.username }} &middot; {{ scannedMember.member.badge_id }}</p>
+                      <p v-if="scannedMember.member.department" class="text-[10px] text-slate-500 uppercase mt-0.5">
+                        {{ scannedMember.member.department }}<template v-if="scannedMember.member.academic_year"> &middot; Year {{ scannedMember.member.academic_year }}</template>
+                      </p>
+                    </div>
+                    <span class="text-[9px] font-mono px-2 py-0.5 rounded uppercase font-bold bg-[#151f30] text-slate-300 border border-slate-700 flex-shrink-0">
+                      {{ scannedMember.member.role }}
+                    </span>
+                  </div>
+                  <p v-if="scannedMember.already_scanned" class="text-[11px] text-amber-300 font-bold mt-3 pt-3 border-t border-amber-500/20">
+                    &#9888; Already marked present<template v-if="scannedMember.attendance?.scanned_at"> at {{ formatLocalTime(scannedMember.attendance.scanned_at) }}</template>. Approving again will update the record.
                   </p>
                 </div>
 
-                <div v-if="cameraActive" class="absolute bottom-2 left-2 z-30 bg-black/80 text-emerald-400 px-2.5 py-1 rounded text-[10px] font-bold border border-emerald-500/40 flex items-center gap-1.5 animate-pulse">
-                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                  LIVE QR SCANNER ACTIVE (Align QR Code)
+                <div class="space-y-1">
+                  <label class="block text-[11px] font-bold text-slate-300 uppercase">Optional Remark / Notes</label>
+                  <input
+                    v-model="scanRemark"
+                    type="text"
+                    placeholder="Optional remark (e.g. Approved by Admin, Lab seat #3, Late arrival)..."
+                    class="input-field text-xs font-mono bg-[#0c1117] w-full border-slate-700"
+                    @keyup.enter="confirmAttendanceScan"
+                  />
                 </div>
 
-                <button v-else @click="stopCamera" class="absolute top-2 right-2 z-30 bg-black/80 text-rose-400 hover:text-white px-2 py-1 rounded text-[10px] font-bold border border-rose-500/40">
-                  Stop Camera
-                </button>
+                <div class="flex items-center gap-2">
+                  <button @click="cancelScannedMember" class="btn-ghost text-xs py-2.5 px-4 flex-shrink-0">
+                    Cancel
+                  </button>
+                  <button
+                    @click="confirmAttendanceScan"
+                    :disabled="scanningSubmitting"
+                    class="btn-htb flex-1 text-xs py-2.5 px-4 font-mono font-extrabold bg-amber-400 hover:bg-amber-300 text-black shadow-lg flex items-center justify-center gap-2"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <span>{{ scanningSubmitting ? 'Recording...' : 'Approve Attendance' }}</span>
+                  </button>
+                </div>
               </div>
 
-              <!-- Input Code / Token Field & Remark Field -->
-              <div class="space-y-3 bg-[#080c14] p-4 rounded-xl border border-[#1f293d]">
-                <div class="space-y-1">
-                  <label class="block text-[11px] font-bold text-slate-300 uppercase">1. Member Badge Code / QR Token</label>
-                  <input 
-                    v-model="scanTokenInput" 
-                    type="text" 
-                    placeholder="Scan QR or enter Badge ID (e.g. HX-STU-0001)..."
-                    class="input-field text-xs font-mono bg-[#0c1117] w-full border-slate-700"
-                    @keyup.enter="submitAttendanceScan"
-                  />
-                </div>
-
-                <div class="space-y-1">
-                  <label class="block text-[11px] font-bold text-slate-300 uppercase">2. Optional Remark / Notes</label>
-                  <input 
-                    v-model="scanRemark" 
-                    type="text" 
-                    placeholder="Optional remark (e.g. Approved by Admin, Lab seat #3, Late arrival)..." 
-                    class="input-field text-xs font-mono bg-[#0c1117] w-full border-slate-700"
-                    @keyup.enter="submitAttendanceScan"
-                  />
-                </div>
-
-                <button 
-                  @click="submitAttendanceScan" 
-                  :disabled="scanningSubmitting || !scanTokenInput.trim()"
-                  class="btn-htb w-full text-xs py-2.5 px-4 font-mono font-extrabold bg-amber-400 hover:bg-amber-300 text-black shadow-lg flex items-center justify-center gap-2"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
-                  <span>{{ scanningSubmitting ? 'Verifying & Recording...' : 'Approve & Record Attendance' }}</span>
-                </button>
-
-                <!-- Feedback Toasts -->
-                <div v-if="scanResultSuccess" class="p-3 bg-emerald-950/90 border border-emerald-500 text-emerald-300 rounded-lg text-xs font-mono font-bold flex items-center gap-2">
-                  <span>{{ scanResultSuccess }}</span>
-                </div>
-                <div v-if="scanResultError" class="p-3 bg-rose-950/90 border border-rose-500 text-rose-300 rounded-lg text-xs font-mono font-bold flex items-center gap-2">
-                  <span>{{ scanResultError }}</span>
-                </div>
+              <!-- Feedback Toasts -->
+              <div v-if="scanResultSuccess" class="p-3 bg-emerald-950/90 border border-emerald-500 text-emerald-300 rounded-lg text-xs font-mono font-bold flex items-center gap-2">
+                <span>{{ scanResultSuccess }}</span>
+              </div>
+              <div v-if="scanResultError" class="p-3 bg-rose-950/90 border border-rose-500 text-rose-300 rounded-lg text-xs font-mono font-bold flex items-center gap-2">
+                <span>{{ scanResultError }}</span>
               </div>
 
             </div>
@@ -382,15 +459,16 @@
               </svg>
               <h4 class="text-sm font-bold text-white uppercase">Attendance Scanner Locked</h4>
               <p class="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
-                Camera and QR verification window for <strong>{{ selectedClubEvent.title }}</strong> opens strictly 30 minutes prior to event start time.
+                Camera and QR verification for <strong>{{ selectedClubEvent.title }}</strong> is only available
+                {{ formatKolkataTime(selectedClubEvent.scan_open_iso) }} &ndash; {{ formatKolkataTime(selectedClubEvent.scan_close_iso) }} IST.
               </p>
             </div>
 
           </div>
         </div>
 
-        <!-- Bottom Controls -->
-        <div class="flex flex-wrap gap-3 justify-center w-full pt-4 font-mono z-20">
+        <!-- Bottom Controls (own-token actions - not relevant while scanning others' badges) -->
+        <div v-if="activeCardView !== 'scanner'" class="flex flex-wrap gap-3 justify-center w-full pt-4 font-mono z-20">
           <a :href="cardData.verification_url" target="_blank" class="btn-ghost text-xs text-[#00f0ff] border-[#00f0ff]/30 hover:border-[#00f0ff] py-2.5 px-5 rounded-xl flex items-center gap-2">
             <svg class="w-4 h-4 text-[#00f0ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
@@ -563,33 +641,15 @@ const theme = computed(() => {
 })
 
 const loadError = ref(false)
-const qrDataUrl = ref('')
 
-const loadQrCodeScript = () => {
-  return new Promise((resolve) => {
-    if (window.QRCode) {
-      resolve(true)
-      return
-    }
-    const script = document.createElement('script')
-    script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js'
-    script.onload = () => resolve(true)
-    script.onerror = () => resolve(false)
-    document.head.appendChild(script)
-  })
-}
-
-const generateQrCode = async (verificationUrl) => {
-  qrDataUrl.value = ''
-  if (!verificationUrl) return
-  const loaded = await loadQrCodeScript()
-  if (!loaded || !window.QRCode) return
-  try {
-    qrDataUrl.value = await window.QRCode.toDataURL(verificationUrl, { width: 360, margin: 1 })
-  } catch (err) {
-    console.error('Failed to render QR code', err)
-  }
-}
+// Server-rendered branded QR (HackerXploit logo embedded) - the token is
+// resolved from the caller's own session on the backend, never placed in
+// this URL. The `t` param exists purely to bust the browser cache the
+// instant the token is regenerated (the path itself never changes).
+const qrImageSrc = computed(() => {
+  if (!cardData.value?.token) return ''
+  return `/api/profile/id-card/qr.png?t=${encodeURIComponent(cardData.value.token)}`
+})
 
 const fetchIDCard = async () => {
   loading.value = true
@@ -597,7 +657,6 @@ const fetchIDCard = async () => {
   try {
     const res = await axios.get('/api/profile/id-card')
     cardData.value = res.data
-    generateQrCode(res.data?.verification_url)
   } catch (err) {
     console.error('Failed to load ID Card', err)
     cardData.value = null
@@ -614,7 +673,6 @@ const regenerateToken = async () => {
     if (cardData.value) {
       cardData.value.token = res.data.token
       cardData.value.verification_url = res.data.verification_url
-      generateQrCode(res.data.verification_url)
     }
   } catch (err) {
     alert(err.response?.data?.error || 'Token regeneration failed')
@@ -626,7 +684,6 @@ const regenerateToken = async () => {
 // Club Event & QR Scanner state
 const clubEvents = ref([])
 const clubEventsLoading = ref(false)
-const selectedClubEventId = ref('')
 const selectedClubEvent = ref(null)
 
 const scanTokenInput = ref('')
@@ -634,6 +691,13 @@ const scanRemark = ref('')
 const scanningSubmitting = ref(false)
 const scanResultSuccess = ref('')
 const scanResultError = ref('')
+
+// Scan is a two-step flow: look up the code to show who it matched, then a
+// separate explicit Approve records attendance. `scannedMember` holds the
+// resolved preview payload while the confirm step is on screen.
+const scannedMember = ref(null)
+const lookupPending = ref(false)
+const lookupError = ref('')
 
 const cameraActive = ref(false)
 const videoElem = ref(null)
@@ -644,9 +708,12 @@ const loadActiveClubEvents = async () => {
   try {
     const res = await axios.get('/api/competitions/club-events/active')
     clubEvents.value = res.data.club_events || []
-    if (clubEvents.value.length > 0) {
-      selectedClubEventId.value = clubEvents.value[0].id
-      selectedClubEvent.value = clubEvents.value[0]
+    // No auto-picked default - selecting an event (and therefore revealing
+    // the camera/scan UI) is always a deliberate click. If something was
+    // already selected, keep it in sync with the refreshed list (e.g. an
+    // updated attendee_count after an approval) instead of resetting it.
+    if (selectedClubEvent.value) {
+      selectedClubEvent.value = clubEvents.value.find(e => e.id === selectedClubEvent.value.id) || null
     }
   } catch (err) {
     console.error('Failed to load active club events', err)
@@ -655,10 +722,11 @@ const loadActiveClubEvents = async () => {
   }
 }
 
-const onClubEventChange = () => {
-  selectedClubEvent.value = clubEvents.value.find(e => e.id === Number(selectedClubEventId.value)) || null
+const selectClubEvent = (ev) => {
+  selectedClubEvent.value = ev
   scanResultSuccess.value = ''
   scanResultError.value = ''
+  cancelScannedMember()
 }
 
 const cameraErrorMsg = ref('')
@@ -745,7 +813,7 @@ const startQrScannerLoop = async () => {
             osc.stop(audioCtx.currentTime + 0.15)
           } catch (e) {}
 
-          await submitAttendanceScan()
+          await lookupScannedCode(cleanText)
         }
       }
     } catch (err) {
@@ -821,34 +889,78 @@ const stopCamera = () => {
   cameraActive.value = false
 }
 
-const submitAttendanceScan = async () => {
-  if (!selectedClubEvent.value || !scanTokenInput.value.trim()) return
-
-  scanningSubmitting.value = true
-  scanResultSuccess.value = ''
-  scanResultError.value = ''
-
-  let tokenToSend = scanTokenInput.value.trim()
+const normalizeTokenInput = (raw) => {
+  let tokenToSend = raw.trim()
   if (tokenToSend.includes('/verify/')) {
     tokenToSend = tokenToSend.split('/verify/').pop().split('?')[0].split('/')[0].trim()
   } else if (tokenToSend.includes('token=')) {
     tokenToSend = tokenToSend.split('token=').pop().split('&')[0].trim()
   }
+  return tokenToSend
+}
+
+// Step 1: resolve the scanned/typed code to a member and show a preview -
+// nothing is recorded yet.
+const lookupScannedCode = async (rawCode) => {
+  if (!selectedClubEvent.value || !rawCode.trim()) return
+
+  lookupPending.value = true
+  lookupError.value = ''
+  scanResultSuccess.value = ''
+  scanResultError.value = ''
+
+  try {
+    const res = await axios.post(`/api/competitions/${selectedClubEvent.value.id}/attendance/lookup`, {
+      token: normalizeTokenInput(rawCode)
+    })
+    scannedMember.value = res.data
+    stopCamera() // pause scanning while the confirm step is on screen
+  } catch (err) {
+    lookupError.value = err.response?.data?.error || 'Member not found'
+    scannedMember.value = null
+  } finally {
+    lookupPending.value = false
+  }
+}
+
+const cancelScannedMember = () => {
+  scannedMember.value = null
+  scanTokenInput.value = ''
+  scanRemark.value = ''
+  lookupError.value = ''
+  lastScannedToken = ''
+}
+
+// Step 2: explicit Approve actually records attendance.
+const confirmAttendanceScan = async () => {
+  if (!selectedClubEvent.value || !scannedMember.value) return
+
+  scanningSubmitting.value = true
+  scanResultSuccess.value = ''
+  scanResultError.value = ''
 
   try {
     const res = await axios.post(`/api/competitions/${selectedClubEvent.value.id}/attendance/scan`, {
-      token: tokenToSend,
+      token: normalizeTokenInput(scanTokenInput.value),
       remark: scanRemark.value.trim()
     })
     scanResultSuccess.value = res.data.message || 'Attendance recorded successfully!'
-    scanTokenInput.value = ''
-    scanRemark.value = ''
+    cancelScannedMember()
     // Refresh attendee count
     await loadActiveClubEvents()
   } catch (err) {
     scanResultError.value = err.response?.data?.error || 'Attendance verification failed'
   } finally {
     scanningSubmitting.value = false
+  }
+}
+
+const formatLocalTime = (isoStr) => {
+  if (!isoStr) return ''
+  try {
+    return new Date(isoStr).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: prefs.is12h.value })
+  } catch (e) {
+    return isoStr
   }
 }
 

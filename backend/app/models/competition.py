@@ -153,7 +153,7 @@ class EventAttendance(db.Model):
             'user_department': getattr(user, 'department', None) if user else None,
             'scanned_by_id': self.scanned_by_id,
             'scanned_by_name': (scanned_by.full_name or scanned_by.username) if scanned_by else 'Self/System',
-            'scanned_at': self.scanned_at.isoformat() if self.scanned_at else None,
+            'scanned_at': self.scanned_at.isoformat() + 'Z' if self.scanned_at else None,
             'status': self.status,
             'remark': self.remark
         }
