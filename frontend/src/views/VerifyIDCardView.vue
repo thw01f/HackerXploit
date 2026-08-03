@@ -17,9 +17,22 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1 w-full flex flex-col items-center justify-center">
       <div class="w-full max-w-md">
 
-        <!-- Loading State -->
-        <div v-if="loading" class="py-12 text-center font-mono text-sm text-slate-500">
-          <span class="inline-block animate-spin mr-2">⚡</span> Verifying ID Card Credentials...
+        <!-- Loading State: glowing scan-ring spinner with a pulsing
+             verification check icon at its center, matching the app's
+             neon-green cyberpunk accent rather than a spinning emoji glyph
+             (emoji aren't designed to be rotated - they render off-center/
+             janky when spun via CSS transform on most platforms). -->
+        <div v-if="loading" class="py-16 flex flex-col items-center justify-center gap-6">
+          <div class="relative w-16 h-16">
+            <div class="absolute inset-0 rounded-full border-4 border-[#1f293d]"></div>
+            <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-[#9fef00] border-r-[#9fef00] animate-spin shadow-[0_0_18px_rgba(159,239,0,0.55)]"></div>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <svg class="w-6 h-6 text-[#9fef00] animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-slate-400">Verifying ID Card Credentials<span class="text-[#9fef00] animate-pulse">...</span></p>
         </div>
 
         <!-- Verification Error Card -->
