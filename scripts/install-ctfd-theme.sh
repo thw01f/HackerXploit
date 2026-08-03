@@ -24,6 +24,16 @@
 # ============================================================================
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# Auto-load REDIS_PASSWORD (needed by flush_ctfd_config_cache below) from the
+# repo's .env if it's not already exported - this script is normally run
+# directly (`bash scripts/install-ctfd-theme.sh`), not through something
+# that already sources .env, so without this the flush silently NOAUTHs.
+if [[ -z "${REDIS_PASSWORD:-}" && -f "$REPO_ROOT/.env" ]]; then
+  REDIS_PASSWORD="$(grep -m1 '^REDIS_PASSWORD=' "$REPO_ROOT/.env" | cut -d= -f2-)"
+fi
+
 CONTAINER="${CTFD_CONTAINER:-hx_ctfd}"
 # CTFd's database now lives on the ctfd_db_data named volume (see
 # docker-compose.yml) rather than /tmp, which only survives a container
@@ -42,7 +52,6 @@ CSS_TMP_IN_CONTAINER="/tmp/hackerxploit-ctfd-theme.css"
 REDIS_CONTAINER="${REDIS_CONTAINER:-hx_redis}"
 REDIS_CACHE_DB="${REDIS_CACHE_DB:-1}"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_FAVICON="${HX_FAVICON_PATH:-$SCRIPT_DIR/../frontend/public/favicon.ico}"
 
 log()  { printf '\033[1;32m[hx-theme]\033[0m %s\n' "$1"; }
@@ -51,9 +60,17 @@ die()  { printf '\033[1;31m[hx-theme]\033[0m %s\n' "$1" >&2; exit 1; }
 
 flush_ctfd_config_cache() {
   if docker ps --format '{{.Names}}' | grep -qx "$REDIS_CONTAINER"; then
-    docker exec "$REDIS_CONTAINER" redis-cli -n "$REDIS_CACHE_DB" FLUSHDB >/dev/null 2>&1 \
-      && log "CTFd config cache flushed (change is live immediately)" \
-      || warn "Could not flush CTFd's config cache - the change may take a moment to appear (set REDIS_CONTAINER if it's not '$REDIS_CONTAINER')."
+    # -a is required once Redis has a requirepass set (docker-compose.yml's
+    # REDIS_PASSWORD) - without it redis-cli prints "NOAUTH Authentication
+    # required" to stdout and still exits 0, so the old `&&`/`||` check on
+    # exit code alone silently reported success while the flush had failed.
+    local flush_out
+    flush_out="$(docker exec "$REDIS_CONTAINER" redis-cli ${REDIS_PASSWORD:+-a "$REDIS_PASSWORD"} -n "$REDIS_CACHE_DB" FLUSHDB 2>&1)"
+    if [[ "$flush_out" == *OK* ]]; then
+      log "CTFd config cache flushed (change is live immediately)"
+    else
+      warn "Could not flush CTFd's config cache (${flush_out}) - the change may take a moment to appear. Set REDIS_PASSWORD/REDIS_CONTAINER if needed."
+    fi
   else
     warn "Redis container '$REDIS_CONTAINER' not found - could not flush CTFd's config cache. The change may take a moment to appear."
   fi

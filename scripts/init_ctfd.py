@@ -21,6 +21,7 @@ import sys
 import os
 import json
 import subprocess
+from urllib.parse import urlparse
 
 
 def init_ctfd_oauth():
@@ -99,14 +100,27 @@ print("ok")
             # until CTFd's cache entry happens to expire on its own.
             redis_container = os.getenv('REDIS_CONTAINER', 'hx_redis')
             redis_cache_db = os.getenv('REDIS_CACHE_DB', '1')
-            flush = subprocess.run(
-                ['docker', 'exec', redis_container, 'redis-cli', '-n', redis_cache_db, 'FLUSHDB'],
-                capture_output=True, text=True, timeout=10
-            )
-            if flush.returncode == 0:
+            # Once Redis has a requirepass set (docker-compose.yml's
+            # REDIS_PASSWORD), redis-cli needs -a or it prints "NOAUTH
+            # Authentication required" and - critically - still exits 0, so
+            # checking returncode alone (the previous version of this code)
+            # silently reported success on a flush that never happened.
+            # There's no separate REDIS_PASSWORD env var passed to whatever
+            # runs this script, only REDIS_URL - parse it out of that.
+            redis_password = None
+            redis_url = os.getenv('REDIS_URL', '')
+            parsed = urlparse(redis_url)
+            if parsed.password:
+                redis_password = parsed.password
+            redis_cmd = ['docker', 'exec', redis_container, 'redis-cli']
+            if redis_password:
+                redis_cmd += ['-a', redis_password]
+            redis_cmd += ['-n', redis_cache_db, 'FLUSHDB']
+            flush = subprocess.run(redis_cmd, capture_output=True, text=True, timeout=10)
+            if 'OK' in flush.stdout:
                 print("CTFd config cache flushed (change is live immediately).")
             else:
-                print(f"Note: could not flush CTFd's config cache ({flush.stderr.strip()}) - the change may take a moment to appear.")
+                print(f"Note: could not flush CTFd's config cache ({(flush.stderr or flush.stdout).strip()}) - the change may take a moment to appear.")
         else:
             print(f"CTFd OAuth initialization note: {result.stderr or result.stdout}")
     except Exception as e:
