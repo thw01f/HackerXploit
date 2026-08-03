@@ -109,13 +109,25 @@ const handleLogin = async () => {
   errorMessage.value = ''
   try {
     await authStore.login(emailOrUsername.value, password.value, captchaToken.value)
+    // A `redirect` can point at a backend-only path (e.g. /oauth/authorize,
+    // when CTFd's SSO button sent an unauthenticated browser here) rather
+    // than a route this SPA's router knows about - router.push() on that
+    // just silently fails to navigate, so it needs a real full-page load
+    // instead. SPA routes still use router.push for the normal client-side
+    // transition.
+    const redirectQuery = route.query.redirect
+    const carryRedirect = redirectQuery ? { redirect: redirectQuery } : {}
     if (authStore.user?.is_root_admin && authStore.user?.is_first_login) {
-      router.push('/setup-admin')
+      router.push({ path: '/setup-admin', query: carryRedirect })
     } else if (authStore.user?.status === 'approved' && !authStore.user?.onboarding_completed) {
-      router.push('/onboarding')
+      router.push({ path: '/onboarding', query: carryRedirect })
     } else {
-      const redirectPath = route.query.redirect || '/dashboard'
-      router.push(redirectPath)
+      const redirectPath = redirectQuery || '/dashboard'
+      if (typeof redirectPath === 'string' && redirectPath.startsWith('/oauth/')) {
+        window.location.href = redirectPath
+      } else {
+        router.push(redirectPath)
+      }
     }
   } catch (err) {
     errorMessage.value = err.message || 'Login failed.'

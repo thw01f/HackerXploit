@@ -44,7 +44,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import Navbar from '../components/Navbar.vue'
 import Footer from '../components/Footer.vue'
@@ -52,6 +52,7 @@ import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 const form = ref({
   username: authStore.user?.username || '',
@@ -68,7 +69,16 @@ const handleSetup = async () => {
   try {
     const res = await axios.post('/api/auth/setup-admin', form.value)
     await authStore.fetchMe()
-    router.push('/dashboard')
+    // `redirect` can point at a backend-only path (e.g. /oauth/authorize,
+    // when CTFd's SSO button sent an un-setup root admin here) that this
+    // SPA's router doesn't know about - router.push() on that silently does
+    // nothing, so it needs a real full-page navigation instead.
+    const redirectPath = route.query.redirect
+    if (typeof redirectPath === 'string' && redirectPath.startsWith('/oauth/')) {
+      window.location.href = redirectPath
+    } else {
+      router.push(redirectPath || '/dashboard')
+    }
   } catch (err) {
     errorMessage.value = err.response?.data?.error || 'Setup failed'
   } finally {

@@ -1,14 +1,36 @@
 import secrets
 import time
+from urllib.parse import quote
 from flask import Blueprint, request, jsonify, redirect, url_for, g, render_template_string, current_app
 from app.models import db, User, OAuth2Client, OAuth2AuthorizationCode, OAuth2Token
-from app.utils.decorators import require_auth
+from app.utils.decorators import get_current_user
 
 oauth_bp = Blueprint('oauth', __name__, url_prefix='/oauth')
 
 @oauth_bp.route('/authorize', methods=['GET', 'POST'])
-@require_auth
 def authorize():
+    # Deliberately not @require_auth: unlike every other endpoint here, this
+    # one is only ever reached by a full browser navigation (CTFd's "Login
+    # with HackerXploit" button redirects the browser here directly) - a
+    # user who isn't already logged in got a raw {"error": "Unauthorized..."}
+    # JSON blob instead of a login page, which looked exactly like "SSO is
+    # broken" to them even though their account was completely fine. Send
+    # them to the actual login/setup/onboarding page instead, with a
+    # `redirect` back to this exact URL so the OAuth flow resumes
+    # automatically once they're done.
+    user, _ = get_current_user()
+    frontend_base = current_app.config.get('CTFD_OAUTH_PUBLIC_BASE_URL', 'https://club.hackerxploit.org')
+    come_back_to = quote(request.full_path if request.query_string else request.path, safe='')
+
+    if not user:
+        return redirect(f'{frontend_base}/login?redirect={come_back_to}')
+    if user.is_root_admin and user.is_first_login:
+        return redirect(f'{frontend_base}/setup-admin?redirect={come_back_to}')
+    if not user.is_root_admin and not bool(user.onboarding_completed):
+        return redirect(f'{frontend_base}/onboarding?redirect={come_back_to}')
+
+    g.current_user = user
+
     client_id = request.args.get('client_id') or request.form.get('client_id')
     redirect_uri = request.args.get('redirect_uri') or request.form.get('redirect_uri')
     response_type = request.args.get('response_type', 'code')

@@ -290,11 +290,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import axios from 'axios'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const selectedRole = ref('Penetration Tester')
@@ -363,7 +364,16 @@ const submitOnboarding = async () => {
 
     const res = await axios.post('/api/auth/onboarding', payload)
     authStore.user = res.data.user
-    router.push('/dashboard')
+    // `redirect` can point at a backend-only path (e.g. /oauth/authorize,
+    // when CTFd's SSO button sent a not-yet-onboarded member here) that
+    // this SPA's router doesn't know about - router.push() on that
+    // silently does nothing, so it needs a real full-page navigation.
+    const redirectPath = route.query.redirect
+    if (typeof redirectPath === 'string' && redirectPath.startsWith('/oauth/')) {
+      window.location.href = redirectPath
+    } else {
+      router.push(redirectPath || '/dashboard')
+    }
   } catch (err) {
     console.error('Onboarding error details:', err)
     alert('Onboarding failed: ' + (err.response?.data?.error || err.message))
