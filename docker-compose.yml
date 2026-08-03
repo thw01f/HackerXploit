@@ -28,7 +28,7 @@ services:
       - DATABASE_URL=${DATABASE_URL:?DATABASE_URL must be set}
       - REDIS_URL=${REDIS_URL:?REDIS_URL must be set}
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set}
-      - SESSION_COOKIE_DOMAIN=${SESSION_COOKIE_DOMAIN:-.hackerxploit.org}
+      - SESSION_COOKIE_DOMAIN=${SESSION_COOKIE_DOMAIN:-.club.hackerxploit.org}
       - UPLOAD_FOLDER=/var/uploads
       - BACKUP_FOLDER=/var/hx_backups
       - CLAMAV_HOST=clamav

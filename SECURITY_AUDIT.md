@@ -468,17 +468,40 @@ on the `feat/competitions-opportunities-lifecycle` branch, plus targeted live
 
 ## Domain/infrastructure change made alongside this pass
 
-Per an explicit product decision (not a vulnerability fix): `hackerxploit.org` (bare
-root + `www.`) is now reserved for other future use and no longer serves the club app.
-`nginx/conf.d/default.conf` was restructured so that domain only proxies `/oauth/`,
-`/api/auth/`, and `/api/health` (the last for the uptime-monitoring check documented in
-`DEPLOYMENT.md`) — every other route, `/uploads/`, and all app data now live
-exclusively on `club.hackerxploit.org`. See `ARCHITECTURE.md`'s "Domain Scoping"
-section for the full breakdown. This is a config-file change only — it takes effect on
-the actual production edge once that Nginx container is redeployed with the updated
-config, which (like item #18's CTFd port change) was intentionally not performed
-automatically as part of this pass; see the "delete the running framework and deploy
-again" discussion in project chat history for the pending decision on scope.
+Per an explicit product decision (not a vulnerability fix), made in two steps during
+this same conversation:
+
+1. First pass: `hackerxploit.org` (bare root + `www.`) was scoped down to only proxy
+   `/oauth/`, `/api/auth/`, and `/api/health`, with everything else moved to
+   `club.hackerxploit.org`.
+2. **Final decision** (supersedes step 1): the operator clarified a plan to use
+   `hackerxploit.org` for other, entirely unrelated future projects — so rather than
+   reserve a slice of it for shared auth, the whole app (SPA, every `/api/` route
+   including `/api/auth/*`, and the OAuth2/SSO provider) now lives exclusively on
+   `club.hackerxploit.org`. `hackerxploit.org` is not configured anywhere in this
+   repo's Nginx/Docker Compose setup at all — no server block claims it. This also
+   meant re-scoping `SESSION_COOKIE_DOMAIN` from the wildcard `.hackerxploit.org` down
+   to `.club.hackerxploit.org` (`backend/app/config.py`, `.env.example`,
+   `docker-compose.yml`), removing the CORS allowlist entry for the bare domain
+   (`backend/app/__init__.py`), repointing CTFd's SSO redirect target
+   (`scripts/init_ctfd.py`'s `CTFD_OAUTH_PUBLIC_BASE_URL` default), and removing a
+   latent bug: `club.hackerxploit.org`'s old "redirect to the separate auth domain if
+   no session cookie" Nginx check would have infinite-looped against `/login` itself
+   once login moved onto the same domain it was protecting — removed, since Vue
+   Router's own client-side auth guard already handles this.
+
+Also found and fixed as a side effect: `CTFD_OAUTH_AUTH_URL`/`CTFD_OAUTH_TOKEN_URL`/
+`CTFD_OAUTH_API_URL` existed in both `.env` and `.env.example` but were never actually
+read by `scripts/init_ctfd.py` (which reads differently-named
+`CTFD_OAUTH_PUBLIC_BASE_URL`/`CTFD_OAUTH_INTERNAL_WEB_URL` instead, silently falling
+back to its own hardcoded defaults every time) — dead, misleading config, renamed to
+match what's actually consumed.
+
+See `ARCHITECTURE.md`'s "Domain Scoping" section for the full breakdown. This is a
+config-file change only — it takes effect on the actual production edge once Nginx and
+`web` are redeployed with the updated config (like item #18's CTFd port change, this
+was intentionally not performed automatically as part of this pass, since nothing in
+this dev sandbox is the production server).
 
 ## Verification (2026-08-03 pass)
 

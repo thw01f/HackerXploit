@@ -41,7 +41,10 @@ class Config:
 
     REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379/0')
 
-    SESSION_COOKIE_DOMAIN = os.environ.get('SESSION_COOKIE_DOMAIN', '.hackerxploit.org')
+    # Scoped to club. only (not the wildcard .hackerxploit.org) - the bare
+    # root domain is reserved for other, unrelated projects as of
+    # 2026-08-03, and this cookie has no reason to be sent to them.
+    SESSION_COOKIE_DOMAIN = os.environ.get('SESSION_COOKIE_DOMAIN', '.club.hackerxploit.org')
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'true' if IS_PRODUCTION else 'false').lower() == 'true'

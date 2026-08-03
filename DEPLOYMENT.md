@@ -6,9 +6,15 @@ This guide covers deploying the HackerXploit Club Platform on a single DigitalOc
 
 - DigitalOcean Droplet: 4GB RAM / 2 vCPUs minimum recommended (Ubuntu 22.04 LTS).
 - Domain registered: `hackerxploit.org`.
-- DNS A records set up:
-  - `hackerxploit.org` -> Droplet IP
-  - `*.hackerxploit.org` -> Droplet IP
+- DNS A records set up for the two subdomains this stack actually serves:
+  - `club.hackerxploit.org` -> Droplet IP
+  - `arena.hackerxploit.org` -> Droplet IP
+  - **Not** the bare `hackerxploit.org` root - it's reserved for other, unrelated
+    projects (as of 2026-08-03) and isn't configured anywhere in this repo's
+    Nginx/Docker Compose setup. Point its A record wherever that other project lives,
+    or leave it unset. The wildcard SSL cert below only needs DNS control proven via a
+    temporary TXT record during issuance - it does not require the root domain's A
+    record to point at this droplet.
 
 ---
 
@@ -63,21 +69,25 @@ docker compose exec web python scripts/init_db.py
 
 ## Step 5: Verify Subdomain Health & SSO
 
-- `https://hackerxploit.org` (Shared Auth Only - reserved otherwise as of 2026-08-03; only `/oauth/`, `/api/auth/`, and `/api/health` are proxied here)
-- `https://club.hackerxploit.org` (Club Main App)
+- `https://club.hackerxploit.org` (Club Main App - also hosts login/register/forgot-password and the OAuth2/SSO provider)
 - `https://arena.hackerxploit.org` (CTFd Platform)
 
-Logging in at `hackerxploit.org` persists the `.hackerxploit.org` session cookie, providing seamless access to `club.hackerxploit.org` and single-click SSO into `arena.hackerxploit.org`.
+`hackerxploit.org` (bare root) is intentionally not part of this stack - see "Prerequisites" above.
+
+Logging in at `club.hackerxploit.org` persists the `.club.hackerxploit.org` session
+cookie. CTFd's "Login with HackerXploit" button redirects the browser to
+`club.hackerxploit.org/oauth/authorize` for SSO; it does not rely on or read this
+cookie itself (server-to-server token/userinfo calls use the internal Docker network,
+not this cookie).
 
 ---
 
 ## Step 6: External Uptime Monitoring Setup (UptimeRobot)
 
-Configure an external uptime monitor (e.g., UptimeRobot) with HTTP(S) 5-minute interval checks for all three subdomains:
+Configure an external uptime monitor (e.g., UptimeRobot) with HTTP(S) 5-minute interval checks for both subdomains:
 
-1. **Shared Auth Service**: `https://hackerxploit.org/api/health` (Expects HTTP 200 `{"status": "healthy"}`)
-2. **Club Application**: `https://club.hackerxploit.org/api/health` (Expects HTTP 200 `{"status": "healthy"}`)
-3. **CTFd Competition Platform**: `https://arena.hackerxploit.org/healthcheck` (Expects HTTP 200 OK)
+1. **Club Application**: `https://club.hackerxploit.org/api/health` (Expects HTTP 200 `{"status": "healthy"}`)
+2. **CTFd Competition Platform**: `https://arena.hackerxploit.org/healthcheck` (Expects HTTP 200 OK)
 
 Configure alerting notifications via Discord Webhook or Email for downtime detection.
 

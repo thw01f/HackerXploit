@@ -37,9 +37,11 @@ def create_app(config_class=Config):
     flask_app = Flask(__name__)
     flask_app.config.from_object(config_class)
 
-    # Enable CORS with credentials for subdomains (.hackerxploit.org) & local ports
+    # Enable CORS with credentials for our own subdomains & local ports only.
+    # hackerxploit.org (bare root) deliberately excluded - it's reserved for
+    # other, unrelated projects as of 2026-08-03 and this backend has no
+    # reason to accept credentialed cross-origin requests from it.
     CORS(flask_app, supports_credentials=True, origins=[
-        "http://hackerxploit.org",
         "http://club.hackerxploit.org",
         "http://arena.hackerxploit.org",
         "http://localhost",

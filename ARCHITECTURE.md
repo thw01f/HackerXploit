@@ -2,7 +2,7 @@
 
 ## Overview
 
-The HackerXploit Club Platform operates as a single Docker Compose deployment hosting three distinct subdomains behind an Nginx reverse proxy.
+The HackerXploit Club Platform operates as a single Docker Compose deployment hosting two subdomains behind an Nginx reverse proxy. `hackerxploit.org` (the bare root domain) is deliberately **not** claimed by this deployment at all — see "Domain Scoping" below.
 
 ```
                                ┌─────────────────────────┐
@@ -10,14 +10,14 @@ The HackerXploit Club Platform operates as a single Docker Compose deployment ho
                                │   Wildcard SSL (*.org)  │
                                └────────────┬────────────┘
                                             │
-            ┌───────────────────────────────┼───────────────────────────────┐
-            ▼                               ▼                               ▼
-┌───────────────────────┐       ┌───────────────────────┐       ┌───────────────────────┐
-│   hackerxploit.org    │       │ club.hackerxploit.org │       │  arena.hackerxploit.org │
-│ Shared Auth Only (SSO)│       │   Club Portal SPA     │       │    CTFd (OAuth SSO)   │
-└───────────┬───────────┘       └───────────┬───────────┘       └───────────┬───────────┘
-            │                               │                               │
-            └───────────────────────────────┼───────────────────────────────┘
+                        ┌───────────────────────────────┐
+                        ▼                               ▼
+            ┌───────────────────────┐       ┌───────────────────────┐
+            │ club.hackerxploit.org │       │  arena.hackerxploit.org │
+            │ Club Portal SPA + Auth │       │    CTFd (OAuth SSO)   │
+            └───────────┬───────────┘       └───────────┬───────────┘
+                        │                               │
+                        └───────────────────────────────┘
                                             │
                                ┌────────────▼────────────┐
                                │     Flask REST API      │
@@ -43,24 +43,39 @@ The HackerXploit Club Platform operates as a single Docker Compose deployment ho
 - `admin_bp` (`/api/admin`): Registration approval queue, hard cap of 5 admins enforcement, root admin control, `/admin/security/login-activity` security viewer, audit logs.
 - `chat_bp` (`/api/chat`): Real-time multi-channel chat history, teacher soft-delete moderation.
 
-## Shared SSO Cookie Scope
+## Session Cookie Scope
 
-All authentication sessions issue HTTP-only cookies scoped to `.hackerxploit.org`. This allows seamless single sign-on across `hackerxploit.org`, `club.hackerxploit.org`, and `arena.hackerxploit.org`.
+All authentication sessions issue HTTP-only cookies scoped to `.club.hackerxploit.org`
+(`SESSION_COOKIE_DOMAIN` in `backend/app/config.py`) — not the wildcard
+`.hackerxploit.org`. The cookie has no reason to be sent to `arena.hackerxploit.org`
+(CTFd runs its own session; it interacts with the club app purely via browser-mediated
+OAuth2 redirects and server-to-server token exchange, never by reading this cookie),
+and definitely not to the bare `hackerxploit.org` root domain, which this deployment
+doesn't touch at all.
 
 ## Domain Scoping (as of 2026-08-03)
 
-`hackerxploit.org` (bare root + `www.`) is reserved for other future use (a separate
-site/landing page) and intentionally serves **nothing of the club app itself** — it
-exists solely as the shared OAuth2/SSO + login entry point. Nginx (`nginx/conf.d/default.conf`)
-only proxies two location blocks on that domain:
+`hackerxploit.org` (bare root + `www.`) is **reserved for other, unrelated projects**
+and is not configured anywhere in this repo's Nginx/Docker Compose setup — no server
+block claims it, nothing here serves anything on it. This deployment only owns two
+subdomains:
 
-- `/oauth/` — the Authlib OAuth2 provider (`/oauth/authorize`, `/oauth/token`, `/oauth/userinfo`) used by CTFd's SSO.
-- `/api/auth/` — the `auth_bp` blueprint (register, login, logout, forgot-password, `/me`, etc.) — every route this blueprint exposes and nothing more.
+- **`club.hackerxploit.org`** — the entire application: the SPA, every `/api/` route
+  (including `/api/auth/*` — register, login, logout, forgot-password, `/me`, etc.),
+  the OAuth2/SSO provider (`/oauth/authorize`, `/oauth/token`, `/oauth/userinfo`) that
+  CTFd's "Login with HackerXploit" redirects to, `/socket.io/`, and `/uploads/`. There
+  is no separate auth subdomain to keep in sync with this one.
+- **`arena.hackerxploit.org`** — CTFd, configured as an OAuth2 client pointing at
+  `club.hackerxploit.org` for SSO (`scripts/init_ctfd.py`, via the
+  `CTFD_OAUTH_PUBLIC_BASE_URL` env var).
 
-The frontend SPA build is still served at `/` on this domain purely so `/login`,
-`/register`, `/forgot-password`, `/onboarding`, and `/setup-admin` render as pages —
-Vue Router's own auth guard prevents anything else from doing anything useful even if
-visited directly, since none of those other pages' data-fetching calls (`/api/club/...`,
-`/api/academy/...`, etc.) are reachable on this domain. `/uploads/` and every other
-`/api/` route live exclusively on `club.hackerxploit.org`, which is the actual
-application portal.
+Because everything lives on one domain now, `club.hackerxploit.org`'s Nginx `location /`
+no longer needs (and no longer has) the old cookie-presence redirect-to-a-separate-
+auth-domain check — that pattern would infinite-loop against `/login` itself once
+login is served from the same domain it protects. Vue Router's own auth guard
+(`frontend/src/App.vue`) already gates every non-public route client-side.
+
+The Certbot wildcard cert (`*.hackerxploit.org` + `hackerxploit.org`, DNS-01 challenge)
+is still the simplest way to get valid TLS for both subdomains with one certificate —
+this doesn't require this deployment to serve anything on the bare root domain, only
+to prove DNS control of it during issuance.

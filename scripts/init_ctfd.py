@@ -44,7 +44,7 @@ def init_ctfd_oauth():
     # server-to-server calls CTFd makes internally, so they use the docker
     # network hostname - matches how REDIS_URL/DATABASE_URL etc. already
     # address the web service elsewhere in docker-compose.yml.
-    public_auth_base = os.getenv('CTFD_OAUTH_PUBLIC_BASE_URL', 'https://hackerxploit.org')
+    public_auth_base = os.getenv('CTFD_OAUTH_PUBLIC_BASE_URL', 'https://club.hackerxploit.org')
     internal_web_base = os.getenv('CTFD_OAUTH_INTERNAL_WEB_URL', 'http://web:5000')
 
     oauth_configs = {
