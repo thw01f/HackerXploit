@@ -2,21 +2,32 @@
 # ============================================================================
 # HackerXploit CTFd Theme Installer
 #
-# Applies the HackerXploit brand (dark/light palette matching the main
-# platform - neon green #9fef00, cyan #00f0ff, monospace type) on top of the
-# running CTFd container's stock "core" theme, plus a matching favicon.
+# By default, installs only two functional fixes into Configs.theme_footer:
+#   - relabels the SSO button from CTFd's hardcoded "Login with Major League
+#     Cyber" to "Login with HackerXploit"
+#   - hides CTFd's native username/password login form, which can never
+#     work for any platform account (they get a random, never-disclosed
+#     password - see ctfd_sync.py) and previously confused a real user into
+#     thinking their account was broken when it wasn't
+#
+# Cosmetic branding (neon-green/cyan CSS into Configs.theme_header, plus the
+# favicon swap) is opt-in via --with-branding, NOT applied by default -
+# CTFd's own admin panel (Config -> Theme) edits those exact same two config
+# keys through its "Theme Header"/"Theme Footer" fields, so leaving
+# theme_header alone by default means the admin can use CTFd's built-in
+# theme editor (color picker, header/footer fields, theme switcher) freely,
+# with nothing here to overwrite or conflict with. Re-running without
+# --with-branding will NOT remove branding that's already installed (that's
+# what --uninstall is for) - it just skips writing that step again.
 #
 # How it works (no CTFd template files are touched, nothing to break):
-#   - CTFd's base.html renders `{{ Configs.theme_header }}` verbatim right
-#     before </head>. We set that config value in CTFd's own database to a
-#     <style> block with our CSS overrides. CTFd's native light/dark toggle
-#     (Bootstrap 5.3's data-bs-theme attribute) is reused as-is - we only
-#     override the CSS variables it already reads.
-#   - The favicon file CTFd serves by default is overwritten directly (the
-#     original is backed up first, on the very first run only).
+#   - CTFd's base.html renders `{{ Configs.theme_header }}` and
+#     `{{ Configs.theme_footer }}` verbatim right before </head> and </body>.
+#     We set those config values in CTFd's own database directly.
 #
 # Usage:
-#   ./install-ctfd-theme.sh              # installs against container "hx_ctfd"
+#   ./install-ctfd-theme.sh                    # functional fixes only (default)
+#   ./install-ctfd-theme.sh --with-branding     # also applies the neon-green theme + favicon
 #   CTFD_CONTAINER=my_ctfd ./install-ctfd-theme.sh
 #
 # Safe to re-run - every step is idempotent.
@@ -119,11 +130,18 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   uninstall
 fi
 
+APPLY_BRANDING=false
+if [[ "${1:-}" == "--with-branding" ]]; then
+  APPLY_BRANDING=true
+fi
+
 require_container
 
-[[ -f "$LOCAL_FAVICON" ]] || die "Favicon not found at $LOCAL_FAVICON (set HX_FAVICON_PATH to override)."
-
 log "Target container: $CONTAINER"
+
+if [[ "$APPLY_BRANDING" == "true" ]]; then
+
+[[ -f "$LOCAL_FAVICON" ]] || die "Favicon not found at $LOCAL_FAVICON (set HX_FAVICON_PATH to override)."
 
 # ---------------------------------------------------------------------------
 # 1. Custom CSS -> Configs.theme_header
@@ -365,6 +383,10 @@ docker exec -i "$CONTAINER" sh -c "
 "
 docker cp "$LOCAL_FAVICON" "$CONTAINER:$FAVICON_PATH_IN_CONTAINER"
 
+else
+  log "Skipping branding (CSS/favicon) - re-run with --with-branding to apply it. CTFd's admin Theme editor is free to use in the meantime."
+fi
+
 # ---------------------------------------------------------------------------
 # 3. SSO Button Label -> Configs.theme_footer
 #    CTFd's login page hardcodes the SSO button text as "Login with Major
@@ -434,5 +456,8 @@ docker exec -u root -i "$CONTAINER" rm -f "$JS_TMP_IN_CONTAINER"
 
 flush_ctfd_config_cache
 
-log "Done. Hard-refresh CTFd in your browser to see the new theme."
+log "Done. Hard-refresh CTFd in your browser to see the changes."
+if [[ "$APPLY_BRANDING" != "true" ]]; then
+  log "Branding was skipped - re-run with --with-branding to apply the neon theme + favicon too."
+fi
 log "To undo everything: $0 --uninstall"

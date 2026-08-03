@@ -234,11 +234,22 @@ directory isn't named `hackerxploit` - check with `docker network ls`.)
 
 Now visit `https://arena.hackerxploit.org/setup` and complete CTFd's one-time setup
 wizard (CTF name, timezone, a local super-admin account - separate from the
-platform's SSO, used only for CTFd's own admin panel). Once done, apply the
-HackerXploit brand + relabel the SSO button:
+platform's SSO, used only for CTFd's own admin panel). Once done, apply the two
+functional SSO fixes (relabel the button, hide CTFd's native login form - see
+[Feature: CTFd Theme](wiki_repo/Feature-CTFd-Theme.md) for why):
 
 ```bash
 bash scripts/install-ctfd-theme.sh
+```
+
+Cosmetic branding (neon-green CSS + favicon) is a separate opt-in flag, deliberately
+not applied by default - CTFd's own admin Theme editor (Config -> Theme) edits the
+exact same config keys, so leaving them alone by default means that editor stays
+fully usable with nothing to conflict with. Only add branding if you don't plan to
+use CTFd's built-in theme editor for anything else:
+
+```bash
+bash scripts/install-ctfd-theme.sh --with-branding
 ```
 
 To actually get the root admin (or any user) recognized as an admin inside CTFd,
@@ -586,6 +597,18 @@ endpoint is only ever reached via full browser navigation, never an API/fetch ca
 If this class of bug ever recurs on a similar full-page-navigation-only endpoint:
 check whether it's using a blanket auth decorator built for API/AJAX routes
 (JSON error responses) instead of an inline check that redirects.
+
+### 15. Using CTFd's own admin Theme editor "undoes" the SSO/theme customization
+
+`scripts/install-ctfd-theme.sh` writes into `Configs.theme_header`/`theme_footer` -
+the exact same two fields CTFd's own admin panel (Config -> Theme -> "Theme Header"/
+"Theme Footer") edits directly. By default the script only writes to `theme_footer`
+(the SSO button relabel + hidden native-login-form JS), leaving `theme_header`
+untouched specifically so that editor stays safe to use for cosmetic changes. If an
+admin edits/clears "Theme Footer" in that UI and saves, it will overwrite the SSO
+fixes - just re-run `bash scripts/install-ctfd-theme.sh` to reinstall them. Branding
+(`--with-branding`) is opt-in for the same reason: don't apply it if you plan to use
+CTFd's built-in theme editor for anything.
 
 ---
 ---
