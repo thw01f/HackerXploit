@@ -94,8 +94,18 @@
               </span>
             </button>
 
-            <!-- Notifications Dropdown (High Scaled Viewport) -->
-            <div v-if="showNotifications" class="absolute right-0 top-full mt-3 w-96 sm:w-[440px] bg-[#111927] border-2 border-[#1a2332] rounded-2xl shadow-2xl z-50 overflow-hidden border-t-4 border-t-[#9fef00]">
+            <!-- Notifications Dropdown (High Scaled Viewport).
+                 Below sm: fixed + inset-x-4 so width/position are relative to
+                 the viewport, not this small bell button - a 384-440px-wide
+                 dropdown absolutely positioned against a button that isn't
+                 even flush with the screen edge (the profile button sits to
+                 its right) overflowed badly off-screen on real phone widths
+                 (~360-414px), often clipped unreachable to the left.
+                 handleOutsideClick still works unchanged: it checks DOM
+                 containment within headerRef, not visual position, and this
+                 element stays inside <header> in the DOM either way.
+                 sm and up: reverts to the original anchored dropdown. -->
+            <div v-if="showNotifications" class="fixed inset-x-4 top-20 sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-3 sm:w-96 md:w-[440px] bg-[#111927] border-2 border-[#1a2332] rounded-2xl shadow-2xl z-50 overflow-hidden border-t-4 border-t-[#9fef00]">
               <div class="px-6 py-4 border-b border-[#1a2332] flex justify-between items-center bg-[#0c1117]">
                 <div class="flex items-center gap-2.5">
                   <svg class="w-5 h-5 text-[#9fef00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,7 +115,7 @@
                 </div>
                 <button @click="markAllRead" class="text-xs text-[#9fef00] hover:underline font-mono font-extrabold px-3 py-1 rounded-lg bg-[#9fef00]/10 border border-[#9fef00]/30 transition-all">Mark all read</button>
               </div>
-              <div class="max-h-[460px] overflow-y-auto divide-y divide-[#1a2332]">
+              <div class="max-h-[50vh] sm:max-h-[460px] overflow-y-auto divide-y divide-[#1a2332]">
                 <div v-if="notifications.length === 0" class="p-8 text-center text-sm text-slate-400 font-mono">
                   No notifications yet
                 </div>

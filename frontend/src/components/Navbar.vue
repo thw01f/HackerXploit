@@ -52,8 +52,20 @@
               <span v-if="unreadCount > 0" class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
             </button>
 
-            <!-- Notifications Drawer (Scalable, Large Font for High Visibility) -->
-            <div v-if="showNotifications" class="absolute right-0 mt-3 w-96 md:w-[440px] bg-[#0d1420] border-2 border-[#1f293d] rounded-2xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl">
+            <!-- Mobile-only tap-away backdrop: below sm, the drawer breaks out
+                 of this button's positioning context (fixed, not absolute) to
+                 avoid overflowing off-screen, so there's no longer an obvious
+                 "outside" to click without one. -->
+            <div v-if="showNotifications" @click="showNotifications = false" class="fixed inset-0 z-40 bg-black/50 sm:hidden"></div>
+
+            <!-- Notifications Drawer (Scalable, Large Font for High Visibility).
+                 Below sm: fixed + inset-x-4 so its width and position are
+                 relative to the viewport, not this small anchor button - a
+                 384px-wide dropdown absolutely positioned against a button
+                 near the screen edge overflowed off-screen (often clipped
+                 unreachable to the left) on real phone widths (~360-414px).
+                 sm and up: reverts to the original anchored dropdown. -->
+            <div v-if="showNotifications" class="fixed inset-x-4 top-20 sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-3 sm:w-96 md:w-[440px] bg-[#0d1420] border-2 border-[#1f293d] rounded-2xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl">
               <div class="px-5 py-4 border-b border-[#1f293d] flex justify-between items-center bg-[#0b0e14]">
                 <div class="flex items-center space-x-2">
                   <svg class="w-4 h-4 text-[#9fef00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,7 +80,7 @@
                   Mark all read
                 </button>
               </div>
-              <div class="max-h-96 overflow-y-auto divide-y divide-[#1f293d]">
+              <div class="max-h-[55vh] sm:max-h-96 overflow-y-auto divide-y divide-[#1f293d]">
                 <div v-if="notifications.length === 0" class="p-6 text-center text-sm text-slate-400 font-mono">
                   No notifications yet
                 </div>
