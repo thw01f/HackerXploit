@@ -40,9 +40,16 @@ services:
       - SENTRY_DSN=${SENTRY_DSN:-}
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-1x0000000000000000000000000000000AA}
       - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-1x00000000000000000000AA}
+      - CTFD_OAUTH_CLIENT_ID=${CTFD_OAUTH_CLIENT_ID:-ctfd-client-id-hx99}
+      - CTFD_OAUTH_CLIENT_SECRET=${CTFD_OAUTH_CLIENT_SECRET:?CTFD_OAUTH_CLIENT_SECRET must be set}
     volumes:
       - uploads_data:/var/uploads
       - backups_data:/var/hx_backups
+      # scripts/ lives outside the ./backend build context, so it's never
+      # baked into the image - bind-mounted read-only so DEPLOYMENT.md's
+      # `docker compose exec web python scripts/init_db.py` actually has a
+      # file to run.
+      - ./scripts:/app/scripts:ro
     depends_on:
       - db
       - redis
@@ -64,6 +71,12 @@ services:
       - CLAMAV_HOST=clamav
       - CLAMAV_PORT=3310
       - SENTRY_DSN=${SENTRY_DSN:-}
+      # Not actually used by any Celery task today - required only because
+      # importing app.config (a side effect of `from app.services.celery_tasks
+      # import celery`) evaluates the whole Config class body, including the
+      # fail-fast checks for values this service never reads.
+      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-1x0000000000000000000000000000000AA}
+      - CTFD_OAUTH_CLIENT_SECRET=${CTFD_OAUTH_CLIENT_SECRET:?CTFD_OAUTH_CLIENT_SECRET must be set}
     volumes:
       - uploads_data:/var/uploads
       - backups_data:/var/hx_backups
@@ -84,6 +97,9 @@ services:
       - REDIS_URL=${REDIS_URL:?REDIS_URL must be set}
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set}
       - SENTRY_DSN=${SENTRY_DSN:-}
+      # See celery_worker above - same Config-import side effect.
+      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-1x0000000000000000000000000000000AA}
+      - CTFD_OAUTH_CLIENT_SECRET=${CTFD_OAUTH_CLIENT_SECRET:?CTFD_OAUTH_CLIENT_SECRET must be set}
     depends_on:
       - db
       - redis
