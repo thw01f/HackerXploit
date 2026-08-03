@@ -20,5 +20,10 @@ PyYAML==6.0.3
 bleach==6.4.0
 Markdown==3.10.2
 reportlab==5.0.0
+passlib==1.7.4
+# passlib 1.7.4's bcrypt backend detection breaks on bcrypt>=4.1 (removed
+# __about__.__version__, changed the 72-byte-secret truncation behavior it
+# probes for) - pin below that until passlib itself is updated upstream.
+bcrypt==4.0.1
 pytest==8.2.0
 sentry-sdk[flask,celery]==2.22.0

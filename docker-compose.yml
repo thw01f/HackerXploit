@@ -50,6 +50,11 @@ services:
       # `docker compose exec web python scripts/init_db.py` actually has a
       # file to run.
       - ./scripts:/app/scripts:ro
+      # Shared with the ctfd service (see below) so app/services/ctfd_sync.py
+      # can talk to CTFd's SQLite file directly, instead of needing Docker
+      # socket/CLI access to `docker exec` into the ctfd container - keeps a
+      # compromised web app from gaining any host-level access.
+      - ctfd_db_data:/var/ctfd_data
     depends_on:
       - db
       - redis
