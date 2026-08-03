@@ -60,7 +60,7 @@
               </thead>
               <tbody class="divide-y divide-slate-800 text-slate-300">
                 <tr v-for="act in activities" :key="act.id" class="hover:bg-slate-800/40">
-                  <td class="p-3 text-slate-500">{{ new Date(act.created_at || act.timestamp).toLocaleString() }}</td>
+                  <td class="p-3 text-slate-500">{{ formatDate(act.created_at || act.timestamp) }}</td>
                   <td class="p-3 font-bold text-white">{{ act.username_attempted || act.email_attempted }}</td>
                   <td class="p-3 text-cyan-400">{{ act.ip_address }}</td>
                   <td class="p-3 font-bold">
@@ -162,7 +162,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { usePreferences } from '../stores/preferences'
 import AdminSubNav from '../components/AdminSubNav.vue'
+
+const prefs = usePreferences()
+const formatDate = (isoStr) => {
+  if (!isoStr) return ''
+  return new Date(isoStr).toLocaleString(undefined, { hour12: prefs.is12h.value })
+}
 
 const activeTab = ref('activity')
 

@@ -1,9 +1,10 @@
 # Security Audit — August 2026
 
-This document records a security audit of the HackerXploit Club Platform performed on
-2026-08-01, the vulnerabilities it found, and the fixes applied in response. It is a
-point-in-time record — see git history / `SECURITY.md` for the current state of the
-security architecture.
+This document records security audits of the HackerXploit Club Platform, the
+vulnerabilities each found, and the fixes applied in response. It is a point-in-time
+record — see git history / `SECURITY.md` for the current state of the security
+architecture. Two passes are recorded: **2026-08-01** (items 1–12 below) and a
+follow-up **2026-08-03** pass (items 13–20).
 
 **Scope:** backend (Flask/PostgreSQL/Redis/Celery), frontend (Vue 3 SPA), and
 infrastructure (Docker Compose, Nginx, CI/CD). **Method:** manual code review across
@@ -295,3 +296,204 @@ round (either lower severity, or requiring a larger dedicated effort):
 - Frontend build: `npm run build` — all 1,834 modules transformed without error (the
   build's final `emptyDir` step failed on a pre-existing local filesystem permission
   issue unrelated to any change here).
+
+---
+
+# Follow-up Audit — 2026-08-03
+
+**Scope:** backend route-by-route authorization review, XSS/injection review, and
+infrastructure/secrets review, run as three parallel focus areas, followed by targeted
+remediation and live regression testing against a running dev instance (`app.test_client()`
+plus real HTTP requests with session cookies) in addition to the full pytest suite. A
+fourth parallel pass (live runtime smoke-testing of register/login/enrollment flows and
+edge-case inputs) was interrupted mid-run by an unrelated tooling limit, but surfaced one
+genuine crash bug (#20) before stopping.
+
+All items below were patched and verified against the full test suite (39/39 passing)
+on the `feat/competitions-opportunities-lifecycle` branch, plus targeted live
+`test_client()` exploit/regression scripts for every item.
+
+## Critical
+
+### 13. Course attachment uploads bypassed all malware scanning and file-type verification
+- **File:** `backend/app/routes/academy.py` (`upload_note_attachment`)
+- **Impact:** Every other upload path in the app (avatars, course covers, competition
+  proof screenshots) routes through `UploadPipeline` — real MIME sniffing plus a ClamAV
+  scan before the file is ever written to disk. This one route saved the uploaded file
+  directly via `file.save(...)` with only `werkzeug.secure_filename()` applied (filename
+  sanitization only, no content inspection). A teacher/admin account (or one that had
+  been compromised) could upload literally any file type as a "course attachment" —
+  these are downloaded directly by every student enrolled in the course, with zero
+  scanning at any point.
+- **Fix:** The route now calls `UploadPipeline.detect_mime()` against the same
+  `COURSE_ATTACHMENT_MIMES` allowlist used elsewhere, and `UploadPipeline.scan_clamav()`,
+  before saving — matching the security guarantees of every other upload path — while
+  keeping the existing privately-gated storage location/serving mechanism
+  (`/data/academy/<course_id>/`, served only to enrolled users via `serve_attachment`)
+  unchanged, since switching to `UploadPipeline`'s own public `/var/uploads/` save path
+  would have defeated that enrollment gate entirely.
+- **Status:** Fixed. Verified live: a GIF (a real, recognizable, but disallowed type)
+  is now rejected with 400; a legitimate PDF still uploads successfully (201).
+
+### 14. Deleting a user account always crashed, silently discarding the audit trail
+- **File:** `backend/app/routes/admin.py` (`delete_user_account`)
+- **Impact:** The route deleted the `User` row and committed, *then* called
+  `log_audit('USER_DELETED', target_type='User', target_id=user_id, ...)`. `log_audit`
+  infers `target_user_id` from a numeric `target_id` against `User`, which is a foreign
+  key to `users.id` — by the time this ran, that row no longer existed, so the INSERT
+  violated the FK constraint and raised an uncaught `IntegrityError` (HTTP 500). The
+  user deletion itself had already succeeded and committed before the crash, so an
+  admin saw a failure response for an operation that had actually completed — and,
+  because the crash happened before `log_audit`'s own `db.session.commit()`, **no audit
+  record was ever written for any user deletion**, silently, for the entire time this
+  code has existed. Found by a parallel runtime-testing pass that was itself testing an
+  unrelated account-lockout scenario and happened to delete a test account afterward.
+- **Fix:** Reordered so `log_audit(...)` runs *before* the user row is deleted.
+  `AuditLog.target_user_id` has `ondelete='SET NULL'`, so once the user is deleted the
+  audit row's `target_user_id` safely becomes `NULL` — the human-readable `notes` field
+  already bakes in the username, so the record stays meaningful.
+- **Status:** Fixed. Verified live end-to-end: delete now returns 200, the user is
+  actually gone, and a `USER_DELETED` audit log entry exists with the correct notes.
+
+## High
+
+### 15. Broken object-level authorization (IDOR) across five endpoints
+- **Files:** `backend/app/routes/club.py`, `backend/app/routes/students.py`,
+  `backend/app/routes/competition.py`, `backend/app/routes/inbox.py`,
+  `backend/app/routes/activity.py`
+- **Impact:** Five routes correctly checked *who* was calling (via `@require_auth` /
+  `@require_role`) but never checked *whose* record was being touched by the ID in the
+  URL — each had a sibling route elsewhere in the same file that got this right,
+  making the gap an inconsistency rather than a missing pattern:
+  - `GET /api/club/members/<id>` — any teacher could fetch any other user's private
+    contact fields (`personal_gmail`, `student_gmail`, `phone_number`) via
+    `include_private=True` passed unconditionally, including for admins/root_admins.
+    The list endpoint (`get_members`) correctly restricts non-admin teachers to
+    student/member targets; the by-ID detail route didn't.
+  - `GET /api/teacher/students/<id>` — same gap for the full structured profile
+    (30-day activity breakdown, per-module progress, competition "trophy case" incl.
+    screenshots/prize money/GitHub links) — any teacher could pull this for any other
+    staff account, not just students.
+  - `GET /api/competitions/<id>/attendance` — only required login, not a role, while its
+    sibling scan/export routes for the same data all require `teacher`/`admin`. Any
+    logged-in member could dump a club event's attendee roster including every
+    attendee's email address and department.
+  - `POST /api/inbox/<id>/reply` — checked `allow_reply` but never that the caller was
+    the message's sender, a recipient, or an admin (unlike `get_message_detail`, which
+    does). Anyone who learned/guessed a `message_id` could reply into a private
+    conversation between two other users.
+  - `GET /api/activity/stats/<id>` — no ownership or role check at all; any member could
+    pull any other member's detailed 30-day activity chart by ID. (Currently unused by
+    the frontend, but hardened regardless.)
+- **Fix:** Each route now enforces the same restriction its sibling already had:
+  club.py/students.py return 403 when a non-admin teacher targets a non-student/member
+  account; the attendance roster now requires `teacher`/`admin`/`root_admin` (both
+  frontend call sites were already gated behind `authStore.isTeacher`, so this matches
+  actual intended usage); inbox replies now run the identical sender/recipient/admin
+  check as `get_message_detail`; activity stats now require the caller to be viewing
+  their own data or hold a staff role.
+- **Status:** Fixed. Verified live for all five: a teacher is now rejected (403)
+  querying an admin's profile or another teacher's dossier; a plain member is rejected
+  querying an attendance roster or another user's activity stats; the same calls
+  targeting a legitimate self/subordinate target still succeed (200).
+
+### 16. Markdown sanitizer allowed `data:` URIs, enabling a click-through XSS
+- **File:** `backend/app/services/markdown_service.py`
+- **Impact:** `render_sanitized_html()` correctly strips `<script>` tags and inline
+  event handlers via a `bleach` tag/attribute allowlist, but its `protocols` list
+  included `data`. Bleach applies that allowlist to every URL-bearing attribute it
+  sanitizes, not just `<img src>` — so authored markdown could include a link like
+  `[click me](data:text/html;base64,...)` that survives sanitization intact. A reader
+  clicking that link (rendered via `v-html` in the note reader, career-path viewer, and
+  roadmap graph) would navigate to and execute the embedded HTML/script. Impact is
+  bounded by only teacher/admin/root_admin accounts being able to author this content,
+  but it's a real sanitizer gap, not theoretical.
+- **Fix:** Removed `data` from the allowed protocols list. `img src="data:..."`
+  (inline base64 images) is no longer permitted either, but course content in practice
+  always references uploaded image files, not pasted data URIs, so this has no real
+  workflow impact.
+- **Status:** Fixed.
+
+### 17. Unescaped user input interpolated into outbound HTML emails
+- **File:** `backend/app/services/email_service.py`
+- **Impact:** `username`, announcement `title`/`message`, and inbox message
+  `subject`/`snippet` — all user-controllable, with no character validation at the
+  point they're collected — were interpolated directly into HTML email-body f-strings
+  with no escaping. Any registered user could set a display name, or the subject/body
+  of a message sent to another user, containing arbitrary HTML/markup that would render
+  live in the recipient's email client on account-status, verification, announcement,
+  and inbox-notification emails.
+- **Fix:** All of the above are now passed through `html.escape()` before interpolation.
+- **Status:** Fixed. (Checked and confirmed separately clean: CRLF email-header
+  injection via the subject field is not exploitable — Python's `email` module raises
+  on embedded newlines in a header value, and `send_smtp_email`'s broad exception
+  handler just causes the send to silently no-op rather than allowing injection.)
+
+## Medium
+
+### 18. CTFd's admin/API port published directly to the public internet, bypassing Nginx
+- **File:** `docker-compose.yml`
+- **Impact:** The `ctfd` service published `8000:8000` to `0.0.0.0`, even though Nginx
+  already reverse-proxies it at `arena.hackerxploit.org` over the internal Docker
+  network. CTFd runs with `REVERSE_PROXY=true`, meaning it trusts
+  `X-Forwarded-For`/`X-Forwarded-Proto` from whoever connects to it directly — a
+  publicly reachable `:8000` let anyone bypass Nginx's TLS/HSTS/security headers
+  entirely and spoof their apparent source IP to undermine CTFd's own IP-based
+  rate-limiting/banning.
+- **Fix:** Changed to `127.0.0.1:8000:8000` — still reachable as `localhost:8000` from
+  the host itself (needed for the local-dev `ctfdUrl` fallback in `DashboardView.vue`),
+  no longer reachable from outside the host.
+- **Status:** Fixed in `docker-compose.yml`. **Pending:** the currently-running `hx_ctfd`
+  container was started under the old binding — this only takes effect after a
+  `docker compose up -d ctfd` (recreate), which was intentionally not performed as part
+  of this pass (see note under "Delete/redeploy" below).
+
+### 19. `TURNSTILE_SECRET_KEY` was the only secret not covered by the production fail-fast check
+- **File:** `backend/app/config.py`
+- **Impact:** `SECRET_KEY`, the Postgres password, and `CTFD_OAUTH_CLIENT_SECRET` all
+  fail app startup in production if left unset or equal to a known placeholder value
+  (see item #5 above). `TURNSTILE_SECRET_KEY` had no equivalent check — if an operator
+  forgot to set it in production, the app would start normally with Cloudflare's public
+  "always passes" test secret still active, silently disabling CAPTCHA verification on
+  register/login/forgot-password with no error or warning anywhere.
+- **Fix:** Added `TURNSTILE_SECRET_KEY` to `_INSECURE_DEFAULTS` and wrapped it in the
+  same `_require_secret()` call as the others.
+- **Status:** Fixed. Verified the dev environment (`FLASK_ENV=development`) still boots
+  fine with the test secret explicitly set, and the check only fires under
+  `FLASK_ENV=production`.
+
+### 20. (See Critical #14 above — user-deletion audit-log crash.)
+
+---
+
+## Domain/infrastructure change made alongside this pass
+
+Per an explicit product decision (not a vulnerability fix): `hackerxploit.org` (bare
+root + `www.`) is now reserved for other future use and no longer serves the club app.
+`nginx/conf.d/default.conf` was restructured so that domain only proxies `/oauth/`,
+`/api/auth/`, and `/api/health` (the last for the uptime-monitoring check documented in
+`DEPLOYMENT.md`) — every other route, `/uploads/`, and all app data now live
+exclusively on `club.hackerxploit.org`. See `ARCHITECTURE.md`'s "Domain Scoping"
+section for the full breakdown. This is a config-file change only — it takes effect on
+the actual production edge once that Nginx container is redeployed with the updated
+config, which (like item #18's CTFd port change) was intentionally not performed
+automatically as part of this pass; see the "delete the running framework and deploy
+again" discussion in project chat history for the pending decision on scope.
+
+## Verification (2026-08-03 pass)
+
+- Full backend test suite: `PYTHONPATH=backend pytest tests/ -q` — **39 passed, 0
+  failed**, run repeatedly through the remediation process.
+- Every IDOR fix (#15) verified with a live `test_client()` script: unauthorized access
+  now returns 403, legitimate access still returns 200.
+- Attachment upload fix (#13) verified with a live `test_client()` script: a
+  recognizable disallowed type (GIF) is rejected (400), a legitimate PDF still succeeds
+  (201). Test artifacts (both the DB attachment record and the on-disk file) were
+  cleaned up afterward.
+- User-deletion fix (#14) verified with a live `test_client()` script: delete now
+  returns 200, the user row is gone, and a `USER_DELETED` audit log entry exists with
+  `target_user_id` correctly nulled and a human-readable `notes` field.
+- Leftover test data from the interrupted runtime-testing pass (`qa_temp_admin` account,
+  its 2 device sessions, and 1 audit log row) was located and removed; its intended
+  target test account had already been removed by the very crash bug it was
+  investigating (#14).

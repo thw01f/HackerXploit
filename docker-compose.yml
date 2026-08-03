@@ -114,7 +114,14 @@ services:
     image: ctfd/ctfd:latest
     container_name: hx_ctfd
     ports:
-      - "8000:8000"
+      # Bound to loopback only, not 0.0.0.0 - CTFd runs with REVERSE_PROXY=true
+      # and trusts X-Forwarded-For/X-Forwarded-Proto from whoever connects to
+      # it directly, so a publicly reachable :8000 would let an attacker
+      # bypass nginx entirely (no TLS/HSTS/security headers) and spoof their
+      # source IP to undermine CTFd's own rate-limiting/ban logic. Still
+      # reachable as localhost:8000 for local dev (see DashboardView.vue's
+      # ctfdUrl fallback) since that's from the same host.
+      - "127.0.0.1:8000:8000"
     environment:
       - UPLOAD_FOLDER=/var/uploads/ctfd
       # Previously sqlite:////tmp/ctfd.db - /tmp lives only in the container's

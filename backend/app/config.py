@@ -8,6 +8,10 @@ _INSECURE_DEFAULTS = {
     'SECRET_KEY': {'super-secret-default-key-hx99', 'super-secret-production-key-change-me-in-prod', ''},
     'POSTGRES_PASSWORD_IN_DATABASE_URL': {'hx_secure_password_123!'},
     'CTFD_OAUTH_CLIENT_SECRET': {'ctfd-client-secret-sec88', ''},
+    # Cloudflare's publicly documented "always passes" Turnstile test secret -
+    # legitimate for local dev, but if this ships to production unnoticed the
+    # CAPTCHA on register/login/forgot-password accepts every attempt.
+    'TURNSTILE_SECRET_KEY': {'1x0000000000000000000000000000000AA', ''},
 }
 
 
@@ -49,7 +53,11 @@ class Config:
     # and database backup archives must never be reachable without authentication.
     BACKUP_FOLDER = os.environ.get('BACKUP_FOLDER', '/var/hx_backups')
 
-    TURNSTILE_SECRET_KEY = os.environ.get('TURNSTILE_SECRET_KEY', '1x0000000000000000000000000000000AA')
+    TURNSTILE_SECRET_KEY = _require_secret(
+        'TURNSTILE_SECRET_KEY',
+        os.environ.get('TURNSTILE_SECRET_KEY', ''),
+        _INSECURE_DEFAULTS['TURNSTILE_SECRET_KEY'],
+    ) or '1x0000000000000000000000000000000AA'
     TURNSTILE_SITE_KEY = os.environ.get('TURNSTILE_SITE_KEY', '1x00000000000000000000AA')
 
     CTFD_OAUTH_CLIENT_ID = os.environ.get('CTFD_OAUTH_CLIENT_ID', 'ctfd-client-id-hx99')

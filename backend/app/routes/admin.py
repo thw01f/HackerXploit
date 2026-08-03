@@ -167,6 +167,17 @@ def delete_user_account(user_id):
 
     username = user.username
     email = user.email
+
+    # Must log BEFORE deleting: log_audit infers target_user_id from a
+    # numeric target_id against User, which is an FK to users.id - logging
+    # after the user row is gone violates that FK and 500s (even though the
+    # deletion itself already succeeded and committed, leaving no audit
+    # trail at all for the most consequential admin action there is). The
+    # FK is ON DELETE SET NULL, so this row's target_user_id safely becomes
+    # NULL once the user is deleted below - the human-readable `notes`
+    # already has the username, so the audit trail stays meaningful.
+    log_audit('USER_DELETED', target_type='User', target_id=user_id, notes=f"User @{username} permanently deleted by {g.current_user.username}")
+
     # Terminate sessions
     DeviceSession.query.filter_by(user_id=user_id).delete()
     db.session.delete(user)
@@ -175,7 +186,6 @@ def delete_user_account(user_id):
     # Automatically purge user from CTFd
     delete_user_from_ctfd(username, email)
 
-    log_audit('USER_DELETED', target_type='User', target_id=user_id, notes=f"User @{username} permanently deleted by {g.current_user.username}")
     return jsonify({'message': f'User @{username} deleted successfully'}), 200
 
 @admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])

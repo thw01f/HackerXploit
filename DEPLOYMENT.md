@@ -63,7 +63,7 @@ docker compose exec web python scripts/init_db.py
 
 ## Step 5: Verify Subdomain Health & SSO
 
-- `https://hackerxploit.org` (Auth & Marketing)
+- `https://hackerxploit.org` (Shared Auth Only - reserved otherwise as of 2026-08-03; only `/oauth/`, `/api/auth/`, and `/api/health` are proxied here)
 - `https://club.hackerxploit.org` (Club Main App)
 - `https://arena.hackerxploit.org` (CTFd Platform)
 
@@ -75,7 +75,7 @@ Logging in at `hackerxploit.org` persists the `.hackerxploit.org` session cookie
 
 Configure an external uptime monitor (e.g., UptimeRobot) with HTTP(S) 5-minute interval checks for all three subdomains:
 
-1. **Auth & Public Service**: `https://hackerxploit.org/api/health` (Expects HTTP 200 `{"status": "healthy"}`)
+1. **Shared Auth Service**: `https://hackerxploit.org/api/health` (Expects HTTP 200 `{"status": "healthy"}`)
 2. **Club Application**: `https://club.hackerxploit.org/api/health` (Expects HTTP 200 `{"status": "healthy"}`)
 3. **CTFd Competition Platform**: `https://arena.hackerxploit.org/healthcheck` (Expects HTTP 200 OK)
 

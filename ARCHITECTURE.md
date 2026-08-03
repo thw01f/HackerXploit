@@ -14,7 +14,7 @@ The HackerXploit Club Platform operates as a single Docker Compose deployment ho
             ▼                               ▼                               ▼
 ┌───────────────────────┐       ┌───────────────────────┐       ┌───────────────────────┐
 │   hackerxploit.org    │       │ club.hackerxploit.org │       │  arena.hackerxploit.org │
-│  Public Site & Auth   │       │   Club Portal SPA     │       │    CTFd (OAuth SSO)   │
+│ Shared Auth Only (SSO)│       │   Club Portal SPA     │       │    CTFd (OAuth SSO)   │
 └───────────┬───────────┘       └───────────┬───────────┘       └───────────┬───────────┘
             │                               │                               │
             └───────────────────────────────┼───────────────────────────────┘
@@ -46,3 +46,21 @@ The HackerXploit Club Platform operates as a single Docker Compose deployment ho
 ## Shared SSO Cookie Scope
 
 All authentication sessions issue HTTP-only cookies scoped to `.hackerxploit.org`. This allows seamless single sign-on across `hackerxploit.org`, `club.hackerxploit.org`, and `arena.hackerxploit.org`.
+
+## Domain Scoping (as of 2026-08-03)
+
+`hackerxploit.org` (bare root + `www.`) is reserved for other future use (a separate
+site/landing page) and intentionally serves **nothing of the club app itself** — it
+exists solely as the shared OAuth2/SSO + login entry point. Nginx (`nginx/conf.d/default.conf`)
+only proxies two location blocks on that domain:
+
+- `/oauth/` — the Authlib OAuth2 provider (`/oauth/authorize`, `/oauth/token`, `/oauth/userinfo`) used by CTFd's SSO.
+- `/api/auth/` — the `auth_bp` blueprint (register, login, logout, forgot-password, `/me`, etc.) — every route this blueprint exposes and nothing more.
+
+The frontend SPA build is still served at `/` on this domain purely so `/login`,
+`/register`, `/forgot-password`, `/onboarding`, and `/setup-admin` render as pages —
+Vue Router's own auth guard prevents anything else from doing anything useful even if
+visited directly, since none of those other pages' data-fetching calls (`/api/club/...`,
+`/api/academy/...`, etc.) are reachable on this domain. `/uploads/` and every other
+`/api/` route live exclusively on `club.hackerxploit.org`, which is the actual
+application portal.

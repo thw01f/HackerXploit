@@ -46,7 +46,7 @@
           <tbody class="divide-y divide-slate-800/60 font-mono text-xs">
             <tr v-for="log in logs" :key="log.id" class="hover:bg-slate-900/40">
               <td class="py-3 px-4 text-slate-500">#{{ log.id }}</td>
-              <td class="py-3 px-4 text-slate-400">{{ new Date(log.created_at || log.timestamp).toLocaleString() }}</td>
+              <td class="py-3 px-4 text-slate-400">{{ formatDate(log.created_at || log.timestamp) }}</td>
               <td class="py-3 px-4">
                 <span class="text-white font-bold">{{ log.actor_name }}</span>
                 <span class="text-[10px] text-purple-400 block uppercase">[{{ log.actor_role }}]</span>
@@ -75,7 +75,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { usePreferences } from '../stores/preferences'
 import AdminSubNav from '../components/AdminSubNav.vue'
+
+const prefs = usePreferences()
+const formatDate = (isoStr) => {
+  if (!isoStr) return ''
+  return new Date(isoStr).toLocaleString(undefined, { hour12: prefs.is12h.value })
+}
 
 const logs = ref([])
 const filterActor = ref('')

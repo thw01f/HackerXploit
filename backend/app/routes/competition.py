@@ -635,7 +635,7 @@ def scan_event_attendance(comp_id):
 
 
 @competition_bp.route('/<int:comp_id>/attendance', methods=['GET'])
-@require_auth
+@require_role('teacher', 'admin', 'root_admin')
 def get_event_attendance(comp_id):
     comp = Competition.query.get_or_404(comp_id)
     records = EventAttendance.query.filter_by(competition_id=comp_id).order_by(EventAttendance.scanned_at.desc()).all()

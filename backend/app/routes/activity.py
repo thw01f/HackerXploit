@@ -78,6 +78,10 @@ def get_online_users():
 @activity_bp.route('/api/activity/stats/<int:user_id>', methods=['GET'])
 @require_auth
 def get_user_activity_stats(user_id):
+    is_privileged = g.current_user.role in ('teacher', 'admin', 'root_admin') or getattr(g.current_user, 'is_root_admin', False)
+    if user_id != g.current_user.id and not is_privileged:
+        return jsonify({'error': 'Not authorized to view this user\'s activity stats'}), 403
+
     user = User.query.get_or_404(user_id)
 
     # 30-day activity sessions

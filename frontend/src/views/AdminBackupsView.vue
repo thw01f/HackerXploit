@@ -54,7 +54,7 @@
                 </span>
               </td>
               <td class="py-4 px-4 text-slate-200 font-bold">{{ b.created_by_username }}</td>
-              <td class="py-4 px-4 text-slate-400 text-xs">{{ new Date(b.created_at).toLocaleString() }}</td>
+              <td class="py-4 px-4 text-slate-400 text-xs">{{ formatDate(b.created_at) }}</td>
               <td class="py-4 px-4 text-slate-400 font-bold">{{ (b.size_bytes / 1024 / 1024).toFixed(2) }} MB</td>
               <td class="py-4 px-4 text-right space-x-2.5">
                 <button @click="downloadBackup(b.id)" class="btn-ghost text-xs py-1.5 px-3 font-bold border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10">
@@ -107,7 +107,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { usePreferences } from '../stores/preferences'
 import AdminSubNav from '../components/AdminSubNav.vue'
+
+const prefs = usePreferences()
+const formatDate = (isoStr) => {
+  if (!isoStr) return ''
+  return new Date(isoStr).toLocaleString(undefined, { hour12: prefs.is12h.value })
+}
 
 const loading = ref(true)
 const creating = ref(false)
