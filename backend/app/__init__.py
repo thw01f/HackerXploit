@@ -5,6 +5,7 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_socketio import SocketIO
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.config import Config
 from app.models import db
@@ -36,6 +37,16 @@ socketio = SocketIO(cors_allowed_origins="*")
 def create_app(config_class=Config):
     flask_app = Flask(__name__)
     flask_app.config.from_object(config_class)
+
+    # Without this, request.remote_addr (what get_remote_address/rate-limiting
+    # and every audit-log/login-attempt IP field reads) is always nginx's own
+    # container IP, not the real client - nginx is the only thing that ever
+    # connects directly to gunicorn. Trusting exactly 1 hop is correct
+    # regardless of whether Cloudflare proxies in front of nginx too: nginx's
+    # own real_ip module (see nginx.conf's set_real_ip_from/real_ip_header,
+    # which only trusts Cloudflare's published ranges) already resolves the
+    # real client IP before setting the X-Forwarded-For header this trusts.
+    flask_app.wsgi_app = ProxyFix(flask_app.wsgi_app, x_for=1, x_proto=1)
 
     # Enable CORS with credentials for our own subdomains & local ports only.
     # hackerxploit.org (bare root) deliberately excluded - it's reserved for
