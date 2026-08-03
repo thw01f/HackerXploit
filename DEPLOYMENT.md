@@ -60,8 +60,24 @@ Mount certificates into Nginx container volume in `docker-compose.yml`:
 
 ```bash
 docker compose up -d --build
+```
 
-# Run database initialization & seed root admin & CTFd OAuth client
+CTFd's SQLite database lives on the `ctfd_db_data` named volume. Docker creates
+brand-new named volumes root-owned, but the CTFd image runs as UID 1001 - on a
+truly first-ever run (fresh volume, never used before), CTFd will crash-loop with
+`sqlite3.OperationalError: unable to open database file` until that's fixed:
+
+```bash
+docker run --rm -v hackerxploit_ctfd_db_data:/var/ctfd_data alpine chown -R 1001:1001 /var/ctfd_data
+docker compose up -d ctfd
+```
+
+(Replace `hackerxploit_ctfd_db_data` with your actual volume name if the compose
+project directory isn't named `hackerxploit` - check with `docker volume ls`.)
+
+Then seed the root admin and CTFd OAuth2 client:
+
+```bash
 docker compose exec web python scripts/init_db.py
 ```
 
