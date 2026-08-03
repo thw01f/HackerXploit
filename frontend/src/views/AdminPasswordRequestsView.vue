@@ -44,7 +44,7 @@
             <div>
               <span class="font-bold text-white">User #{{ req.user_id }}</span>
               <span class="text-xs text-cyan-400 font-mono ml-2">@{{ req.username }}</span>
-              <p class="text-xs text-slate-400 mt-0.5">{{ req.email }} • Requested: {{ new Date(req.created_at).toLocaleString() }}</p>
+              <p class="text-xs text-slate-400 mt-0.5">{{ req.email }} • Requested: {{ formatDate(req.created_at) }}</p>
             </div>
             <button @click="generateCode(req.user_id)" class="btn-neon-violet text-xs py-2 px-4">
               Generate 8-Char Code
@@ -74,6 +74,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { usePreferences } from '../stores/preferences'
+
+const prefs = usePreferences()
+const formatDate = (isoStr) => {
+  if (!isoStr) return ''
+  return new Date(isoStr).toLocaleString(undefined, { hour12: prefs.is12h.value })
+}
 
 const requests = ref([])
 const generatedCode = ref(null)

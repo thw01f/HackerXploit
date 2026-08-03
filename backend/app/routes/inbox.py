@@ -204,6 +204,13 @@ def get_message_detail(message_id):
 def reply_message(message_id):
     parent_msg = Message.query.get_or_404(message_id)
 
+    # Same authorization check as get_message_detail - only the sender, an
+    # actual recipient, or an admin may reply to a message thread.
+    is_sender = (parent_msg.sender_id == g.current_user.id)
+    rec_entry = MessageRecipient.query.filter_by(message_id=message_id, user_id=g.current_user.id).first()
+    if not is_sender and not rec_entry and g.current_user.role not in ('admin', 'root_admin'):
+        return jsonify({'error': 'Unauthorized to reply to this message'}), 403
+
     if not parent_msg.allow_reply:
         return jsonify({'error': 'Sender disabled replies for this message'}), 403
 

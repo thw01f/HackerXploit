@@ -150,7 +150,7 @@
           </thead>
           <tbody class="divide-y divide-slate-800 text-slate-200">
             <tr v-for="log in auditLogs" :key="log.id" class="hover:bg-slate-800/50 transition-colors">
-              <td class="p-4 text-slate-400 text-xs font-mono">{{ new Date(log.created_at || log.timestamp).toLocaleString() }}</td>
+              <td class="p-4 text-slate-400 text-xs font-mono">{{ formatDate(log.created_at || log.timestamp) }}</td>
               <td class="p-4 font-bold text-white text-sm">{{ log.actor_username || log.actor_name || 'System' }}</td>
               <td class="p-4 text-cyan-400 text-xs font-bold">{{ log.actor_role || 'N/A' }}</td>
               <td class="p-4 text-amber-400 font-bold text-sm">{{ log.action }}</td>
@@ -265,7 +265,14 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import { usePreferences } from '../stores/preferences'
 import AdminSubNav from '../components/AdminSubNav.vue'
+
+const prefs = usePreferences()
+const formatDate = (isoStr) => {
+  if (!isoStr) return ''
+  return new Date(isoStr).toLocaleString(undefined, { hour12: prefs.is12h.value })
+}
 
 const authStore = useAuthStore()
 const users = ref([])

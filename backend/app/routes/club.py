@@ -37,9 +37,16 @@ def get_members():
 @require_role('teacher', 'admin', 'root_admin')
 def get_student_profile(member_id):
     student = User.query.get_or_404(member_id)
+    is_admin = (g.current_user.role in ['admin', 'root_admin']) or getattr(g.current_user, 'is_root_admin', False)
+
+    # A teacher (non-admin) may only look up students/members - not other
+    # staff's private contact info - mirroring the same restriction already
+    # applied to the list view (get_members above).
+    if not is_admin and student.role not in ['student', 'member']:
+        return jsonify({'error': 'Not authorized to view this profile'}), 403
+
     enrollments = CourseEnrollment.query.filter_by(user_id=member_id).all()
     competition_apps = CompetitionApplication.query.filter_by(user_id=member_id).all()
-    is_admin = (g.current_user.role in ['admin', 'root_admin']) or getattr(g.current_user, 'is_root_admin', False)
 
     log_audit('VIEW_STUDENT_PROFILE', target_type='User', target_id=member_id, details={'student_email': student.email})
 

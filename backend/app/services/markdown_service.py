@@ -64,7 +64,13 @@ def render_sanitized_html(markdown_text: str) -> str:
         html_raw,
         tags=ALLOWED_TAGS,
         attributes=ALLOWED_ATTRIBUTES,
-        protocols=['http', 'https', 'mailto', 'data', 'blob', '']
+        # 'data' deliberately excluded: bleach applies this allowlist to every
+        # URL-bearing attribute it sanitizes (including <a href>, not just
+        # <img src>), so allowing it would let authored content include a
+        # data:text/html link that executes attacker HTML/script when a
+        # reader clicks it - the sanitizer otherwise strips script tags and
+        # inline event handlers, but a data: navigation sidesteps that.
+        protocols=['http', 'https', 'mailto', 'blob', '']
     )
 
     return sanitized

@@ -1,9 +1,11 @@
 # Security Audit — August 2026
 
-This document records a security audit of the HackerXploit Club Platform performed on
-2026-08-01, the vulnerabilities it found, and the fixes applied in response. It is a
-point-in-time record — see git history / `SECURITY.md` for the current state of the
-security architecture.
+This document records security audits of the HackerXploit Club Platform, the
+vulnerabilities each found, and the fixes applied in response. It is a point-in-time
+record — see git history / `SECURITY.md` for the current state of the security
+architecture. Three passes are recorded: **2026-08-01** (items 1–12 below), a
+follow-up **2026-08-03** pass (items 13–20), and a same-day third pass focused on CTFd
+sync correctness and Celery/Redis/DB integrity (items 21–28).
 
 **Scope:** backend (Flask/PostgreSQL/Redis/Celery), frontend (Vue 3 SPA), and
 infrastructure (Docker Compose, Nginx, CI/CD). **Method:** manual code review across
@@ -295,3 +297,362 @@ round (either lower severity, or requiring a larger dedicated effort):
 - Frontend build: `npm run build` — all 1,834 modules transformed without error (the
   build's final `emptyDir` step failed on a pre-existing local filesystem permission
   issue unrelated to any change here).
+
+---
+
+# Follow-up Audit — 2026-08-03
+
+**Scope:** backend route-by-route authorization review, XSS/injection review, and
+infrastructure/secrets review, run as three parallel focus areas, followed by targeted
+remediation and live regression testing against a running dev instance (`app.test_client()`
+plus real HTTP requests with session cookies) in addition to the full pytest suite. A
+fourth parallel pass (live runtime smoke-testing of register/login/enrollment flows and
+edge-case inputs) was interrupted mid-run by an unrelated tooling limit, but surfaced one
+genuine crash bug (#20) before stopping.
+
+All items below were patched and verified against the full test suite (39/39 passing)
+on the `feat/competitions-opportunities-lifecycle` branch, plus targeted live
+`test_client()` exploit/regression scripts for every item.
+
+## Critical
+
+### 13. Course attachment uploads bypassed all malware scanning and file-type verification
+- **File:** `backend/app/routes/academy.py` (`upload_note_attachment`)
+- **Impact:** Every other upload path in the app (avatars, course covers, competition
+  proof screenshots) routes through `UploadPipeline` — real MIME sniffing plus a ClamAV
+  scan before the file is ever written to disk. This one route saved the uploaded file
+  directly via `file.save(...)` with only `werkzeug.secure_filename()` applied (filename
+  sanitization only, no content inspection). A teacher/admin account (or one that had
+  been compromised) could upload literally any file type as a "course attachment" —
+  these are downloaded directly by every student enrolled in the course, with zero
+  scanning at any point.
+- **Fix:** The route now calls `UploadPipeline.detect_mime()` against the same
+  `COURSE_ATTACHMENT_MIMES` allowlist used elsewhere, and `UploadPipeline.scan_clamav()`,
+  before saving — matching the security guarantees of every other upload path — while
+  keeping the existing privately-gated storage location/serving mechanism
+  (`/data/academy/<course_id>/`, served only to enrolled users via `serve_attachment`)
+  unchanged, since switching to `UploadPipeline`'s own public `/var/uploads/` save path
+  would have defeated that enrollment gate entirely.
+- **Status:** Fixed. Verified live: a GIF (a real, recognizable, but disallowed type)
+  is now rejected with 400; a legitimate PDF still uploads successfully (201).
+
+### 14. Deleting a user account always crashed, silently discarding the audit trail
+- **File:** `backend/app/routes/admin.py` (`delete_user_account`)
+- **Impact:** The route deleted the `User` row and committed, *then* called
+  `log_audit('USER_DELETED', target_type='User', target_id=user_id, ...)`. `log_audit`
+  infers `target_user_id` from a numeric `target_id` against `User`, which is a foreign
+  key to `users.id` — by the time this ran, that row no longer existed, so the INSERT
+  violated the FK constraint and raised an uncaught `IntegrityError` (HTTP 500). The
+  user deletion itself had already succeeded and committed before the crash, so an
+  admin saw a failure response for an operation that had actually completed — and,
+  because the crash happened before `log_audit`'s own `db.session.commit()`, **no audit
+  record was ever written for any user deletion**, silently, for the entire time this
+  code has existed. Found by a parallel runtime-testing pass that was itself testing an
+  unrelated account-lockout scenario and happened to delete a test account afterward.
+- **Fix:** Reordered so `log_audit(...)` runs *before* the user row is deleted.
+  `AuditLog.target_user_id` has `ondelete='SET NULL'`, so once the user is deleted the
+  audit row's `target_user_id` safely becomes `NULL` — the human-readable `notes` field
+  already bakes in the username, so the record stays meaningful.
+- **Status:** Fixed. Verified live end-to-end: delete now returns 200, the user is
+  actually gone, and a `USER_DELETED` audit log entry exists with the correct notes.
+
+## High
+
+### 15. Broken object-level authorization (IDOR) across five endpoints
+- **Files:** `backend/app/routes/club.py`, `backend/app/routes/students.py`,
+  `backend/app/routes/competition.py`, `backend/app/routes/inbox.py`,
+  `backend/app/routes/activity.py`
+- **Impact:** Five routes correctly checked *who* was calling (via `@require_auth` /
+  `@require_role`) but never checked *whose* record was being touched by the ID in the
+  URL — each had a sibling route elsewhere in the same file that got this right,
+  making the gap an inconsistency rather than a missing pattern:
+  - `GET /api/club/members/<id>` — any teacher could fetch any other user's private
+    contact fields (`personal_gmail`, `student_gmail`, `phone_number`) via
+    `include_private=True` passed unconditionally, including for admins/root_admins.
+    The list endpoint (`get_members`) correctly restricts non-admin teachers to
+    student/member targets; the by-ID detail route didn't.
+  - `GET /api/teacher/students/<id>` — same gap for the full structured profile
+    (30-day activity breakdown, per-module progress, competition "trophy case" incl.
+    screenshots/prize money/GitHub links) — any teacher could pull this for any other
+    staff account, not just students.
+  - `GET /api/competitions/<id>/attendance` — only required login, not a role, while its
+    sibling scan/export routes for the same data all require `teacher`/`admin`. Any
+    logged-in member could dump a club event's attendee roster including every
+    attendee's email address and department.
+  - `POST /api/inbox/<id>/reply` — checked `allow_reply` but never that the caller was
+    the message's sender, a recipient, or an admin (unlike `get_message_detail`, which
+    does). Anyone who learned/guessed a `message_id` could reply into a private
+    conversation between two other users.
+  - `GET /api/activity/stats/<id>` — no ownership or role check at all; any member could
+    pull any other member's detailed 30-day activity chart by ID. (Currently unused by
+    the frontend, but hardened regardless.)
+- **Fix:** Each route now enforces the same restriction its sibling already had:
+  club.py/students.py return 403 when a non-admin teacher targets a non-student/member
+  account; the attendance roster now requires `teacher`/`admin`/`root_admin` (both
+  frontend call sites were already gated behind `authStore.isTeacher`, so this matches
+  actual intended usage); inbox replies now run the identical sender/recipient/admin
+  check as `get_message_detail`; activity stats now require the caller to be viewing
+  their own data or hold a staff role.
+- **Status:** Fixed. Verified live for all five: a teacher is now rejected (403)
+  querying an admin's profile or another teacher's dossier; a plain member is rejected
+  querying an attendance roster or another user's activity stats; the same calls
+  targeting a legitimate self/subordinate target still succeed (200).
+
+### 16. Markdown sanitizer allowed `data:` URIs, enabling a click-through XSS
+- **File:** `backend/app/services/markdown_service.py`
+- **Impact:** `render_sanitized_html()` correctly strips `<script>` tags and inline
+  event handlers via a `bleach` tag/attribute allowlist, but its `protocols` list
+  included `data`. Bleach applies that allowlist to every URL-bearing attribute it
+  sanitizes, not just `<img src>` — so authored markdown could include a link like
+  `[click me](data:text/html;base64,...)` that survives sanitization intact. A reader
+  clicking that link (rendered via `v-html` in the note reader, career-path viewer, and
+  roadmap graph) would navigate to and execute the embedded HTML/script. Impact is
+  bounded by only teacher/admin/root_admin accounts being able to author this content,
+  but it's a real sanitizer gap, not theoretical.
+- **Fix:** Removed `data` from the allowed protocols list. `img src="data:..."`
+  (inline base64 images) is no longer permitted either, but course content in practice
+  always references uploaded image files, not pasted data URIs, so this has no real
+  workflow impact.
+- **Status:** Fixed.
+
+### 17. Unescaped user input interpolated into outbound HTML emails
+- **File:** `backend/app/services/email_service.py`
+- **Impact:** `username`, announcement `title`/`message`, and inbox message
+  `subject`/`snippet` — all user-controllable, with no character validation at the
+  point they're collected — were interpolated directly into HTML email-body f-strings
+  with no escaping. Any registered user could set a display name, or the subject/body
+  of a message sent to another user, containing arbitrary HTML/markup that would render
+  live in the recipient's email client on account-status, verification, announcement,
+  and inbox-notification emails.
+- **Fix:** All of the above are now passed through `html.escape()` before interpolation.
+- **Status:** Fixed. (Checked and confirmed separately clean: CRLF email-header
+  injection via the subject field is not exploitable — Python's `email` module raises
+  on embedded newlines in a header value, and `send_smtp_email`'s broad exception
+  handler just causes the send to silently no-op rather than allowing injection.)
+
+## Medium
+
+### 18. CTFd's admin/API port published directly to the public internet, bypassing Nginx
+- **File:** `docker-compose.yml`
+- **Impact:** The `ctfd` service published `8000:8000` to `0.0.0.0`, even though Nginx
+  already reverse-proxies it at `arena.hackerxploit.org` over the internal Docker
+  network. CTFd runs with `REVERSE_PROXY=true`, meaning it trusts
+  `X-Forwarded-For`/`X-Forwarded-Proto` from whoever connects to it directly — a
+  publicly reachable `:8000` let anyone bypass Nginx's TLS/HSTS/security headers
+  entirely and spoof their apparent source IP to undermine CTFd's own IP-based
+  rate-limiting/banning.
+- **Fix:** Changed to `127.0.0.1:8000:8000` — still reachable as `localhost:8000` from
+  the host itself (needed for the local-dev `ctfdUrl` fallback in `DashboardView.vue`),
+  no longer reachable from outside the host.
+- **Status:** Fixed in `docker-compose.yml`. **Pending:** the currently-running `hx_ctfd`
+  container was started under the old binding — this only takes effect after a
+  `docker compose up -d ctfd` (recreate), which was intentionally not performed as part
+  of this pass (see note under "Delete/redeploy" below).
+
+### 19. `TURNSTILE_SECRET_KEY` was the only secret not covered by the production fail-fast check
+- **File:** `backend/app/config.py`
+- **Impact:** `SECRET_KEY`, the Postgres password, and `CTFD_OAUTH_CLIENT_SECRET` all
+  fail app startup in production if left unset or equal to a known placeholder value
+  (see item #5 above). `TURNSTILE_SECRET_KEY` had no equivalent check — if an operator
+  forgot to set it in production, the app would start normally with Cloudflare's public
+  "always passes" test secret still active, silently disabling CAPTCHA verification on
+  register/login/forgot-password with no error or warning anywhere.
+- **Fix:** Added `TURNSTILE_SECRET_KEY` to `_INSECURE_DEFAULTS` and wrapped it in the
+  same `_require_secret()` call as the others.
+- **Status:** Fixed. Verified the dev environment (`FLASK_ENV=development`) still boots
+  fine with the test secret explicitly set, and the check only fires under
+  `FLASK_ENV=production`.
+
+### 20. (See Critical #14 above — user-deletion audit-log crash.)
+
+---
+
+## Domain/infrastructure change made alongside this pass
+
+Per an explicit product decision (not a vulnerability fix), made in two steps during
+this same conversation:
+
+1. First pass: `hackerxploit.org` (bare root + `www.`) was scoped down to only proxy
+   `/oauth/`, `/api/auth/`, and `/api/health`, with everything else moved to
+   `club.hackerxploit.org`.
+2. **Final decision** (supersedes step 1): the operator clarified a plan to use
+   `hackerxploit.org` for other, entirely unrelated future projects — so rather than
+   reserve a slice of it for shared auth, the whole app (SPA, every `/api/` route
+   including `/api/auth/*`, and the OAuth2/SSO provider) now lives exclusively on
+   `club.hackerxploit.org`. `hackerxploit.org` is not configured anywhere in this
+   repo's Nginx/Docker Compose setup at all — no server block claims it. This also
+   meant re-scoping `SESSION_COOKIE_DOMAIN` from the wildcard `.hackerxploit.org` down
+   to `.club.hackerxploit.org` (`backend/app/config.py`, `.env.example`,
+   `docker-compose.yml`), removing the CORS allowlist entry for the bare domain
+   (`backend/app/__init__.py`), repointing CTFd's SSO redirect target
+   (`scripts/init_ctfd.py`'s `CTFD_OAUTH_PUBLIC_BASE_URL` default), and removing a
+   latent bug: `club.hackerxploit.org`'s old "redirect to the separate auth domain if
+   no session cookie" Nginx check would have infinite-looped against `/login` itself
+   once login moved onto the same domain it was protecting — removed, since Vue
+   Router's own client-side auth guard already handles this.
+
+Also found and fixed as a side effect: `CTFD_OAUTH_AUTH_URL`/`CTFD_OAUTH_TOKEN_URL`/
+`CTFD_OAUTH_API_URL` existed in both `.env` and `.env.example` but were never actually
+read by `scripts/init_ctfd.py` (which reads differently-named
+`CTFD_OAUTH_PUBLIC_BASE_URL`/`CTFD_OAUTH_INTERNAL_WEB_URL` instead, silently falling
+back to its own hardcoded defaults every time) — dead, misleading config, renamed to
+match what's actually consumed.
+
+See `ARCHITECTURE.md`'s "Domain Scoping" section for the full breakdown. This is a
+config-file change only — it takes effect on the actual production edge once Nginx and
+`web` are redeployed with the updated config (like item #18's CTFd port change, this
+was intentionally not performed automatically as part of this pass, since nothing in
+this dev sandbox is the production server).
+
+## Verification (2026-08-03 pass)
+
+- Full backend test suite: `PYTHONPATH=backend pytest tests/ -q` — **39 passed, 0
+  failed**, run repeatedly through the remediation process.
+- Every IDOR fix (#15) verified with a live `test_client()` script: unauthorized access
+  now returns 403, legitimate access still returns 200.
+- Attachment upload fix (#13) verified with a live `test_client()` script: a
+  recognizable disallowed type (GIF) is rejected (400), a legitimate PDF still succeeds
+  (201). Test artifacts (both the DB attachment record and the on-disk file) were
+  cleaned up afterward.
+- User-deletion fix (#14) verified with a live `test_client()` script: delete now
+  returns 200, the user row is gone, and a `USER_DELETED` audit log entry exists with
+  `target_user_id` correctly nulled and a human-readable `notes` field.
+- Leftover test data from the interrupted runtime-testing pass (`qa_temp_admin` account,
+  its 2 device sessions, and 1 audit log row) was located and removed; its intended
+  target test account had already been removed by the very crash bug it was
+  investigating (#14).
+
+---
+
+## Critical
+
+### 21. CTFd account sync silently non-functional since CTFd's database moved to a persistent volume
+
+`backend/app/services/ctfd_sync.py` hardcoded `/tmp/ctfd.db` as the CTFd SQLite
+database path for every provisioning, role-sync, suspend/reinstate, and delete
+operation. CTFd's actual database has lived on a named Docker volume at
+`/var/ctfd_data/ctfd.db` since an earlier pass (see the `docker-compose.yml`
+`DATABASE_URL` for the `ctfd` service) — `scripts/init_ctfd.py`, `scripts/hx-backup.sh`,
+and `scripts/install-ctfd-theme.sh` were all already updated to the correct path at
+that time, but `ctfd_sync.py` was missed.
+
+Because `sqlite3.connect()` auto-creates a file at whatever path it's given, every
+sync call connected to a schema-less throwaway file, ran its SQL against a
+nonexistent `users` table, crashed inside the `docker exec`'d subprocess — and was
+reported as a success anyway, because the calling code never checked the
+subprocess's return code. Net effect: every CTFd account create, role change,
+suspend/reinstate, and delete triggered from the platform had been a complete no-op
+for an unknown period, with no error surfaced anywhere.
+
+**Fix:** added a `CTFD_DB_PATH` env var (default `/var/ctfd_data/ctfd.db`) used by all
+three SQL-executing functions, and a shared `_run_ctfd_script()` helper that checks
+`returncode`/`stderr` and returns failure instead of unconditionally `True`.
+**Verified live** against the real running CTFd container: created a throwaway user,
+confirmed it appeared in CTFd; deleted it; confirmed the CTFd user count returned to
+the pre-test baseline (7). **Status: Fixed.**
+
+## High
+
+### 22. Root-only role changes never synced to CTFd — a demoted admin kept CTFd admin access
+
+`change_user_role()` in `backend/app/routes/admin.py` (the endpoint actually used by
+the admin-hierarchy UI) had no CTFd sync call at all. An admin demoted to member on the
+platform retained full CTFd admin-panel access indefinitely, since CTFd's own `type`
+column was never updated. **Fix:** call `sync_user_to_ctfd(user)` after the role commit.
+**Status: Fixed.**
+
+### 23. Simultaneous username+email change created a duplicate, orphaned CTFd account
+
+`sync_user_to_ctfd()`'s CTFd-side lookup matched only on the *new* username/email. If
+an admin changed both fields in the same request (`update_user_details`), the lookup
+found zero rows and inserted a second CTFd account instead of updating the existing
+one — leaving a stale, orphaned row with the old identity behind. Separately, the
+`UPDATE` branch never wrote the `email` column at all, so email changes never
+propagated to CTFd even on a single-field update. **Fix:** the function now accepts
+optional `old_username`/`old_email` and matches `WHERE name IN (?, ?) OR email IN (?,
+?)` against both old and new values; the `UPDATE` statement now sets `email` too.
+`update_user_details()` was updated to capture and pass the pre-change values.
+**Verified live**: renamed + re-emailed + role-changed a test user in one call,
+confirmed exactly one CTFd row existed afterward with all three changes applied.
+**Status: Fixed.**
+
+## Medium
+
+### 24. Admin-forced password resets didn't revoke live CTFd SSO tokens
+
+`admin_force_reset_password()` deactivated the user's `DeviceSession`s but left any
+issued `OAuth2Token` rows intact, so a user forcibly logged out on the platform could
+still use an existing CTFd SSO session. **Fix:** now also deletes the user's
+`OAuth2Token` rows, matching the self-service reset flow in `auth.py`. **Status: Fixed.**
+
+### 25. CTFd user deletion could silently abort partway through
+
+`delete_user_from_ctfd()` purged only 3 of CTFd's user-referencing tables inside a
+single `try/except`, so one missing/renamed table (schema differences across CTFd
+versions) would abort cleanup of the rest and could leave the final `DELETE FROM
+users` blocked by a foreign-key violation — reported as success regardless, since (per
+#21) the return code was never checked. **Fix:** now deletes from all 6
+user-referencing tables (`solves, submissions, tracking, awards, unlocks,
+notifications`) individually, each with its own `try/except sqlite3.OperationalError`,
+and the final `users` delete explicitly reports an `IntegrityError` instead of
+crashing silently. **Status: Fixed.**
+
+### 26. Failed SMTP sends were reported as successful
+
+`send_smtp_email()` returned `True` unconditionally, including when the `smtplib.SMTP`
+call raised an exception — a failed password-reset or notification email looked
+identical to a successful one to every caller. **Fix:** the dev-mode no-op path (no
+SMTP host configured) still returns `True` and logs it as simulated, but a genuine send
+failure now returns `False` with the exception logged. **Status: Fixed.**
+
+## Low / hardening
+
+### 27. Flask-Limiter used in-memory storage under a multi-worker Gunicorn deployment
+
+The production deployment runs Gunicorn with `-w 2`. Flask-Limiter's default in-memory
+storage is per-process, so with 2 workers each rate limit effectively enforced at ~2x
+its configured value, and reset entirely on worker restart. **Fix:**
+`RATELIMIT_STORAGE_URI` is now set to the same Redis instance already used for
+Celery/Socket.IO before `limiter.init_app()` runs. **Status: Fixed.**
+
+### 28. Missing indexes on frequently-queried foreign-key columns
+
+`DeviceSession.session_token_hash` — the column actually looked up on every
+authenticated request — had no index at all, alongside `user_id`/`is_active` on the
+same table and `user_id`/`competition_id` on `CompetitionParticipation` and `user_id`
+on `Certificate`. **Fix:** added `index=True` to all six columns plus matching
+`CREATE INDEX IF NOT EXISTS` migration statements in `backend/app/__init__.py`
+(model-level `index=True` only affects brand-new tables, not the live one). **Verified**
+via `sqlalchemy.inspect(db.engine).get_indexes(...)` against the running dev database.
+**Status: Fixed.**
+
+## Known gaps not addressed in this pass
+
+- **Celery task retry policies**: no task in the codebase declares `autoretry_for` /
+  `max_retries` — a transient failure (e.g. a momentary DB blip during a background
+  job) fails the task outright with no retry. Deferred as a design decision requiring
+  per-task judgment (which tasks are safe to retry / idempotent) rather than a
+  mechanical fix.
+- **N+1 query patterns** in `competition.py`'s CSV export endpoints
+  (`get_applications_queue`, `export_applications`, `export_event_attendance`,
+  `export_event_feedback`) — each does a per-row `User.query.get()` instead of a single
+  batched `.filter(User.id.in_(...))`. Correctness is unaffected; this is a performance
+  item only, deferred since these endpoints currently run over small (per-event)
+  datasets.
+- **`/api/uploads` authorization granularity**: gated only by `@require_auth`, not a
+  stricter role check for `feature=courses`. No exploit path exists today — the upload
+  pipeline (malware scan, MIME sniffing, type allowlist) runs identically regardless of
+  caller role — but a role check would be a defense-in-depth improvement.
+
+URL-based attacks (open redirect, SSRF, host-header injection, path traversal) and a
+fresh sweep of every file-upload endpoint were also explicitly audited in this pass —
+no new issues found; both areas were confirmed clean against the fixes already recorded
+above (#13, #16).
+
+## Verification (third pass)
+
+- Full backend test suite: `PYTHONPATH=backend pytest tests/ -q` — **39 passed**.
+- CTFd sync fixes (#21, #23) verified end-to-end against the real running CTFd
+  container and its real persistent database — not a mock — as described above.
+- All other fixes in this pass were exercised via the existing test suite and/or
+  direct inspection; no regressions introduced.

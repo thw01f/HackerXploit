@@ -60,9 +60,9 @@ class CompetitionParticipation(db.Model):
     __tablename__ = 'competition_participation'
 
     id = db.Column(db.Integer, primary_key=True)
-    competition_id = db.Column(db.Integer, db.ForeignKey('competitions.id', ondelete='CASCADE'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    
+    competition_id = db.Column(db.Integer, db.ForeignKey('competitions.id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+
     applied_at = db.Column(db.DateTime, default=datetime.utcnow)
     # Up to 3 registration-proof screenshot URLs. Auto-deleted from disk once the
     # student submits their post-event completion report (space saving - the

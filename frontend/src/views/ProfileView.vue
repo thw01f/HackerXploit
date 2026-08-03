@@ -233,7 +233,7 @@
                       <span v-else-if="isToolSession(s)" class="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-400 font-mono border border-amber-500/30 shrink-0">API/TOOL</span>
                     </span>
                     <p class="text-[10px] font-mono text-cyan-400 mt-0.5">{{ s.ip_address }}</p>
-                    <p class="text-[10px] text-slate-500 font-mono" :title="new Date(s.last_active_at || s.created_at).toLocaleString()">
+                    <p class="text-[10px] text-slate-500 font-mono" :title="formatDateTime(s.last_active_at || s.created_at)">
                       Active {{ timeAgo(s.last_active_at || s.created_at) }}
                     </p>
                   </div>
@@ -752,6 +752,11 @@ const friendlyAgent = (ua) => {
   if (browser) return browser
   if (os) return os
   return ua.substring(0, 40)
+}
+
+const formatDateTime = (isoStr) => {
+  if (!isoStr) return ''
+  return new Date(isoStr).toLocaleString(undefined, { hour12: prefs.is12h.value })
 }
 
 // Concise relative time for "Active X ago" - a raw timestamp answers "when",

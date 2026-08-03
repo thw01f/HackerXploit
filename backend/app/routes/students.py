@@ -81,6 +81,14 @@ def list_students():
 @require_role('teacher', 'admin')
 def get_student_profile(user_id):
     student = User.query.get_or_404(user_id)
+
+    # A teacher (non-admin) may only pull the full activity/academy/trophy
+    # dossier for students/members - not other staff - mirroring the same
+    # restriction already applied to the list view (list_students above).
+    is_admin = getattr(g.current_user, 'role', '') in ['admin', 'root_admin'] or getattr(g.current_user, 'is_root_admin', False)
+    if not is_admin and student.role not in ['student', 'member']:
+        return jsonify({'error': 'Not authorized to view this profile'}), 403
+
     return jsonify(build_structured_profile(student)), 200
 
 def build_structured_profile(user):

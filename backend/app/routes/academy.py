@@ -722,10 +722,15 @@ def upload_note_attachment(course_id, note_id):
     """
     Stores course attachments (PDFs, images, zip labs) under /data/academy/<course_id>/
     and attaches filename to Note metadata (attachments now live on the Note,
-    the actual readable unit, rather than the Module container).
+    the actual readable unit, rather than the Module container). Runs through
+    the same MIME-sniffing + ClamAV checks as every other upload path in the
+    app (unlike a plain avatar/cover upload, this file gets downloaded by
+    every enrolled student, so it must not skip malware scanning just
+    because it's saved to a privately-gated path instead of /var/uploads/).
     """
     from werkzeug.utils import secure_filename
     from flask import current_app
+    from app.services.upload_service import UploadPipeline, COURSE_ATTACHMENT_MIMES, GENERIC_SECURITY_ERROR
 
     note = ModuleNote.query.get_or_404(note_id)
     if note.module.course_id != course_id:
@@ -737,6 +742,19 @@ def upload_note_attachment(course_id, note_id):
     file = request.files['file']
     if not file or not file.filename:
         return jsonify({'error': 'Empty filename'}), 400
+
+    file_bytes = file.read()
+    file.seek(0)
+    if not file_bytes:
+        return jsonify({'error': GENERIC_SECURITY_ERROR}), 400
+
+    detected_mime = UploadPipeline.detect_mime(file)
+    if detected_mime not in COURSE_ATTACHMENT_MIMES:
+        return jsonify({'error': GENERIC_SECURITY_ERROR}), 400
+
+    is_clean, _ = UploadPipeline.scan_clamav(file_bytes)
+    if not is_clean:
+        return jsonify({'error': GENERIC_SECURITY_ERROR}), 400
 
     filename = secure_filename(file.filename)
     dest_dir = os.path.join('/data/academy', str(course_id))

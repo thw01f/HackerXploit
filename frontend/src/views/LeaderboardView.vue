@@ -131,11 +131,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import axios from 'axios'
 
 const rankings = ref([])
 const searchQuery = ref('')
+// CTFd scores are computed live on every /api/leaderboard call (no server-side
+// cache/batch job), so polling here just needs a plain interval - no push
+// channel exists on the CTFd side to notify us of a new solve.
+const REFRESH_INTERVAL_MS = 30000
+let refreshTimer = null
 
 const fetchLeaderboard = async () => {
   try {
@@ -149,8 +154,8 @@ const fetchLeaderboard = async () => {
 const filteredRankings = computed(() => {
   if (!searchQuery.value.trim()) return rankings.value
   const q = searchQuery.value.toLowerCase()
-  return rankings.value.filter(u => 
-    u.full_name.toLowerCase().includes(q) || 
+  return rankings.value.filter(u =>
+    u.full_name.toLowerCase().includes(q) ||
     u.username.toLowerCase().includes(q) ||
     (u.specialization_role && u.specialization_role.toLowerCase().includes(q))
   )
@@ -158,5 +163,10 @@ const filteredRankings = computed(() => {
 
 onMounted(() => {
   fetchLeaderboard()
+  refreshTimer = setInterval(fetchLeaderboard, REFRESH_INTERVAL_MS)
+})
+
+onBeforeUnmount(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
 })
 </script>

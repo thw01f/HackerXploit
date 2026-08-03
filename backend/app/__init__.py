@@ -37,9 +37,11 @@ def create_app(config_class=Config):
     flask_app = Flask(__name__)
     flask_app.config.from_object(config_class)
 
-    # Enable CORS with credentials for subdomains (.hackerxploit.org) & local ports
+    # Enable CORS with credentials for our own subdomains & local ports only.
+    # hackerxploit.org (bare root) deliberately excluded - it's reserved for
+    # other, unrelated projects as of 2026-08-03 and this backend has no
+    # reason to accept credentialed cross-origin requests from it.
     CORS(flask_app, supports_credentials=True, origins=[
-        "http://hackerxploit.org",
         "http://club.hackerxploit.org",
         "http://arena.hackerxploit.org",
         "http://localhost",
@@ -50,11 +52,21 @@ def create_app(config_class=Config):
 
 
     db.init_app(flask_app)
+
+    # Rate limits must be Redis-backed, not the default in-memory storage -
+    # Gunicorn runs multiple worker processes, and in-memory counters are
+    # per-process, so e.g. the 5/min limit on auth_bp was actually enforcing
+    # closer to (5 * worker count)/min, and every limit silently resets on
+    # each worker restart/deploy. REDIS_URL is already used for Celery's
+    # broker and Socket.IO's message queue below, so this reuses the same
+    # connection rather than requiring a separate storage backend.
+    redis_url = flask_app.config.get('REDIS_URL')
+    if redis_url:
+        flask_app.config['RATELIMIT_STORAGE_URI'] = redis_url
     limiter.init_app(flask_app)
-    
+
     # Initialize SocketIO — only attach Redis message_queue in production
     # (Redis SocketIO requires gevent monkey-patching which conflicts with Werkzeug debug reloader)
-    redis_url = flask_app.config.get('REDIS_URL')
     flask_env = os.getenv('FLASK_ENV', 'production')
     if redis_url and flask_env == 'production':
         socketio.init_app(flask_app, message_queue=redis_url)
@@ -180,7 +192,20 @@ def create_app(config_class=Config):
             # note; NULLs (legacy rows, and any future module-wide comment)
             # don't collide with each other under a unique index.
             "ALTER TABLE course_comments ADD COLUMN note_id INTEGER REFERENCES module_notes(id) ON DELETE CASCADE",
-            "CREATE UNIQUE INDEX IF NOT EXISTS ix_course_comments_note_user_unique ON course_comments (note_id, user_id)"
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_course_comments_note_user_unique ON course_comments (note_id, user_id)",
+            # These FK/lookup columns were missing indexes despite being the
+            # exact filter keys used by the busiest admin/session/competition
+            # queries (device-session lookup on every authenticated request,
+            # admin session search, competition applicant/attendance listing,
+            # certificate lookup) - CREATE INDEX doesn't lock out reads on
+            # Postgres the way it can on some other engines for this table
+            # size, so no CONCURRENTLY needed here.
+            "CREATE INDEX IF NOT EXISTS ix_device_sessions_user_id ON device_sessions (user_id)",
+            "CREATE INDEX IF NOT EXISTS ix_device_sessions_session_token_hash ON device_sessions (session_token_hash)",
+            "CREATE INDEX IF NOT EXISTS ix_device_sessions_is_active ON device_sessions (is_active)",
+            "CREATE INDEX IF NOT EXISTS ix_competition_participation_user_id ON competition_participation (user_id)",
+            "CREATE INDEX IF NOT EXISTS ix_competition_participation_competition_id ON competition_participation (competition_id)",
+            "CREATE INDEX IF NOT EXISTS ix_certificates_user_id ON certificates (user_id)"
         ]:
             try:
                 db.session.execute(text(stmt))

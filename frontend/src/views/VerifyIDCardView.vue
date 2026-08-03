@@ -101,7 +101,7 @@
           </div>
 
           <div class="text-[10px] font-mono text-center text-slate-500 border-t border-[#1f293d] pt-3">
-            Verified at {{ new Date(verification.verified_at).toLocaleString() }}
+            Verified at {{ formatDate(verification.verified_at) }}
           </div>
 
         </div>
@@ -119,6 +119,13 @@ import { useRoute } from 'vue-router'
 
 import axios from 'axios'
 import Footer from '../components/Footer.vue'
+import { usePreferences } from '../stores/preferences'
+
+const prefs = usePreferences()
+const formatDate = (isoStr) => {
+  if (!isoStr) return ''
+  return new Date(isoStr).toLocaleString(undefined, { hour12: prefs.is12h.value })
+}
 
 const route = useRoute()
 const loading = ref(true)
