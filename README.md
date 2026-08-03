@@ -15,13 +15,29 @@
 > 
 >  **[Explore the HackerXploit GitHub Wiki](https://github.com/thw01f/HackerXploit/wiki)**
 
+### Deploying & Operating This Yourself
+
+**[`DEPLOYMENT.md`](DEPLOYMENT.md)** is the single, self-contained, copy-paste-ready
+reference for running this platform in production with zero prior context needed -
+no AI assistant required. It covers, in order:
+
+1. Full first-time setup on a fresh DigitalOcean droplet (Docker, Certbot + Cloudflare
+   DNS automated wildcard SSL, building the frontend, launching the stack, seeding
+   the root admin, wiring up CTFd SSO and its theme).
+2. **Updating & Redeploying** - the exact commands to ship a backend change, a
+   frontend change, or an infra/Nginx config change to a live deployment.
+3. **Troubleshooting** - 11 specific, real issues this stack has actually hit in
+   production (crash-looping containers, 502s, CTFd volume permissions, stale
+   caches, login failures, and more), each with its root cause and exact fix - not
+   generic advice.
+
 ### Quick Documentation Links
 - **[Home & Master Index](https://github.com/thw01f/HackerXploit/wiki/Home)**
 - **[System Architecture & Subdomains](https://github.com/thw01f/HackerXploit/wiki/Architecture)**
 - **[Database Schema Reference](https://github.com/thw01f/HackerXploit/wiki/Database-Schema)**
 - **[User Roles & Permissions Matrix](https://github.com/thw01f/HackerXploit/wiki/User-Roles-And-Permissions)**
 - **[API & Routes Reference Directory](https://github.com/thw01f/HackerXploit/wiki/API-And-Routes-Reference)**
-- **[DigitalOcean Deployment Guide](https://github.com/thw01f/HackerXploit/wiki/Deployment-Guide)**
+- **[Deployment Guide](DEPLOYMENT.md)** (also mirrored to the [Wiki](https://github.com/thw01f/HackerXploit/wiki/Deployment-Guide))
 - **[Admin Operations Runbook](https://github.com/thw01f/HackerXploit/wiki/Admin-Runbook)**
 - **[Security Notes & Architecture](https://github.com/thw01f/HackerXploit/wiki/Security-Notes)**
 
@@ -71,7 +87,7 @@ PYTHONPATH=backend python scripts/init_db.py
 PYTHONPATH=backend pytest tests/ -v
 ```
 
-For full production deployment instructions on DigitalOcean with Certbot SSL and CTFd SSO, see the **[Deployment Guide](https://github.com/thw01f/HackerXploit/wiki/Deployment-Guide)** on the Wiki.
+For full production deployment instructions on DigitalOcean - Certbot SSL via Cloudflare DNS, CTFd SSO, updating a live deployment, and troubleshooting - see **[`DEPLOYMENT.md`](DEPLOYMENT.md)**.
 
 ---
 
