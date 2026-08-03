@@ -12,7 +12,11 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./frontend/dist:/var/www/frontend:ro
       - uploads_data:/var/uploads:ro
-      - certbot_certs:/etc/letsencrypt:ro
+      # Host bind mount, not a named volume: Certbot runs directly on the
+      # host (see DEPLOYMENT.md Step 3), so the real certificate lives at
+      # the host's /etc/letsencrypt - a named volume here would be an empty,
+      # disconnected Docker-managed volume nginx can never find anything in.
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - web
       - ctfd
@@ -144,4 +148,3 @@ volumes:
   backups_data:
   ctfd_data:
   ctfd_db_data:
-  certbot_certs:

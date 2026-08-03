@@ -24,6 +24,14 @@ def _require_secret(name, value, insecure_values):
     return value
 
 
+def _database_uri_has_insecure_password(uri):
+    # A generator expression inside a class body can't see the class body's
+    # own local variables (only closures/globals) - calling this as a plain
+    # function from the class body sidesteps that scoping gotcha, since the
+    # argument is evaluated in the class body's own scope before the call.
+    return any(bad in uri for bad in _INSECURE_DEFAULTS['POSTGRES_PASSWORD_IN_DATABASE_URL'])
+
+
 class Config:
     SECRET_KEY = _require_secret(
         'SECRET_KEY',
@@ -32,7 +40,7 @@ class Config:
     ) or 'dev-only-insecure-key'
 
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'postgresql://hx_user:hx_secure_password_123!@db:5432/hackerxploit')
-    if IS_PRODUCTION and any(bad in SQLALCHEMY_DATABASE_URI for bad in _INSECURE_DEFAULTS['POSTGRES_PASSWORD_IN_DATABASE_URL']):
+    if IS_PRODUCTION and _database_uri_has_insecure_password(SQLALCHEMY_DATABASE_URI):
         raise RuntimeError(
             "Refusing to start in production: DATABASE_URL contains the known insecure "
             "placeholder Postgres password. Set a unique password via the environment."
