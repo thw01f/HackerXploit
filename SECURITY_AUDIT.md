@@ -3,9 +3,11 @@
 This document records security audits of the HackerXploit Club Platform, the
 vulnerabilities each found, and the fixes applied in response. It is a point-in-time
 record — see git history / `SECURITY.md` for the current state of the security
-architecture. Three passes are recorded: **2026-08-01** (items 1–12 below), a
-follow-up **2026-08-03** pass (items 13–20), and a same-day third pass focused on CTFd
-sync correctness and Celery/Redis/DB integrity (items 21–28).
+architecture. Four passes are recorded: **2026-08-01** (items 1–12 below), a
+follow-up **2026-08-03** pass (items 13–20), a same-day third pass focused on CTFd
+sync correctness and Celery/Redis/DB integrity (items 21–28), and a fourth pass
+(items 29–31) found while actually standing up the production deployment and
+completing a real CTFd SSO login for the first time.
 
 **Scope:** backend (Flask/PostgreSQL/Redis/Celery), frontend (Vue 3 SPA), and
 infrastructure (Docker Compose, Nginx, CI/CD). **Method:** manual code review across
@@ -656,3 +658,93 @@ above (#13, #16).
   container and its real persistent database — not a mock — as described above.
 - All other fixes in this pass were exercised via the existing test suite and/or
   direct inspection; no regressions introduced.
+
+---
+
+## Critical
+
+### 29. CTFd SSO was completely non-functional — every token exchange failed, for every user, always
+
+`/oauth/token` (`backend/app/routes/oauth.py`) unconditionally required the
+`redirect_uri` parameter to be present and match the authorization request. CTFd's
+actual OAuth client — verified directly from CTFd's own source
+(`CTFd/auth.py`) — never sends `redirect_uri` in its token exchange request at all;
+its POST body is only `code`, `client_id`, `client_secret`, `grant_type`. That meant
+`not redirect_uri` was true on every real request from CTFd, and every token
+exchange was rejected with `400 invalid_grant`, unconditionally. Nobody had ever
+completed a full CTFd SSO login through this stack before this was found — every
+prior "it redirected correctly" check only ever verified the `/oauth/authorize` leg,
+never the full round-trip.
+
+**Fix:** only validate `redirect_uri` when the client actually provides one (RFC
+6749 §4.1.3 says a client *should* echo it back if used at authorization, not that
+a server must reject its absence — and the authorization code is already scoped to
+a specific `client_id` and a server-stored `redirect_uri`, so a client omitting this
+parameter gains nothing by doing so). **Verified live** with a full simulated
+CTFd-accurate round trip against production (authorize → token exchange with no
+`redirect_uri`, exactly matching CTFd's real request shape → userinfo), using a
+throwaway test account cleaned up immediately after: all three steps returned `200`
+with correct data. **Status: Fixed.**
+
+## High
+
+### 30. Unauthenticated CTFd SSO clicks returned a raw JSON error instead of the login page
+
+`/oauth/authorize` used the same `@require_auth` decorator as every other API
+route, which returns `{"error": "Unauthorized or session invalidated"}` as JSON on
+failure. Every other route using this decorator is called via the SPA's own
+fetch/AJAX layer, where a JSON error is the correct contract — but this one is
+different: it's only ever reached via a full browser navigation, since CTFd
+redirects the browser here directly when someone clicks "Login with HackerXploit."
+A real member with a completely valid, working account clicked that button without
+an existing session on `club.hackerxploit.org` in that browser, and landed on a
+bare JSON error blob instead of a login form — indistinguishable, from her
+perspective, from "SSO is broken."
+
+**Fix:** replaced the blanket `@require_auth` with an inline check that redirects
+(not JSON) to `/login`, `/setup-admin`, or `/onboarding` as appropriate, each
+carrying a `redirect` parameter pointing back to the exact original OAuth URL so
+the flow resumes automatically once the user's done. This only works if the
+frontend can actually navigate back to a backend-only path like `/oauth/authorize`
+after login completes — `router.push()` only knows about this SPA's own routes and
+silently no-ops on anything else — so `LoginView.vue`, `OnboardingView.vue`, and
+`SetupAdminView.vue` were also updated to do a real `window.location.href`
+navigation specifically for `/oauth/` redirect targets. **Verified live**: an
+unauthenticated request to `/oauth/authorize` now returns `302` to `/login` with
+the correct `redirect` query param. **Status: Fixed.**
+
+## Medium
+
+### 31. CTFd's native local login form was a confusing dead end
+
+Every CTFd account provisioned by the platform gets a random, never-disclosed
+password (see #21's fix and `ctfd_sync.py`) specifically so CTFd's own native
+username/password login can never succeed — SSO is the only real path in. CTFd's
+login page unconditionally renders that native form directly below the SSO button
+regardless (no CTFd config flag hides it, only the SSO button itself is
+conditional on the MLC integration being configured). A user tried her actual
+platform password there, reasonably assuming it was a valid alternative, and got a
+generic "Your username or password is incorrect" for an account that was entirely
+fine — this is not a bug in the account, it's an unavoidable consequence of a
+password nobody, including the account owner, ever knows.
+
+**Fix:** extended the existing `theme_footer` JS injection (`scripts/install-ctfd-
+theme.sh` — the same safe, CTFd-template-untouched mechanism already used to
+relabel the SSO button) to also hide the `<hr>` separator and the native form
+entirely, leaving only the SSO button visible. **Verified live**: the login page's
+served HTML includes the updated hide-the-form JS. **Status: Fixed.**
+
+## Verification (fourth pass)
+
+- Full simulated CTFd OAuth round-trip against production (#29), using the exact
+  request shape CTFd's own code sends (confirmed by reading CTFd's source directly
+  inside the running container) — not a guess at the OAuth spec, the actual client
+  behavior. Throwaway test account and session created, exercised, and fully
+  cleaned up afterward.
+- `/oauth/authorize`'s new unauthenticated-redirect behavior (#30) verified via a
+  direct unauthenticated request to production, confirming the `302` and the
+  correct `redirect` target.
+- CTFd theme change (#31) verified by fetching the live login page's served HTML
+  and confirming the updated JS is present.
+- All three fixes deployed to and confirmed running on the actual production
+  server, not just committed.

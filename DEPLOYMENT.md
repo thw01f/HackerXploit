@@ -558,6 +558,35 @@ curl -sI https://arena.hackerxploit.org/healthcheck    # HTTP/2 200
 docker compose logs <service> --tail=50 -f             # live-tail any service's logs
 ```
 
+### 12. CTFd's "Login with HackerXploit" button says "OAuth token retrieval failure"
+
+Check CTFd's own login log for confirmation: `docker exec hx_ctfd cat
+/opt/CTFd/CTFd/logs/logins.log | grep "OAuth token retrieval failure"`. If present,
+CTFd's token exchange request to `/oauth/token` is being rejected - inspect
+`backend/app/routes/oauth.py`'s `token()` function's checks one at a time; CTFd's
+actual token request only ever sends `code`, `client_id`, `client_secret`,
+`grant_type` (confirmed from CTFd's own source, `CTFd/auth.py`) - never assume it
+sends anything else (e.g. `redirect_uri`), even if the OAuth2 spec allows a server
+to expect it.
+
+### 13. A user gets "Your username or password is incorrect" trying to log into CTFd
+
+Ask which login form they used. CTFd shows two: the "Login with HackerXploit" SSO
+button (the only one that can ever work - CTFd-provisioned accounts get a random,
+never-disclosed password, see `ctfd_sync.py`), and CTFd's own native username/
+password form directly below it, which can never succeed for any platform account.
+The native form should already be hidden by `scripts/install-ctfd-theme.sh`'s
+theme_footer JS - if it's still visible, re-run that script and hard-refresh.
+
+### 14. A user clicks CTFd's SSO button and lands on a raw JSON error instead of the login page
+
+Fixed - `/oauth/authorize` now redirects unauthenticated browsers to `/login` (or
+`/setup-admin`/`/onboarding` as appropriate) instead of returning JSON, since this
+endpoint is only ever reached via full browser navigation, never an API/fetch call.
+If this class of bug ever recurs on a similar full-page-navigation-only endpoint:
+check whether it's using a blanket auth decorator built for API/AJAX routes
+(JSON error responses) instead of an inline check that redirects.
+
 ---
 ---
 
