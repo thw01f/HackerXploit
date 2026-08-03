@@ -107,7 +107,16 @@ def token():
     if auth_code.client_id != client.client_id:
         return jsonify({'error': 'invalid_grant', 'error_description': 'Authorization code was not issued to this client'}), 400
 
-    if not redirect_uri or redirect_uri != auth_code.redirect_uri:
+    # RFC 6749 4.1.3 says a client SHOULD send redirect_uri back here if one
+    # was used at the authorize step, but CTFd's actual OAuth client (its
+    # only consumer) never sends it at all - its token POST body is just
+    # code/client_id/client_secret/grant_type. Requiring it unconditionally
+    # meant every single token exchange 400'd here, for every user, always -
+    # nobody could ever complete the SSO round-trip. Only validate it when
+    # the client actually provided one; the code is already scoped to a
+    # specific client_id and a server-stored redirect_uri, so a client that
+    # omits this parameter (like CTFd) isn't gaining anything by omitting it.
+    if redirect_uri and redirect_uri != auth_code.redirect_uri:
         return jsonify({'error': 'invalid_grant', 'error_description': 'redirect_uri does not match the authorization request'}), 400
 
     access_token = secrets.token_hex(32)
