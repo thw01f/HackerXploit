@@ -251,6 +251,14 @@ def create_app(config_class=Config):
         # One-time backfill: migrate the old single-string dashboard banner into
         # the new multi-announcement table, preserving the previously-hardcoded
         # "LAUNCH CTF ARENA" CTA so existing deployments don't lose it silently.
+        # This runs on every app boot, so `Announcement.query.count() == 0`
+        # alone can't tell "never migrated yet" apart from "an admin
+        # deliberately deleted every announcement" - the latter looks
+        # identical after the row is gone, so every restart with zero
+        # announcements silently recreated this exact default text, making
+        # deletions look like they didn't stick. Clearing announcement_banner
+        # once consumed makes the migration genuinely one-time: it can never
+        # find truthy legacy text to backfill from again after the first run.
         try:
             from app.models import Announcement
             from app.models.moderation import SiteFeatureToggle
@@ -264,6 +272,7 @@ def create_app(config_class=Config):
                         is_active=True,
                         display_order=0
                     ))
+                    toggle.announcement_banner = None
                     db.session.commit()
         except Exception:
             db.session.rollback()
