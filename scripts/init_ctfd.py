@@ -24,7 +24,14 @@ import subprocess
 
 
 def init_ctfd_oauth():
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../backend')))
+    # See scripts/init_db.py for why both candidates are needed - host/dev
+    # layout vs. the web container's layout (scripts/ bind-mounted alongside
+    # /app, which IS the backend root there, not /app/backend).
+    _here = os.path.dirname(os.path.abspath(__file__))
+    for _candidate in (os.path.join(_here, '../backend'), os.path.dirname(_here)):
+        _candidate = os.path.abspath(_candidate)
+        if _candidate not in sys.path:
+            sys.path.insert(0, _candidate)
     from app import create_app
     from app.models import OAuth2Client
 

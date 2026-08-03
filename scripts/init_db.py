@@ -1,8 +1,16 @@
 import sys
 import os
 
-# Add backend to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../backend')))
+# Add backend to path. On the host/dev repo layout, backend/ is a sibling of
+# scripts/ ('../backend'). Inside the web container, scripts/ is bind-mounted
+# at /app/scripts but the app package lives directly at /app (the Dockerfile's
+# WORKDIR), i.e. the script's own parent directory - so both candidates are
+# added and whichever actually contains `app/` is the one Python resolves.
+_here = os.path.dirname(os.path.abspath(__file__))
+for _candidate in (os.path.join(_here, '../backend'), os.path.dirname(_here)):
+    _candidate = os.path.abspath(_candidate)
+    if _candidate not in sys.path:
+        sys.path.insert(0, _candidate)
 
 from app import create_app
 from app.models import db, User, OAuth2Client
