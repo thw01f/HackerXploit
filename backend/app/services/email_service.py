@@ -19,16 +19,24 @@ def send_smtp_email(to_email, subject, body_html):
     msg['To'] = to_email
     msg.attach(MIMEText(body_html, 'html'))
 
+    if smtp_host == 'localhost' or not smtp_user:
+        # No real SMTP configured - intentional no-op (local dev/log mode),
+        # not a failure, so this correctly returns True without sending.
+        print(f"SMTP Delivery info (simulated/log mode, no SMTP configured): to={to_email} subject={subject}")
+        return True
+
     try:
-        if smtp_host != 'localhost' and smtp_user:
-            with smtplib.SMTP(smtp_host, smtp_port, timeout=5) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(sender_email, [to_email], msg.as_string())
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=5) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(sender_email, [to_email], msg.as_string())
         return True
     except Exception as e:
-        print(f"SMTP Delivery info (simulated/log mode): {e}")
-        return True
+        # A real SMTP failure (auth error, connection refused, etc.) - must
+        # return False so EmailLog.delivered reflects reality instead of
+        # silently recording every failed send as successful.
+        print(f"SMTP Delivery FAILED: {e}")
+        return False
 
 @celery.task
 def send_registration_verify_email(user_id, verify_code):

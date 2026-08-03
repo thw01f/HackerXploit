@@ -3,8 +3,9 @@
 This document records security audits of the HackerXploit Club Platform, the
 vulnerabilities each found, and the fixes applied in response. It is a point-in-time
 record — see git history / `SECURITY.md` for the current state of the security
-architecture. Two passes are recorded: **2026-08-01** (items 1–12 below) and a
-follow-up **2026-08-03** pass (items 13–20).
+architecture. Three passes are recorded: **2026-08-01** (items 1–12 below), a
+follow-up **2026-08-03** pass (items 13–20), and a same-day third pass focused on CTFd
+sync correctness and Celery/Redis/DB integrity (items 21–28).
 
 **Scope:** backend (Flask/PostgreSQL/Redis/Celery), frontend (Vue 3 SPA), and
 infrastructure (Docker Compose, Nginx, CI/CD). **Method:** manual code review across
@@ -520,3 +521,138 @@ this dev sandbox is the production server).
   its 2 device sessions, and 1 audit log row) was located and removed; its intended
   target test account had already been removed by the very crash bug it was
   investigating (#14).
+
+---
+
+## Critical
+
+### 21. CTFd account sync silently non-functional since CTFd's database moved to a persistent volume
+
+`backend/app/services/ctfd_sync.py` hardcoded `/tmp/ctfd.db` as the CTFd SQLite
+database path for every provisioning, role-sync, suspend/reinstate, and delete
+operation. CTFd's actual database has lived on a named Docker volume at
+`/var/ctfd_data/ctfd.db` since an earlier pass (see the `docker-compose.yml`
+`DATABASE_URL` for the `ctfd` service) — `scripts/init_ctfd.py`, `scripts/hx-backup.sh`,
+and `scripts/install-ctfd-theme.sh` were all already updated to the correct path at
+that time, but `ctfd_sync.py` was missed.
+
+Because `sqlite3.connect()` auto-creates a file at whatever path it's given, every
+sync call connected to a schema-less throwaway file, ran its SQL against a
+nonexistent `users` table, crashed inside the `docker exec`'d subprocess — and was
+reported as a success anyway, because the calling code never checked the
+subprocess's return code. Net effect: every CTFd account create, role change,
+suspend/reinstate, and delete triggered from the platform had been a complete no-op
+for an unknown period, with no error surfaced anywhere.
+
+**Fix:** added a `CTFD_DB_PATH` env var (default `/var/ctfd_data/ctfd.db`) used by all
+three SQL-executing functions, and a shared `_run_ctfd_script()` helper that checks
+`returncode`/`stderr` and returns failure instead of unconditionally `True`.
+**Verified live** against the real running CTFd container: created a throwaway user,
+confirmed it appeared in CTFd; deleted it; confirmed the CTFd user count returned to
+the pre-test baseline (7). **Status: Fixed.**
+
+## High
+
+### 22. Root-only role changes never synced to CTFd — a demoted admin kept CTFd admin access
+
+`change_user_role()` in `backend/app/routes/admin.py` (the endpoint actually used by
+the admin-hierarchy UI) had no CTFd sync call at all. An admin demoted to member on the
+platform retained full CTFd admin-panel access indefinitely, since CTFd's own `type`
+column was never updated. **Fix:** call `sync_user_to_ctfd(user)` after the role commit.
+**Status: Fixed.**
+
+### 23. Simultaneous username+email change created a duplicate, orphaned CTFd account
+
+`sync_user_to_ctfd()`'s CTFd-side lookup matched only on the *new* username/email. If
+an admin changed both fields in the same request (`update_user_details`), the lookup
+found zero rows and inserted a second CTFd account instead of updating the existing
+one — leaving a stale, orphaned row with the old identity behind. Separately, the
+`UPDATE` branch never wrote the `email` column at all, so email changes never
+propagated to CTFd even on a single-field update. **Fix:** the function now accepts
+optional `old_username`/`old_email` and matches `WHERE name IN (?, ?) OR email IN (?,
+?)` against both old and new values; the `UPDATE` statement now sets `email` too.
+`update_user_details()` was updated to capture and pass the pre-change values.
+**Verified live**: renamed + re-emailed + role-changed a test user in one call,
+confirmed exactly one CTFd row existed afterward with all three changes applied.
+**Status: Fixed.**
+
+## Medium
+
+### 24. Admin-forced password resets didn't revoke live CTFd SSO tokens
+
+`admin_force_reset_password()` deactivated the user's `DeviceSession`s but left any
+issued `OAuth2Token` rows intact, so a user forcibly logged out on the platform could
+still use an existing CTFd SSO session. **Fix:** now also deletes the user's
+`OAuth2Token` rows, matching the self-service reset flow in `auth.py`. **Status: Fixed.**
+
+### 25. CTFd user deletion could silently abort partway through
+
+`delete_user_from_ctfd()` purged only 3 of CTFd's user-referencing tables inside a
+single `try/except`, so one missing/renamed table (schema differences across CTFd
+versions) would abort cleanup of the rest and could leave the final `DELETE FROM
+users` blocked by a foreign-key violation — reported as success regardless, since (per
+#21) the return code was never checked. **Fix:** now deletes from all 6
+user-referencing tables (`solves, submissions, tracking, awards, unlocks,
+notifications`) individually, each with its own `try/except sqlite3.OperationalError`,
+and the final `users` delete explicitly reports an `IntegrityError` instead of
+crashing silently. **Status: Fixed.**
+
+### 26. Failed SMTP sends were reported as successful
+
+`send_smtp_email()` returned `True` unconditionally, including when the `smtplib.SMTP`
+call raised an exception — a failed password-reset or notification email looked
+identical to a successful one to every caller. **Fix:** the dev-mode no-op path (no
+SMTP host configured) still returns `True` and logs it as simulated, but a genuine send
+failure now returns `False` with the exception logged. **Status: Fixed.**
+
+## Low / hardening
+
+### 27. Flask-Limiter used in-memory storage under a multi-worker Gunicorn deployment
+
+The production deployment runs Gunicorn with `-w 2`. Flask-Limiter's default in-memory
+storage is per-process, so with 2 workers each rate limit effectively enforced at ~2x
+its configured value, and reset entirely on worker restart. **Fix:**
+`RATELIMIT_STORAGE_URI` is now set to the same Redis instance already used for
+Celery/Socket.IO before `limiter.init_app()` runs. **Status: Fixed.**
+
+### 28. Missing indexes on frequently-queried foreign-key columns
+
+`DeviceSession.session_token_hash` — the column actually looked up on every
+authenticated request — had no index at all, alongside `user_id`/`is_active` on the
+same table and `user_id`/`competition_id` on `CompetitionParticipation` and `user_id`
+on `Certificate`. **Fix:** added `index=True` to all six columns plus matching
+`CREATE INDEX IF NOT EXISTS` migration statements in `backend/app/__init__.py`
+(model-level `index=True` only affects brand-new tables, not the live one). **Verified**
+via `sqlalchemy.inspect(db.engine).get_indexes(...)` against the running dev database.
+**Status: Fixed.**
+
+## Known gaps not addressed in this pass
+
+- **Celery task retry policies**: no task in the codebase declares `autoretry_for` /
+  `max_retries` — a transient failure (e.g. a momentary DB blip during a background
+  job) fails the task outright with no retry. Deferred as a design decision requiring
+  per-task judgment (which tasks are safe to retry / idempotent) rather than a
+  mechanical fix.
+- **N+1 query patterns** in `competition.py`'s CSV export endpoints
+  (`get_applications_queue`, `export_applications`, `export_event_attendance`,
+  `export_event_feedback`) — each does a per-row `User.query.get()` instead of a single
+  batched `.filter(User.id.in_(...))`. Correctness is unaffected; this is a performance
+  item only, deferred since these endpoints currently run over small (per-event)
+  datasets.
+- **`/api/uploads` authorization granularity**: gated only by `@require_auth`, not a
+  stricter role check for `feature=courses`. No exploit path exists today — the upload
+  pipeline (malware scan, MIME sniffing, type allowlist) runs identically regardless of
+  caller role — but a role check would be a defense-in-depth improvement.
+
+URL-based attacks (open redirect, SSRF, host-header injection, path traversal) and a
+fresh sweep of every file-upload endpoint were also explicitly audited in this pass —
+no new issues found; both areas were confirmed clean against the fixes already recorded
+above (#13, #16).
+
+## Verification (third pass)
+
+- Full backend test suite: `PYTHONPATH=backend pytest tests/ -q` — **39 passed**.
+- CTFd sync fixes (#21, #23) verified end-to-end against the real running CTFd
+  container and its real persistent database — not a mock — as described above.
+- All other fixes in this pass were exercised via the existing test suite and/or
+  direct inspection; no regressions introduced.

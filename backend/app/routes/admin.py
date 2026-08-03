@@ -1,7 +1,7 @@
 import secrets
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, g, current_app
-from app.models import db, User, DeviceSession, LoginAttempt, AuditLog, PasswordResetRequest, PasswordResetCode, ProfileFieldDefinition, NotificationPreference
+from app.models import db, User, DeviceSession, LoginAttempt, AuditLog, PasswordResetRequest, PasswordResetCode, ProfileFieldDefinition, NotificationPreference, OAuth2Token
 from app.utils.decorators import require_auth, require_role, require_root, log_audit
 from app.services.ctfd_sync import sync_user_to_ctfd, delete_user_from_ctfd
 from app.services.email_service import send_account_status_email, send_announcement_email
@@ -199,11 +199,15 @@ def admin_force_reset_password(user_id):
         return jsonify({'error': 'Password must be at least 6 characters long'}), 400
 
     user.set_password(new_password)
-    # Invalidate existing active sessions to force re-authentication
+    # Invalidate existing active sessions to force re-authentication - and,
+    # same reasoning as the self-service reset flow (auth.py), kill any live
+    # CTFd SSO access/refresh tokens too, so a possibly-compromised session
+    # can't keep riding on the old credential through CTFd.
     DeviceSession.query.filter_by(user_id=user_id, is_active=True).update({'is_active': False})
+    OAuth2Token.query.filter_by(user_id=user_id).delete()
     db.session.commit()
 
-    log_audit('ADMIN_PASSWORD_RESET', target_type='User', target_id=user_id, notes=f"Password for @{user.username} reset by Admin {g.current_user.username}")
+    log_audit('ADMIN_PASSWORD_RESET', target_type='User', target_id=user_id, notes=f"Password for @{user.username} reset by Admin {g.current_user.username}; all sessions and CTFd SSO tokens revoked")
     return jsonify({'message': f'Password for @{user.username} has been reset successfully'}), 200
 
 @admin_bp.route('/users/<int:user_id>/update', methods=['PUT'])
@@ -217,6 +221,12 @@ def update_user_details(user_id):
     # Non-admin teachers can only edit student / member accounts
     if not is_admin and user.role not in ['student', 'member']:
         return jsonify({'error': 'Teachers can only edit student accounts'}), 403
+
+    # Captured before either field is mutated below, so the CTFd sync call
+    # can still find the existing CTFd row by its old name/email even if
+    # both change in this same request (see ctfd_sync.py's lookup logic).
+    old_username = user.username
+    old_email = user.email
 
     # Username, SRM Email, and Registration Number are locked for the member
     # themselves (see club.py's update_profile), but an admin/teacher can
@@ -279,7 +289,7 @@ def update_user_details(user_id):
     # Instant CTFd role & badge sync
     try:
         from app.services.ctfd_sync import sync_user_to_ctfd
-        sync_user_to_ctfd(user)
+        sync_user_to_ctfd(user, old_username=old_username, old_email=old_email)
     except Exception as e:
         print(f"[CTFd Sync Error on Role Update]: {e}")
 
@@ -428,6 +438,14 @@ def change_user_role(user_id):
     if new_role != old_role:
         user.assign_badge_id(force=True)
     db.session.commit()
+
+    # CTFd's own 'type' column (admin/user) must track this - otherwise a
+    # demoted admin keeps full CTFd admin panel access indefinitely, and a
+    # promoted one doesn't gain it.
+    try:
+        sync_user_to_ctfd(user)
+    except Exception as e:
+        print(f"CTFd role sync note: {e}")
 
     log_audit('role_changed', target_type='User', target_id=user_id, target_user_id=user_id, notes=f"Role changed from {old_role} to {new_role}")
     return jsonify(user.to_dict()), 200

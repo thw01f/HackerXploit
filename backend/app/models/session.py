@@ -5,13 +5,16 @@ class DeviceSession(db.Model):
     __tablename__ = 'device_sessions'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
     session_token = db.Column(db.String(128), unique=True, nullable=False, index=True)
-    session_token_hash = db.Column(db.String(128), nullable=True)
+    # This is the actual column looked up on every authenticated request
+    # (require_auth hashes the presented cookie and matches against this),
+    # yet it had no index at all until now.
+    session_token_hash = db.Column(db.String(128), nullable=True, index=True)
     ip_address = db.Column(db.String(45), nullable=False)
     user_agent = db.Column(db.String(255), nullable=False)
     device_label = db.Column(db.String(128), default='Unknown Device')
-    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_active_at = db.Column(db.DateTime, default=datetime.utcnow)
 
