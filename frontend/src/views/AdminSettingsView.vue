@@ -239,7 +239,20 @@ const fetchSettings = async () => {
 
 const saveSettings = async () => {
   try {
-    await axios.post('/api/admin/settings', settings.value)
+    // Only the 3 fields this page actually has controls for - NOT the whole
+    // settings.value object. fetchSettings() merges the entire GET response
+    // (every SiteFeatureToggle column, including the legacy
+    // announcement_banner/announcement_enabled fields this page has no UI
+    // for at all) into local state, so posting settings.value verbatim
+    // silently round-tripped those untouched fields back on every save.
+    // That's how saving any unrelated setting here kept resurrecting the
+    // old single-banner text into the database and re-arming its one-time
+    // migration on the next restart - see backend/app/__init__.py.
+    await axios.post('/api/admin/settings', {
+      general_chat_enabled: settings.value.general_chat_enabled,
+      allowed_email_domains: settings.value.allowed_email_domains,
+      password_min_length: settings.value.password_min_length
+    })
     await clubStore.fetchStats()
     successMsg.value = 'Platform security and registration policy settings updated successfully!'
   } catch (err) {

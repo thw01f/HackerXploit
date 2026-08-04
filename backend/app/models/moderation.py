@@ -21,7 +21,17 @@ class SiteFeatureToggle(db.Model):
             'allowed_email_domains': self.allowed_email_domains or "gmail.com,srm.edu.in,hackerxploit.org",
             'password_min_length': self.password_min_length or 8,
             'announcement_enabled': self.announcement_enabled if self.announcement_enabled is not None else True,
-            'announcement_banner': self.announcement_banner if self.announcement_banner is not None else "Welcome to HackerXploit Club Platform! Next CTF competition is scheduled for Saturday.",
+            # This legacy single-banner field is fully superseded by the
+            # Announcement table (see backend/app/__init__.py's one-time
+            # migration and routes/announcement.py) - no live consumer reads
+            # it anymore. Substituting the old hardcoded default text here
+            # when the column is empty made an unset value look identical to
+            # a real configured one to any client reading this response, so
+            # a naive save-the-whole-object-back UI (AdminSettingsView.vue)
+            # silently resurrected that exact text into the database on
+            # every unrelated settings save, re-arming the migration each
+            # time. Return the real value, empty string included.
+            'announcement_banner': self.announcement_banner or "",
             'updated_by_id': self.updated_by_id,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
